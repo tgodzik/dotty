@@ -1,14 +1,18 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.tasty.internal
+import dotty.tools.dotc.tasty.internal.TastyContext
 
-import scala.quoted.Expr
+import scala.quoted.{Expr, Type}
+import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
+import scala.quoted.Types.TreeType
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.quoted._
+import scala.tasty.trees
 
 /** Default runners for quoted expressions */
 object Toolbox {
@@ -40,19 +44,6 @@ object Toolbox {
             printer.toText(Literal(Constant(value))).mkString(Int.MaxValue, false)
         }
       case _ => new QuoteDriver().show(expr, showSettings)
-    }
-
-    def toConstantOpt(expr: Expr[T]): Option[T] = {
-      def toConstantOpt(tree: Tree): Option[T] = tree match {
-        case Literal(Constant(c)) => Some(c.asInstanceOf[T])
-        case Block(Nil, e) => toConstantOpt(e)
-        case Inlined(_, Nil, e) => toConstantOpt(e)
-        case _ => None
-      }
-      expr match {
-        case expr: LiftedExpr[T] => Some(expr.value)
-        case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree), Settings.run())
-      }
     }
 
   }

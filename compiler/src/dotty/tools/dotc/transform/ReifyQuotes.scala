@@ -471,6 +471,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
                   else if (tree.symbol.is(Inline)) tpw // inlined term
+                  else if (tree.symbol == defn.TastyContext_compilationContext) tpw
                   else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
@@ -494,11 +495,23 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
-      outer.enteredSyms.foreach(s => capturers.put(s, captured2))
-      if (ctx.owner.owner.is(Macro))
-        outer.enteredSyms.reverse.foreach(s => captured2(ref(s)))
+
+      def registerCapturer(sym: Symbol): Unit = capturers.put(sym, captured2)
+      def forceCapture(sym: Symbol): Unit = captured2(ref(sym))
+
+      outer.enteredSyms.foreach(registerCapturer)
+
+      if (ctx.owner.owner.is(Macro)) {
+        registerCapturer(defn.TastyContext_compilationContext)
+        // Force a macro to have the context in first position
+        forceCapture(defn.TastyContext_compilationContext)
+        // Force all parameters of the macro to be created in the definition order
+        outer.enteredSyms.reverse.foreach(forceCapture)
+      }
+
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
+
       seq(captured.result().valuesIterator.toList, tree2)
     }
 
@@ -506,7 +519,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     private def isCaptured(tree: RefTree, level: Int)(implicit ctx: Context): Boolean = {
       // Check phase consistency and presence of capturer
       ( (level == 1 && levelOf.get(tree.symbol).contains(1)) ||
-        (level == 0 && tree.symbol.is(Inline))
+        (level == 0 && tree.symbol.is(Inline)) ||
+        (level == 0 && tree.symbol == defn.TastyContext_compilationContext)
       ) && capturers.contains(tree.symbol)
     }
 
@@ -546,7 +560,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             splice(tree)
           case tree: RefTree if isCaptured(tree, level) =>
             val capturer = capturers(tree.symbol)
-            if (tree.symbol.is(Inline)) capturer(tree)
+            if (tree.symbol.is(Inline) || tree.symbol == defn.TastyContext_compilationContext) capturer(tree)
             else splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
