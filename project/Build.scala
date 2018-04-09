@@ -37,7 +37,7 @@ object ExposedValues extends AutoPlugin {
 }
 
 object Build {
-  val scalacVersion = "2.12.7"
+  val scalacVersion = "2.13.0-M3"
 
   val baseVersion = "0.12.0"
   val baseSbtDottyVersion = "0.2.7"
@@ -49,10 +49,8 @@ object Build {
   val publishedDottyVersion = "0.11.0-RC1"
   val publishedSbtDottyVersion = "0.2.6"
 
-
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
-
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
 
@@ -129,7 +127,8 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      // FIXME: Disabled because ClassfileAnnotation is deprecated but currently used in various places
+      // "-Xfatal-warnings",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
@@ -304,8 +303,8 @@ object Build {
             module = moduleFilter(),
             artifact = artifactFilter(extension = "jar")
           )
-        libraryJar = jars.find(_.getName.startsWith("dotty-library_2.12")).get
-        compilerJar = jars.find(_.getName.startsWith("dotty-compiler_2.12")).get
+        libraryJar = jars.find(_.getName.startsWith("dotty-library_2.13")).get
+        compilerJar = jars.find(_.getName.startsWith("dotty-compiler_2.13")).get
       }
 
       // All dotty-doc's and compiler's dependencies except the library.
