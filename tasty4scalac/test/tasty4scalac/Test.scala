@@ -1,1 +1,4 @@
-class Test
+class Test {
+  def foo: String = "foo" * 2
+
+}
