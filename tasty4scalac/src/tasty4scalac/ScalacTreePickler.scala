@@ -93,9 +93,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   private def spickleName(name: g.Name): Unit = {
     val dName =
       if (name.isTermName)
-        name.toString.toTermName
+        name.decode.toTermName
       else
-        name.toString.toTypeName
+        name.decode.toTypeName
     writeNat(nameIndex(dName).index)
   }
 
@@ -167,7 +167,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
     case StringTag =>
       writeByte(STRINGconst)
-      ??? // pickleName(c.stringValue.toTermName)
+      pickleName(c.stringValue.toTermName)
     case NullTag =>
       writeByte(NULLconst)
     case ClazzTag =>
@@ -259,6 +259,21 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         throw ex
     }
 
+  private def spickleNamedType(pre: g.Type, sym: g.Symbol, isType: Boolean): Unit = {
+    if (sym.hasPackageFlag) {
+      writeByte(if (isType) TYPEREFpkg else TERMREFpkg)
+      spickleName(sym.fullNameAsName('.'))
+    }
+    else if (pre == g.NoPrefix) {
+      writeByte(TYPEREFdirect)
+    }
+    else {
+      writeByte(if (isType) TYPEREF else TERMREF)
+      spickleName(sym.name)
+      spickleType(pre)
+    }
+  }
+
   private def spickleNewType(tpe: g.Type, richTypes: Boolean): Unit = tpe match {
     case g.ConstantType(value) =>
       spickleConstant(value)
@@ -267,33 +282,18 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       if (hasArgs)
         writeByte(APPLIEDtype)
 
-      if (pre == g.NoPrefix) {
-        writeByte(TYPEREFdirect)
-      } else {
-        writeByte(TYPEREF)
-        spickleName(sym.name)
-        spickleType(pre)
-      }
+      spickleNamedType(pre, sym, isType = true)
 
       if (hasArgs)
         args.foreach(spickleType(_))
     case g.SingleType(pre, sym) =>
-      if (sym.hasPackageFlag) {
-        writeByte(if (sym.isType) TYPEREFpkg else TERMREFpkg)
-        val nameStr = sym.fullName
-        val name = if (sym.isType) nameStr.toTypeName else nameStr.toTermName
-        pickleName(name)
-      }
-      else {
-        writeByte(if (sym.isType) TYPEREF else TERMREF)
-        spickleName(sym.name)
-        spickleType(pre)
-      }
+      spickleNamedType(pre, sym, sym.isType)
     case tpe @ g.ThisType(sym) =>
       if (sym.hasPackageFlag && !sym.isRoot) {
         writeByte(TERMREFpkg)
-        pickleName(sym.fullName.toTypeName)
+        spickleName(sym.fullNameAsName('.'))
       } else {
+        assert(!sym.isRoot)
         writeByte(THIS)
         spickleType(tpe.underlying.typeConstructor.asInstanceOf[g.TypeRef])
       }
@@ -360,6 +360,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       }
       else {
         writeByte(THIS)
+        assert(!tpe.cls.isEffectiveRoot, s"This happened: $tpe - ${tpe.cls}")
         pickleType(tpe.tref)
       }
     case tpe: SuperType =>
