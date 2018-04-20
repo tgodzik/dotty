@@ -808,6 +808,21 @@ object Build {
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalacVersion)
     )
 
+  lazy val tasty4scalac = project.
+    dependsOn(`dotty-compiler`).
+    settings(commonSettings).
+    settings(
+      libraryDependencies := Seq("org.scala-lang" % "scala-compiler" % scalacVersion),
+      fork in Test := true,
+
+      // From kind-projector
+      scalacOptions in Test ++= {
+        val jar = (packageBin in Compile).value
+        Seq(s"-Xplugin:${jar.getAbsolutePath}", s"-Jdummy=${jar.lastModified}") // ensures recompile
+      },
+      scalacOptions in Test += "-Yrangepos",
+    )
+
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.
