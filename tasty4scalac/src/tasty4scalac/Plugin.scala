@@ -9,6 +9,11 @@ import scala.tools.nsc.backend.jvm.GenBCode
 import scala.tools.nsc.typechecker.Analyzer
 import scala.tools.nsc.transform.Erasure
 
+import dotty.tools.dotc.core.tasty.TastyPrinter
+
+import java.io._
+import java.nio.file._
+
 class Plugin(val global: Global) extends NscPlugin { self =>
   val name = "tasty"
   val description = "Pickles Scala trees (tasty format)."
@@ -29,6 +34,20 @@ class Plugin(val global: Global) extends NscPlugin { self =>
         assert(!unit.isJava)
 
         println("Hello: " + tree)
+        val pickler = new ScalacTastyPickler(global)
+        val treePkl = pickler.treePkl
+        treePkl.spickle(List(tree.asInstanceOf[treePkl.g.Tree]))
+
+        treePkl.compactify()
+        val pickled = pickler.assembleParts()
+
+        val ctx = (new dotty.tools.dotc.core.Contexts.ContextBase).initialCtx
+        new TastyPrinter(pickled)(ctx).printContents()
+
+        val path = Paths.get("Test.tasty")
+        Files.write(path, pickled)
+
+        // dotty.tools.dotc.core.Main.process("-from-tasty"
       }
     }
   }

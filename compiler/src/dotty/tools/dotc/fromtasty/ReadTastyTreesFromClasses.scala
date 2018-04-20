@@ -71,7 +71,12 @@ class ReadTastyTreesFromClasses extends FrontEnd {
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
           compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
-          cannotUnpickle(s"no class file was found")
+          // cannotUnpickle(s"no class file was found")
+          val source: SourceFile = SourceFile(io.AbstractFile.getFile(className.toString), Array())
+          val unpickler = new core.tasty.DottyUnpickler(source.file.toByteArray)
+          unpickler.enter(Set())
+          val unit = mkCompilationUnit(source, unpickler.tree.withPos(util.Positions.Position(0, 0)), forceTrees = true)
+          Some(unit)
       }
   }
 }

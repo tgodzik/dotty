@@ -30,7 +30,7 @@ object ScalacTreePickler {
   }
 }
 
-class ScalacTreePickler(pickler: TastyPickler, g: Global) {
+class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
   import TreePickler._
@@ -41,6 +41,10 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
+
+  private val ssymRefs = new mutable.HashMap[g.Symbol, Addr]
+  private val sforwardSymRefs = new mutable.HashMap[g.Symbol, List[Addr]]
+  private val spickledTypes = new java.util.IdentityHashMap[g.Type, Any] // Value type is really Addr, but that's not compatible with null
 
   private def withLength(op: => Unit) = {
     val lengthAddr = reserveRef(relative = true)
@@ -58,6 +62,12 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
     case _ =>
   }
 
+  def spreRegister(tree: g.Tree): Unit = tree match {
+    case tree: g.MemberDef =>
+      if (!ssymRefs.contains(tree.symbol)) ssymRefs(tree.symbol) = NoAddr
+    case _ =>
+  }
+
   def registerDef(sym: Symbol): Unit = {
     symRefs(sym) = currentAddr
     forwardSymRefs.get(sym) match {
@@ -68,12 +78,39 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
     }
   }
 
+  def sregisterDef(sym: g.Symbol): Unit = {
+    ssymRefs(sym) = currentAddr
+    sforwardSymRefs.get(sym) match {
+      case Some(refs) =>
+        refs.foreach(fillRef(_, currentAddr, relative = false))
+        sforwardSymRefs -= sym
+      case None =>
+    }
+  }
+
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+
+  private def spickleName(name: g.Name): Unit = {
+    val dName =
+      if (name.isTermName)
+        name.toString.toTermName
+      else
+        name.toString.toTypeName
+    writeNat(nameIndex(dName).index)
+  }
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(
       if (sig eq Signature.NotAMethod) name
       else SignedName(name.toTermName, sig))
+
+  private def spickleSymRef(sym: g.Symbol) = ssymRefs.get(sym) match {
+    case Some(label) =>
+      if (label != NoAddr) writeRef(label) else spickleForwardSymRef(sym)
+    case None =>
+      assert(false,  s"pickling reference to as yet undefined $sym in ${sym.owner}")
+      // pickleForwardSymRef(sym)
+  }
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
@@ -87,6 +124,12 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
       pickleForwardSymRef(sym)
   }
 
+  private def spickleForwardSymRef(sym: g.Symbol) = {
+    val ref = reserveRef(relative = false)
+    assert(!sym.hasPackageFlag, sym)
+    sforwardSymRefs(sym) = ref :: sforwardSymRefs.getOrElse(sym, Nil)
+  }
+
   private def pickleForwardSymRef(sym: Symbol)(implicit ctx: Context) = {
     val ref = reserveRef(relative = false)
     assert(!sym.is(Flags.Package), sym)
@@ -94,7 +137,49 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
   }
 
   private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) =
-    sym.topLevelClass.isLinkedWith(pickler.rootCls)
+    ??? //sym.topLevelClass.isLinkedWith(pickler.rootCls)
+
+  def spickleConstant(c: g.Constant): Unit = c.tag match {
+    case UnitTag =>
+      writeByte(UNITconst)
+    case BooleanTag =>
+      writeByte(if (c.booleanValue) TRUEconst else FALSEconst)
+    case ByteTag =>
+      writeByte(BYTEconst)
+      writeInt(c.byteValue)
+    case ShortTag =>
+      writeByte(SHORTconst)
+      writeInt(c.shortValue)
+    case CharTag =>
+      writeByte(CHARconst)
+      writeNat(c.charValue)
+    case IntTag =>
+      writeByte(INTconst)
+      writeInt(c.intValue)
+    case LongTag =>
+      writeByte(LONGconst)
+      writeLongInt(c.longValue)
+    case FloatTag =>
+      writeByte(FLOATconst)
+      writeInt(java.lang.Float.floatToRawIntBits(c.floatValue))
+    case DoubleTag =>
+      writeByte(DOUBLEconst)
+      writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
+    case StringTag =>
+      writeByte(STRINGconst)
+      ??? // pickleName(c.stringValue.toTermName)
+    case NullTag =>
+      writeByte(NULLconst)
+    case ClazzTag =>
+      writeByte(CLASSconst)
+      ??? // pickleType(c.typeValue)
+    case EnumTag =>
+      writeByte(ENUMconst)
+      ??? //pickleType(c.symbolValue.termRef)
+    case ScalaSymbolTag =>
+      writeByte(SYMBOLconst)
+      ??? //pickleName(c.scalaSymbolValue.name.toTermName)
+  }
 
   def pickleConstant(c: Constant)(implicit ctx: Context): Unit = c.tag match {
     case UnitTag =>
@@ -155,6 +240,71 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
         println(i"error when pickling type $tpe")
         throw ex
     }
+  }
+
+  def spickleType(tpe: g.Type, richTypes: Boolean = false): Unit =
+    try {
+      val prev = spickledTypes.get(tpe)
+      if (prev == null) {
+        spickledTypes.put(tpe, currentAddr)
+        spickleNewType(tpe, richTypes)
+      }
+      else {
+        writeByte(SHAREDtype)
+        writeRef(prev.asInstanceOf[Addr])
+      }
+    } catch {
+      case ex: AssertionError =>
+        println(s"error when pickling type $tpe")
+        throw ex
+    }
+
+  private def spickleNewType(tpe: g.Type, richTypes: Boolean): Unit = tpe match {
+    case g.ConstantType(value) =>
+      spickleConstant(value)
+    case g.TypeRef(pre, sym, args) =>
+      val hasArgs = !args.isEmpty
+      if (hasArgs)
+        writeByte(APPLIEDtype)
+
+      if (pre == g.NoPrefix) {
+        writeByte(TYPEREFdirect)
+      } else {
+        writeByte(TYPEREF)
+        spickleName(sym.name)
+        spickleType(pre)
+      }
+
+      if (hasArgs)
+        args.foreach(spickleType(_))
+    case g.SingleType(pre, sym) =>
+      if (sym.hasPackageFlag) {
+        writeByte(if (sym.isType) TYPEREFpkg else TERMREFpkg)
+        val nameStr = sym.fullName
+        val name = if (sym.isType) nameStr.toTypeName else nameStr.toTermName
+        pickleName(name)
+      }
+      else {
+        writeByte(if (sym.isType) TYPEREF else TERMREF)
+        spickleName(sym.name)
+        spickleType(pre)
+      }
+    case tpe @ g.ThisType(sym) =>
+      if (sym.hasPackageFlag && !sym.isRoot) {
+        writeByte(TERMREFpkg)
+        pickleName(sym.fullName.toTypeName)
+      } else {
+        writeByte(THIS)
+        spickleType(tpe.underlying.typeConstructor.asInstanceOf[g.TypeRef])
+      }
+    case g.TypeBounds(lo, hi) =>
+      if (lo eq hi) {
+        writeByte(TYPEALIAS)
+        spickleType(lo, richTypes)
+      } else {
+        writeByte(TYPEBOUNDS)
+        withLength { spickleType(lo, richTypes); spickleType(hi, richTypes) }
+      }
   }
 
   private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
@@ -285,8 +435,27 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
   def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit =
     pickleTree(tpt)
 
+  def spickleTreeUnlessEmpty(tree: g.Tree): Unit =
+    if (!tree.isEmpty) spickleTree(tree)
+
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
+
+  def spickleDef(tag: Int, sym: g.Symbol, tpt: g.Tree, rhs: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
+    assert(ssymRefs(sym) == NoAddr, sym)
+    sregisterDef(sym)
+    writeByte(tag)
+    withLength {
+      spickleName(sym.name)
+      pickleParams
+      tpt match {
+        case _: g.Template => spickleTree(tpt)
+        case _ if tpt.isType => spickleTree(tpt)
+      }
+      spickleTreeUnlessEmpty(rhs)
+      spickleModifiers(sym)
+    }
+  }
 
   def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context) = {
     assert(symRefs(sym) == NoAddr, sym)
@@ -304,6 +473,8 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
     }
   }
 
+  def spickleParam(tree: g.Tree): Unit = ???
+
   def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
     registerTreeAddr(tree)
     tree match {
@@ -313,14 +484,138 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
     }
   }
 
+  def spickleParams(trees: List[g.Tree]): Unit = {
+    trees.foreach(spreRegister)
+    trees.foreach(spickleParam)
+  }
+
   def pickleParams(trees: List[Tree])(implicit ctx: Context): Unit = {
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
   }
 
+  def spickleStats(stats: List[g.Tree]) = {
+    stats.foreach(spreRegister)
+    stats.foreach(stat => if (!stat.isEmpty) spickleTree(stat))
+  }
+
   def pickleStats(stats: List[Tree])(implicit ctx: Context) = {
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
+  }
+
+  def spickleTree(tree: g.Tree): Unit = {
+    val addr = registerTreeAddr(tree)
+    if (addr != currentAddr) {
+      writeByte(SHAREDterm)
+      writeRef(addr)
+    }
+    else
+      try tree match {
+        case g.PackageDef(pid, stats) =>
+          writeByte(PACKAGE)
+          withLength { spickleType(pid.tpe); spickleStats(stats) }
+        case tree @ g.ClassDef(mods, name, tparams, impl) =>
+          // FIXME: tparams unused?
+          //pickleDef
+          val sym = tree.symbol
+          val tag = TYPEDEF
+          sregisterDef(sym)
+          writeByte(tag)
+          withLength {
+            spickleName(name)
+            spickleTree(impl)
+          }
+          spickleModifiers(sym)
+        case tree @ g.Template(parents, self, body) =>
+          sregisterDef(tree.symbol)
+          writeByte(TEMPLATE)
+          val (params, rest) = tree.body partition {
+            case stat: g.TypeDef => stat.symbol.isParameter
+            case stat: g.ValOrDefDef =>
+              stat.symbol.isParamAccessor && !stat.symbol.isSetter
+            case _ => false
+          }
+          // val primaryCtr = g.treeInfo.firstConstructor(body)
+          withLength {
+            spickleParams(params)
+            parents.foreach(spickleTree)
+            if (!self.isEmpty && false) {
+              // TODO
+            }
+            spickleStats(body)
+          }
+        case g.This(qual) =>
+          if (qual.isEmpty) {
+            // Needs to be a ThisType, but can be a TypeRef
+            spickleType(g.ThisType(tree.symbol))
+          }
+          else {
+            ??? // TODO
+          }
+        case g.Select(qual, name) =>
+          writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+          //pickleNameAndSig(name, sig)
+          spickleName(name)
+          spickleTree(qual)
+        case g.Apply(fun, args) =>
+          writeByte(APPLY)
+          withLength {
+            spickleTree(fun)
+            args.foreach(spickleTree)
+          }
+        case g.Ident(name) =>
+          // TODO: case tp: TermRef if name != nme.WILDCARD
+
+          writeByte(if(tree.isType) IDENTtpt else IDENT)
+          spickleName(name)
+          spickleType(tree.tpe)
+        case tree @ g.DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+          def pickleAllParams = {
+            spickleParams(tree.tparams)
+            for (vparams <- tree.vparamss) {
+              writeByte(PARAMS)
+              withLength { spickleParams(vparams) }
+            }
+          }
+          val tpt1 =
+            if (tree.symbol.isConstructor)
+              g.TypeTree(g.definitions.UnitTpe)
+            else
+              tree.tpt
+          val rhs1 =
+            if (tree.symbol.isPrimaryConstructor)
+              g.EmptyTree // TODO: Check if there's no information lost here
+            else
+              tree.rhs
+          spickleDef(DEFDEF, tree.symbol, tpt1, rhs1, pickleAllParams)
+        case tree: g.TypeTree =>
+          spickleType(tree.tpe)
+        case g.Super(qual, mix) =>
+          writeByte(SUPER)
+          withLength {
+            spickleTree(qual)
+            if (!mix.isEmpty) {
+              ??? // TODO
+            }
+          }
+        case g.Block(stats, expr) =>
+          writeByte(BLOCK)
+          stats.foreach(spreRegister)
+          withLength { spickleTree(expr); stats.foreach(spickleTree) }
+        case g.Literal(const1) =>
+          spickleConstant {
+            tree.tpe match {
+              case g.ConstantType(const2) => const2
+              case _ => const1
+            }
+          }
+      }
+      catch {
+        case ex: AssertionError =>
+          println(s"error when pickling tree $tree")
+          throw ex
+      }
   }
 
   def pickleTree(tree: Tree)(implicit ctx: Context): Unit = {
@@ -574,6 +869,48 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
     pickleName(id.name)
   }
 
+  def spickleModifiers(sym: g.Symbol): Unit = {
+    val privateWithin = sym.privateWithin
+    if (privateWithin.exists) {
+      writeByte(if (sym.isProtected) PROTECTEDqualified else PRIVATEqualified)
+      ??? //pickleType(privateWithin.typeRef)
+    }
+    if (sym.isPrivate) writeByte(PRIVATE)
+    if (sym.isProtected) if (!privateWithin.exists) writeByte(PROTECTED)
+    if ((sym.isFinal) && !(sym.isModule)) writeByte(FINAL)
+    if (sym.isCase) writeByte(CASE)
+    if (sym.isOverride) writeByte(OVERRIDE)
+    // writeByte(INLINE)
+    if (sym.isMacro) writeByte(MACRO)
+    // if (sym.isJavaStatic) writeByte(STATIC) // TODO ?
+    if (sym.isModule) writeByte(OBJECT)
+    // if (sym.isLocal) writeByte(LOCAL) // TODO ?
+    if (sym.isSynthetic) writeByte(SYNTHETIC)
+    if (sym.isArtifact) writeByte(ARTIFACT)
+
+    // writeByte(SCALA2X)
+
+    if (sym.isTerm) {
+      if (sym.isImplicit) writeByte(IMPLICIT)
+      // if (sym is Erased) writeByte(ERASED)
+      if ((sym.isLazy) && !(sym.isModule)) writeByte(LAZY)
+      if (sym.hasFlag(scala.reflect.internal.Flags.ABSOVERRIDE)) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
+      if (sym.isMutable) writeByte(MUTABLE)
+      if (sym.isAccessor) writeByte(FIELDaccessor)
+      if (sym.isCaseAccessor) writeByte(CASEaccessor)
+      // if (sym.isDefaultParameterized) writeByte(DEFAULTparameterized) // TODO ?
+      if (sym.isStable) writeByte(STABLE)
+      if ((sym.isParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
+    } else {
+      if (sym.isSealed) writeByte(SEALED)
+      if (sym.isAbstract) writeByte(ABSTRACT)
+      if (sym.isTrait) writeByte(TRAIT)
+      if (sym.isCovariant) writeByte(COVARIANT)
+      if (sym.isContravariant) writeByte(CONTRAVARIANT)
+    }
+    // sym.annotations.foreach(pickleAnnotation(sym, _))
+  }
+
   def pickleModifiers(sym: Symbol)(implicit ctx: Context): Unit = {
     import Flags._
     val flags = sym.flags
@@ -631,6 +968,12 @@ class ScalacTreePickler(pickler: TastyPickler, g: Global) {
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
+
+  def spickle(trees: List[g.Tree]) = {
+    trees.foreach(tree => if (!tree.isEmpty) spickleTree(tree))
+    def missing = forwardSymRefs.keysIterator/*.map(_.showLocated)*/.toList
+    assert(forwardSymRefs.isEmpty, s"unresolved symbols: $missing%, % when pickling ..."/*${ctx.source}*/)
+  }
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
