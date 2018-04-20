@@ -551,7 +551,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             if (!self.isEmpty && false) {
               // TODO
             }
-            spickleStats(body)
+            spickleStats(rest)
           }
         case g.This(qual) =>
           if (qual.isEmpty) {
