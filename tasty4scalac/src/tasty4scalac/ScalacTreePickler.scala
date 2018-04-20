@@ -474,7 +474,14 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     }
   }
 
-  def spickleParam(tree: g.Tree): Unit = ???
+  def spickleParam(tree: g.Tree): Unit = {
+    registerTreeAddr(tree)
+    tree match {
+      case tree: g.ValDef => spickleDef(PARAM, tree.symbol, tree.tpt)
+      case tree: g.DefDef => spickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
+      case tree: g.TypeDef => spickleDef(TYPEPARAM, tree.symbol, tree.rhs)
+    }
+  }
 
   def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
     registerTreeAddr(tree)

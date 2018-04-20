@@ -1,4 +1,3 @@
 class Test {
-  def foo: String = "foo" * 2
-
+  def foo(x: Int): String = "foo" * 2
 }
