@@ -270,7 +270,14 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     }
     else {
       writeByte(if (isType) TYPEREF else TERMREF)
-      spickleName(sym.name)
+
+      // FIXME do something like this when pickling any name
+      val name1 =
+        if (sym.isModuleClass)
+          sym.name.decode.toTypeName.moduleClassName
+        else
+          sym.name.decode.toTypeName
+      pickleName(name1)
       spickleType(pre)
     }
   }
@@ -539,6 +546,27 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleTree(impl)
           }
           spickleModifiers(sym)
+        case tree @ g.ModuleDef(_, name, impl) =>
+          sregisterDef(tree.symbol)
+          writeByte(VALDEF)
+            withLength {
+              spickleName(name)
+              spickleType(impl.tpe)
+              writeByte(APPLY)
+                withLength {
+                  writeByte(SELECT)
+                    pickleName("<init>".toTermName)
+                    writeByte(NEW)
+                      spickleType(impl.tpe.underlying)
+                }
+              spickleModifiers(tree.symbol)
+            }
+          writeByte(TYPEDEF)
+            withLength {
+              pickleName(name.decode.toTypeName.moduleClassName)
+              spickleTree(impl)
+              spickleModifiers(tree.symbol, moduleClass = true)
+            }
         case tree @ g.Template(parents, self, body) =>
           sregisterDef(tree.symbol)
           writeByte(TEMPLATE)
@@ -554,6 +582,13 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             parents.foreach(spickleTree)
             if (!self.isEmpty && false) {
               // TODO
+            }
+            val owner = tree.symbol.owner
+            if (owner.isModuleClass) {
+              writeByte(SELFDEF)
+                pickleName(nme.WILDCARD)
+                val pre = owner.owner.thisType
+                spickleNamedType(pre, owner.module, isType = false)
             }
             spickleStats(rest)
           }
@@ -933,7 +968,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     pickleName(id.name)
   }
 
-  def spickleModifiers(sym: g.Symbol): Unit = {
+  def spickleModifiers(sym: g.Symbol, moduleClass: Boolean = false): Unit = {
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
       writeByte(if (sym.isProtected) PROTECTEDqualified else PRIVATEqualified)
@@ -954,7 +989,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
 
     // writeByte(SCALA2X)
 
-    if (sym.isTerm) {
+    if (sym.isTerm && !moduleClass) {
       if (sym.isImplicit) writeByte(IMPLICIT)
       // if (sym is Erased) writeByte(ERASED)
       if ((sym.isLazy) && !(sym.isModule)) writeByte(LAZY)
