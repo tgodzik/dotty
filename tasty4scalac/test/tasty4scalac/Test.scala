@@ -4,6 +4,7 @@ class Test(x: Int) {
     case i =>
       var a = 32
       a = 10
+      a: Int
       identity("hi" * 2)
       new Test(1)
       throw new Exception()

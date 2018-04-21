@@ -671,6 +671,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case g.Assign(lhs, rhs) =>
           writeByte(ASSIGN)
           withLength { spickleTree(lhs); spickleTree(rhs) }
+        case g.Typed(expr, tpt) =>
+          writeByte(TYPED)
+          withLength { spickleTree(expr); spickleTpt(tpt) }
         }
       catch {
         case ex: AssertionError =>
