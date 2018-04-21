@@ -434,6 +434,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     pickled
   }
 
+  def spickleTpt(tpt: g.Tree): Unit =
+    spickleTree(tpt)
+
   def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit =
     pickleTree(tpt)
 
@@ -645,6 +648,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           withLength {
             spickleName(name); spickleType(tree.symbol.info); spickleTree(body)
           }
+        case g.New(tpt) =>
+          writeByte(NEW)
+          spickleTpt(tpt)
       }
       catch {
         case ex: AssertionError =>

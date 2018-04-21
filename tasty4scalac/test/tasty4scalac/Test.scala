@@ -3,6 +3,7 @@ class Test(x: Int) {
   def bla(a: Int): Int = x match {
     case i =>
       "hi" * 2
+      new Test(1)
       i
   }
 
