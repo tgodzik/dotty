@@ -620,6 +620,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             else
               tree.rhs
           spickleDef(DEFDEF, tree.symbol, tpt1, rhs1, pickleAllParams)
+        case tree: g.ValDef =>
+          spickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
         case tree: g.TypeTree =>
           spickleType(tree.tpe)
         case g.Super(qual, mix) =>
