@@ -668,6 +668,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
                   pickleName("<special-ops>".toTermName)
               spickleTree(expr)
             }
+        case g.Assign(lhs, rhs) =>
+          writeByte(ASSIGN)
+          withLength { spickleTree(lhs); spickleTree(rhs) }
         }
       catch {
         case ex: AssertionError =>
