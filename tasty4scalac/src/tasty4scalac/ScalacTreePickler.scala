@@ -636,6 +636,12 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case g.CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { spickleTree(pat); spickleTree(rhs); spickleTreeUnlessEmpty(guard) }
+        case g.Bind(name, body) =>
+          sregisterDef(tree.symbol)
+          writeByte(BIND)
+          withLength {
+            spickleName(name); spickleType(tree.symbol.info); spickleTree(body)
+          }
       }
       catch {
         case ex: AssertionError =>
