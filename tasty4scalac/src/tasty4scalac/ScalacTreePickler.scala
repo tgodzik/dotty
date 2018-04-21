@@ -671,6 +671,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           writeByte(BLOCK)
           stats.foreach(spreRegister)
           withLength { spickleTree(expr); stats.foreach(spickleTree) }
+        case g.If(cond, thenp, elsep) =>
+          writeByte(IF)
+          withLength { spickleTree(cond); spickleTree(thenp); spickleTree(elsep) }
         case g.Literal(const1) =>
           spickleConstant {
             tree.tpe match {
