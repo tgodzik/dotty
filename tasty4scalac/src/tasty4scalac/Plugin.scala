@@ -19,10 +19,29 @@ class Plugin(val global: Global) extends NscPlugin { self =>
   val description = "Pickles Scala trees (tasty format)."
   val components = List[NscPluginComponent](TastyComponent)
 
+  def changePhasesOrder(runsAfterPhase: String, phaseClass: Class[_], fieldToModify: Object) = {
+    val newRunsAfter = List(runsAfterPhase)
+    val runsAfterField = phaseClass.getDeclaredField("runsAfter")
+    runsAfterField.setAccessible(true)
+    runsAfterField.set(fieldToModify, newRunsAfter)
+  }
+
+  //update the order of phases
+  //typer, superaccessors
+  changePhasesOrder("typer", classOf[scala.tools.nsc.Global$superAccessors$], global.superAccessors)
+
+  //superaccessors, patmat
+  changePhasesOrder("superaccessors", classOf[scala.tools.nsc.Global$patmat$], global.patmat)
+
+  //patmat, extensionMethods
+  changePhasesOrder("patmat", classOf[scala.tools.nsc.Global$extensionMethods$], global.extensionMethods)
+
+
   object TastyComponent extends {
     val global: self.global.type = self.global
   } with NscPluginComponent {
-    override val runsAfter = List("pickler")
+    override val runsAfter = List("superaccessors")
+    override val runsRightAfter = Some("superaccessors")
     val phaseName = "tasty"
     override def description = "pickle tasty trees"
 
