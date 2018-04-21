@@ -579,6 +579,12 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleTree(fun)
             args.foreach(spickleTree)
           }
+        case g.TypeApply(fun, args) =>
+          writeByte(TYPEAPPLY)
+          withLength {
+            spickleTree(fun)
+            args.foreach(spickleTpt)
+          }
         case g.Ident(name) =>
           // wildcards are pattern bound, need to be preserved as ids.
           if (tree.isTerm && name != g.nme.WILDCARD) {
@@ -651,7 +657,16 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case g.New(tpt) =>
           writeByte(NEW)
           spickleTpt(tpt)
-      }
+        case g.Throw(expr) =>
+          writeByte(APPLY)
+            withLength {
+              writeByte(TERMREF)
+                pickleName("throw".toTermName)
+                writeByte(TERMREFpkg)
+                  pickleName("<special-ops>".toTermName)
+              spickleTree(expr)
+            }
+        }
       catch {
         case ex: AssertionError =>
           println(s"error when pickling tree $tree")
