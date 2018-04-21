@@ -265,7 +265,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       spickleName(sym.fullNameAsName('.'))
     }
     else if (pre == g.NoPrefix) {
-      writeByte(TYPEREFdirect)
+      writeByte(if (isType) TYPEREFdirect else TERMREFdirect)
+      spickleSymRef(sym)
     }
     else {
       writeByte(if (isType) TYPEREF else TERMREF)
@@ -573,11 +574,21 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             args.foreach(spickleTree)
           }
         case g.Ident(name) =>
-          // TODO: case tp: TermRef if name != nme.WILDCARD
-
-          writeByte(if(tree.isType) IDENTtpt else IDENT)
-          spickleName(name)
-          spickleType(tree.tpe)
+          // wildcards are pattern bound, need to be preserved as ids.
+          if (tree.isTerm && name != g.nme.WILDCARD) {
+            // The type of a term Ident should be a TERMREF
+            val tp1 = tree.tpe match {
+              case tp: g.TypeRef =>
+                g.SingleType(tree.symbol.owner.thisType, tree.symbol)
+              case tp =>
+                tp
+            }
+            spickleType(tp1)
+          } else {
+            writeByte(if (tree.isType) IDENTtpt else IDENT)
+            spickleName(name)
+            spickleType(tree.tpe)
+          }
         case tree @ g.DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           def pickleAllParams = {
             spickleParams(tree.tparams)
@@ -618,6 +629,13 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
               case _ => const1
             }
           }
+        case g.Match(selector, cases) =>
+          writeByte(MATCH)
+          println("selector: " + selector)
+          withLength { spickleTree(selector); cases.foreach(spickleTree) }
+        case g.CaseDef(pat, guard, rhs) =>
+          writeByte(CASEDEF)
+          withLength { spickleTree(pat); spickleTree(rhs); spickleTreeUnlessEmpty(guard) }
       }
       catch {
         case ex: AssertionError =>
