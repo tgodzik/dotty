@@ -560,7 +560,10 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleType(g.ThisType(tree.symbol))
           }
           else {
-            ??? // TODO
+            writeByte(QUALTHIS)
+            writeByte(IDENTtpt)
+            spickleName(qual)
+            spickleType(tree.tpe.underlying)
           }
         case g.Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
