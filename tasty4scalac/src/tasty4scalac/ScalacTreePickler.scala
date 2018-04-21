@@ -286,14 +286,15 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     case g.ConstantType(value) =>
       spickleConstant(value)
     case g.TypeRef(pre, sym, args) =>
-      val hasArgs = !args.isEmpty
-      if (hasArgs)
+      if (!args.isEmpty) {
         writeByte(APPLIEDtype)
-
-      spickleNamedType(pre, sym, isType = true)
-
-      if (hasArgs)
-        args.foreach(spickleType(_))
+        withLength {
+          spickleNamedType(pre, sym, isType = true)
+          args.foreach(spickleType(_))
+        }
+      }
+      else
+        spickleNamedType(pre, sym, isType = true)
     case g.SingleType(pre, sym) =>
       spickleNamedType(pre, sym, sym.isType)
     case tpe @ g.ThisType(sym) =>
@@ -544,8 +545,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           withLength {
             spickleName(name)
             spickleTree(impl)
+            spickleModifiers(sym)
           }
-          spickleModifiers(sym)
         case tree @ g.ModuleDef(_, name, impl) =>
           sregisterDef(tree.symbol)
           writeByte(VALDEF)
