@@ -532,11 +532,16 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
 
   def spickleDef(tag: Int, sym0: g.Symbol, tpt: g.Tree, rhs: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
     val sym = pickledSym(sym0)
-    assert(ssymRefs(sym) == NoAddr, sym)
+    assert(ssymRefs(sym) == NoAddr, s"$sym - $sym0")
     sregisterDef(sym)
     writeByte(tag)
     withLength {
-      spickleName(sym.name)
+      val name =
+        if (sym.isConstructor && sym.owner.isTrait)
+          g.nme.CONSTRUCTOR // FIXME: this is not enough, if trait is PureInterface, no $init$ is generated at all
+        else
+          sym.name
+      spickleName(name)
       pickleParams
       tpt match {
         case _: g.Template => spickleTree(tpt)
@@ -606,8 +611,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   }
 
   def spickleTree(tree: g.Tree): Unit = {
-    // Accessors should not be pickled, they will be reconstructed
-    if (tree.isDef && tree.symbol != null && tree.symbol.isAccessor && !tree.symbol.isSetter) {
+    // Accessors that are not in traits should not be pickled, they will be reconstructed
+    if (tree.isDef && tree.symbol != null && !tree.symbol.owner.isTrait && tree.symbol.isAccessor && !tree.symbol.isSetter) {
       return
     }
 
