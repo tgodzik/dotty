@@ -1169,7 +1169,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       writeByte(if (sym.isProtected) PROTECTEDqualified else PRIVATEqualified)
       spickleType(privateWithin.toType)
     }
-    if (sym.isPrivate) writeByte(PRIVATE)
+    if (sym.isPrivate || sym.isTypeParameter) writeByte(PRIVATE)
     if (sym.isProtected) if (!privateWithin.exists) writeByte(PROTECTED)
     if ((sym.isFinal) && !(sym.isModule)) writeByte(FINAL)
     if (sym.isCase) writeByte(CASE)
@@ -1179,6 +1179,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     // if (sym.isJavaStatic) writeByte(STATIC) // TODO ?
     if (sym.isModule) writeByte(OBJECT)
     // if (sym.isLocal) writeByte(LOCAL) // TODO ?
+    if (sym.isTypeParameter) writeByte(LOCAL)
     if (sym.isSynthetic) writeByte(SYNTHETIC)
     if (sym.isArtifact) writeByte(ARTIFACT)
 
@@ -1197,7 +1198,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       if ((sym.isParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
     } else {
       if (sym.isSealed) writeByte(SEALED)
-      if (sym.isAbstract) writeByte(ABSTRACT)
+      if (sym.isAbstract && !sym.isTypeParameter) writeByte(ABSTRACT)
       if (sym.isTrait) writeByte(TRAIT)
       if (sym.isCovariant) writeByte(COVARIANT)
       if (sym.isContravariant) writeByte(CONTRAVARIANT)
