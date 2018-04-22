@@ -123,7 +123,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
   private def spickleNameAndSig(name: g.Name, tp: g.Type): Unit = {
-    val sig = ssignature(tp)
+    val sig = ssignature(tp, isConstructor = name eq g.nme.CONSTRUCTOR)
     val name1 = sconvertName(name)
     pickleName(
       if (sig eq Signature.NotAMethod) name1
@@ -141,8 +141,13 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       sconvertName(sym.fullNameAsName('.')).asTypeName
   }
 
-  private def ssignature(tp: g.Type): Signature = tp.erasure match {
-    case tp @ g.MethodType(_, resultType) =>
+  private def ssignature(tp: g.Type, isConstructor: Boolean): Signature = tp.erasure match {
+    case tp @ g.MethodType(_, resultType0) =>
+      val resultType =
+        if (isConstructor && (resultType0.typeSymbol eq g.definitions.ArrayClass))
+          g.definitions.ObjectTpe // Special case Array constructor, see if we can change Dotty erasure instead
+        else
+          resultType0
       Signature(tp.paramTypes.map(sigName), sigName(resultType))
     case _ =>
       Signature.NotAMethod
