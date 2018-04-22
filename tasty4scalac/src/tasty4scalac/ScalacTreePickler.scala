@@ -88,21 +88,48 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     }
   }
 
+  private def sconvertName(name: g.Name): Name = {
+    val parts = name.decode.split('.').map(_.toTermName)
+    // TODO: unmangle like in Scala2Unpickler#readDisambiguatedSymbol
+    val qname = parts.reduce((prefix, part) => QualifiedName(prefix, part.asSimpleName))
+    if (name.isTypeName)
+      qname.toTypeName
+    else
+      qname
+  }
+
+  private def sconvertFullName(sym: g.Symbol): Name = ???
+
+  private def spickleName(name: g.Name): Unit =
+    pickleName(sconvertName(name))
+
   private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
-  private def spickleName(name: g.Name): Unit = {
-    val dName =
-      if (name.isTermName)
-        name.decode.toTermName
-      else
-        name.decode.toTypeName
-    writeNat(nameIndex(dName).index)
+  private def spickleNameAndSig(name: g.Name, tp: g.Type): Unit = {
+    val sig = ssignature(tp)
+    val name1 = sconvertName(name)
+    pickleName(
+      if (sig eq Signature.NotAMethod) name1
+      else SignedName(name1.toTermName, sig))
   }
 
   private def pickleNameAndSig(name: Name, sig: Signature): Unit =
     pickleName(
       if (sig eq Signature.NotAMethod) name
       else SignedName(name.toTermName, sig))
+
+  private def sigName(tp: g.Type): TypeName = tp match {
+    case g.TypeRef(_, sym, _) =>
+      // TODO: special case arrays, maybe value classes too
+      sconvertName(sym.fullNameAsName('.')).asTypeName
+  }
+
+  private def ssignature(tp: g.Type): Signature = tp.erasure match {
+    case tp @ g.MethodType(_, resultType) =>
+      Signature(tp.paramTypes.map(sigName), sigName(resultType))
+    case _ =>
+      Signature.NotAMethod
+  }
 
   private def spickleSymRef(sym: g.Symbol) = ssymRefs.get(sym) match {
     case Some(label) =>
@@ -606,8 +633,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           }
         case g.Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-          //pickleNameAndSig(name, sig)
-          spickleName(name)
+          spickleNameAndSig(name, tree.tpe)
           spickleTree(qual)
         case g.Apply(fun, args) =>
           writeByte(APPLY)
