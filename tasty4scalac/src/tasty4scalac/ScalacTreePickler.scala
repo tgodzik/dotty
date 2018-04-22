@@ -358,6 +358,18 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         writeByte(TYPEBOUNDS)
         withLength { spickleType(lo, richTypes); spickleType(hi, richTypes) }
       }
+    case g.AnnotatedType(annotations, underlying) =>
+      def pickleAnnot(annots: List[g.AnnotationInfo]): Unit = annots match {
+        case a :: as =>
+          writeByte(ANNOTATEDtype)
+          withLength {
+            pickleAnnot(as)
+            spickleTree(a.original)
+          }
+        case Nil =>
+          spickleType(underlying, richTypes)
+      }
+      pickleAnnot(annotations)
   }
 
   private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
