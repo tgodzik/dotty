@@ -840,6 +840,10 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case g.Typed(expr, tpt) =>
           writeByte(TYPED)
           withLength { spickleTree(expr); spickleTpt(tpt) }
+        case g.Return(expr) =>
+          writeByte(RETURN)
+          val fromSymbol = tree.symbol
+          withLength { spickleSymRef(fromSymbol); spickleTreeUnlessEmpty(expr) }
         }
       catch {
         case ex: AssertionError =>
