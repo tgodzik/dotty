@@ -73,7 +73,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       sym
 
   def spreRegister(tree: g.Tree): Unit = tree match {
-    case _: g.MemberDef | _: g.LabelDef =>
+    case _: g.MemberDef | _: g.LabelDef | _: g.Function =>
       val sym = pickledSym(tree.symbol)
       if (!ssymRefs.contains(sym)) ssymRefs(sym) = NoAddr
     case _ =>
@@ -844,6 +844,23 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           writeByte(RETURN)
           val fromSymbol = tree.symbol
           withLength { spickleSymRef(fromSymbol); spickleTreeUnlessEmpty(expr) }
+        case g.Function(vparams, body) =>
+          def pickleFunctionParams = {
+            writeByte(PARAMS)
+            withLength {
+              spickleParams(vparams)
+            }
+          }
+          writeByte(BLOCK)
+          spreRegister(tree)
+          withLength {
+            writeByte(LAMBDA)
+            withLength {
+              spickleNamedType(g.NoPrefix, tree.symbol, isType = false)
+              // TODO: tpt for SAMs
+            }
+            spickleDef(DEFDEF, tree.symbol, g.TypeTree(body.tpe), body, pickleFunctionParams)
+          }
         }
       catch {
         case ex: AssertionError =>
