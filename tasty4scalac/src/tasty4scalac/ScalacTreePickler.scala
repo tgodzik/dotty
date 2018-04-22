@@ -535,7 +535,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
 
-  def spickleDef(tag: Int, sym0: g.Symbol, tpt: g.Tree, rhs: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
+  def spickleDef(tag: Int, sym0: g.Symbol, tpt: g.Tree, rhs0: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
     val sym = pickledSym(sym0)
     assert(ssymRefs(sym) == NoAddr, s"$sym - $sym0")
     sregisterDef(sym)
@@ -552,7 +552,15 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case _: g.Template => spickleTree(tpt)
         case _ if tpt.isType => spickleTree(tpt)
       }
-      if (!(sym0.isSetter && sym0.isAccessor)) spickleTreeUnlessEmpty(rhs)
+      val rhs =
+        if (sym0.isSetter && sym0.isAccessor)
+          if (sym0.isParamAccessor)
+            g.EmptyTree
+          else
+            g.Literal(g.Constant(()))
+          else
+            rhs0
+      spickleTreeUnlessEmpty(rhs)
       spickleModifiers(sym,
         mutable = sym0.isMutable, // Mutable flag is on field only
         field = sym0 != sym,
