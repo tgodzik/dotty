@@ -308,6 +308,14 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       writeByte(if (isType) TYPEREFpkg else TERMREFpkg)
       spickleName(sym.fullNameAsName('.'))
     }
+    else if (sym.isExistential) {
+      writeByte(TYPEBOUNDS)
+      withLength {
+        spickleType(g.definitions.NothingTpe)
+        // FIXME: Incorrect for higher-kinded existential variable
+        spickleType(g.definitions.AnyTpe)
+      }
+    }
     else if (pre == g.NoPrefix) {
       writeByte(if (isType) TYPEREFdirect else TERMREFdirect)
       spickleSymRef(sym)
@@ -370,6 +378,13 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           spickleType(underlying, richTypes)
       }
       pickleAnnot(annotations)
+    case tpe @ g.ExistentialType(quantified, underlying) =>
+      if (!tpe.isRepresentableWithWildcards) {
+        assert(false, s"Cannot pickle existential type not representable using wildcards: $tpe")
+      }
+      println("quantified: "+ quantified)
+      println("underlying: "+ underlying)
+      spickleType(underlying)
   }
 
   private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
