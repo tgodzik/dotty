@@ -73,7 +73,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       sym
 
   def spreRegister(tree: g.Tree): Unit = tree match {
-    case tree: g.MemberDef =>
+    case _: g.MemberDef | _: g.LabelDef =>
       val sym = pickledSym(tree.symbol)
       if (!ssymRefs.contains(sym)) ssymRefs(sym) = NoAddr
     case _ =>
@@ -704,6 +704,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             val tp1 = tree.tpe match {
               case tp: g.TypeRef =>
                 g.SingleType(tree.symbol.owner.thisType, tree.symbol)
+              case tp: g.MethodType => // Happens on calls to LabelDefs
+                g.SingleType(tree.symbol.owner.thisType, tree.symbol)
               case tp =>
                 tp
             }
@@ -732,6 +734,26 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             else
               tree.rhs
           spickleDef(DEFDEF, tree.symbol, tpt1, rhs1, pickleAllParams)
+        case tree: g.LabelDef =>
+          // We run before pattern matching, so the only LabelDefs we see
+          // should be translatable to regular defs
+          spreRegister(tree)
+          def pickleLabelParam = {
+            writeByte(PARAMS)
+            withLength {
+              // Empty parameter list
+            }
+          }
+          val tpt = g.TypeTree(tree.tpe)
+          writeByte(BLOCK)
+          withLength {
+            writeByte(APPLY)
+            withLength {
+              writeByte(TERMREFdirect)
+              spickleSymRef(tree.symbol)
+            }
+            spickleDef(DEFDEF, tree.symbol, tpt, tree.rhs, pickleLabelParam)
+          }
         case tree: g.ValDef =>
           spickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
         case g.Import(expr, selectors) =>
