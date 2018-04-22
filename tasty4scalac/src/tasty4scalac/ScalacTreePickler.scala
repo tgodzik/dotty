@@ -708,7 +708,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleTree(qual)
           }
           if (tree.symbol.isConstructor && !tree.symbol.owner.typeParams.isEmpty) {
-            val g.TypeRef(_, _, targs) = qual.tpe
+            val g.TypeRef(_, _, targs) = qual.tpe.widen
             // For some reason we need to pass the type arguments again
             writeByte(TYPEAPPLY)
             withLength {
@@ -756,15 +756,27 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleType(tree.tpe)
           }
         case tree @ g.DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+          val isConstructor = tree.symbol.isConstructor
           def pickleAllParams = {
-            spickleParams(tree.tparams)
+            if (isConstructor) {
+              // <init> tparams are fresh tparams that match the class tparams
+              for (tparam <- tree.symbol.owner.typeParams) {
+                writeByte(TYPEPARAM)
+                withLength {
+                  spickleName(tparam.name)
+                  spickleType(tparam.info)
+                }
+              }
+            } else {
+              spickleParams(tree.tparams)
+            }
             for (vparams <- tree.vparamss) {
               writeByte(PARAMS)
               withLength { spickleParams(vparams) }
             }
           }
           val tpt1 =
-            if (tree.symbol.isConstructor)
+            if (isConstructor)
               g.TypeTree(g.definitions.UnitTpe)
             else
               tree.tpt
