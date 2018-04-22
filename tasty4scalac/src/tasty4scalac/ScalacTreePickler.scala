@@ -88,15 +88,20 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     }
   }
 
-  private def sconvertName(name: g.Name): Name = {
-    val parts = name.decode.split('.').map(_.toTermName)
-    // TODO: unmangle like in Scala2Unpickler#readDisambiguatedSymbol
-    val qname = parts.reduce((prefix, part) => QualifiedName(prefix, part.asSimpleName))
-    if (name.isTypeName)
-      qname.toTypeName
-    else
-      qname
-  }
+  private def sconvertName(name: g.Name): Name =
+    if (name eq g.nme.isInstanceOf_Ob)
+      nme.isInstanceOf_
+    else if (name eq g.nme.asInstanceOf_Ob)
+      nme.asInstanceOf_
+    else {
+      val parts = name.decode.split('.').map(_.toTermName)
+      // TODO: unmangle like in Scala2Unpickler#readDisambiguatedSymbol
+      val qname = parts.reduce((prefix, part) => QualifiedName(prefix, part.asSimpleName))
+      if (name.isTypeName)
+        qname.toTypeName
+      else
+        qname
+    }
 
   private def sconvertFullName(sym: g.Symbol): Name = ???
 
@@ -636,10 +641,17 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           spickleNameAndSig(name, tree.tpe)
           spickleTree(qual)
         case g.Apply(fun, args) =>
-          writeByte(APPLY)
-          withLength {
-            spickleTree(fun)
-            args.foreach(spickleTree)
+          fun match {
+            case g.TypeApply(fun1, _) if fun1.symbol eq g.definitions.Object_isInstanceOf =>
+              // isInstanceOf does not have a parameter list, but scalac sometimes thinks it does
+              assert(args.isEmpty)
+              spickleTree(fun)
+            case _ =>
+              writeByte(APPLY)
+              withLength {
+                spickleTree(fun)
+                args.foreach(spickleTree)
+              }
           }
         case g.TypeApply(fun, args) =>
           writeByte(TYPEAPPLY)
