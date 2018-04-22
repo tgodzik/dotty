@@ -697,7 +697,9 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             writeByte(QUALTHIS)
             writeByte(IDENTtpt)
             spickleName(qual)
-            spickleType(tree.tpe.underlying)
+            val tp = tree.tpe.underlying.widen.typeConstructor
+            assert(tp.isInstanceOf[g.TypeRef], s"${tp} ${tp.getClass}")
+            spickleType(tp)
           }
         case g.Select(qual, name) =>
           writeByte(if (name.isTypeName) SELECTtpt else SELECT)
