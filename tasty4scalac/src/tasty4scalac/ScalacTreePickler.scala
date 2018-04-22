@@ -702,9 +702,22 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
             spickleType(tp)
           }
         case g.Select(qual, name) =>
-          writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-          spickleNameAndSig(name, tree.tpe)
-          spickleTree(qual)
+          def pickleSelect = {
+            writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+            spickleNameAndSig(name, tree.tpe)
+            spickleTree(qual)
+          }
+          if (tree.symbol.isConstructor && !tree.symbol.owner.typeParams.isEmpty) {
+            val g.TypeRef(_, _, targs) = qual.tpe
+            // For some reason we need to pass the type arguments again
+            writeByte(TYPEAPPLY)
+            withLength {
+              pickleSelect
+              targs.foreach(spickleType(_))
+            }
+          }
+          else
+            pickleSelect
         case g.Apply(fun, args) =>
           fun match {
             case g.TypeApply(fun1, _) if fun1.symbol eq g.definitions.Object_isInstanceOf =>
