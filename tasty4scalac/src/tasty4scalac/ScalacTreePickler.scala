@@ -62,9 +62,16 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     case _ =>
   }
 
+  def pickledSym(sym: g.Symbol): g.Symbol =
+    if (sym.isParamAccessor)
+      sym.getterIn(sym.owner)
+    else
+      sym
+
   def spreRegister(tree: g.Tree): Unit = tree match {
     case tree: g.MemberDef =>
-      if (!ssymRefs.contains(tree.symbol)) ssymRefs(tree.symbol) = NoAddr
+      val sym = pickledSym(tree.symbol)
+      if (!ssymRefs.contains(sym)) ssymRefs(sym) = NoAddr
     case _ =>
   }
 
@@ -94,7 +101,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     else if (name eq g.nme.asInstanceOf_Ob)
       nme.asInstanceOf_
     else {
-      val parts = name.decode.split('.').map(_.toTermName)
+      val decoded = name.decode.stripSuffix(" ")
+      val parts = decoded.split('.').map(_.toTermName)
       // TODO: unmangle like in Scala2Unpickler#readDisambiguatedSymbol
       val qname = parts.reduce((prefix, part) => QualifiedName(prefix, part.asSimpleName))
       if (name.isTypeName)
@@ -486,7 +494,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
 
-  def spickleDef(tag: Int, sym: g.Symbol, tpt: g.Tree, rhs: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
+  def spickleDef(tag: Int, sym0: g.Symbol, tpt: g.Tree, rhs: g.Tree = g.EmptyTree, pickleParams: => Unit = ()) = {
+    val sym = pickledSym(sym0)
     assert(ssymRefs(sym) == NoAddr, sym)
     sregisterDef(sym)
     writeByte(tag)
@@ -557,6 +566,11 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   }
 
   def spickleTree(tree: g.Tree): Unit = {
+    // Accessors should not be pickled, they will be reconstructed
+    if (tree.isDef && tree.symbol != null && tree.symbol.isAccessor) {
+      return
+    }
+
     val addr = registerTreeAddr(tree)
     if (addr != currentAddr) {
       writeByte(SHAREDterm)
@@ -606,7 +620,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           val (params, rest) = tree.body partition {
             case stat: g.TypeDef => stat.symbol.isParameter
             case stat: g.ValOrDefDef =>
-              stat.symbol.isParamAccessor && !stat.symbol.isSetter
+              stat.symbol.isParamAccessor && !stat.symbol.isSetter && !stat.symbol.isAccessor
             case _ => false
           }
           // val primaryCtr = g.treeInfo.firstConstructor(body)
