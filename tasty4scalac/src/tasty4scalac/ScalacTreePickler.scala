@@ -719,6 +719,21 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           spickleDef(DEFDEF, tree.symbol, tpt1, rhs1, pickleAllParams)
         case tree: g.ValDef =>
           spickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
+        case g.Import(expr, selectors) =>
+          writeByte(IMPORT)
+          withLength {
+            spickleTree(expr)
+            selectors.foreach {
+              case g.ImportSelector(name, _, null, _) =>
+                writeByte(IMPORTED)
+                spickleName(name)
+              case g.ImportSelector(name, _, rename, _) =>
+                writeByte(IMPORTED)
+                spickleName(name)
+                writeByte(RENAMED)
+                spickleName(rename)
+            }
+          }
         case tree: g.TypeTree =>
           spickleType(tree.tpe)
         case g.Super(qual, mix) =>
