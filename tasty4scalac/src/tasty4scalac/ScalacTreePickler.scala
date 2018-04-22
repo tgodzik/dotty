@@ -586,7 +586,6 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           writeByte(PACKAGE)
           withLength { spickleType(pid.tpe); spickleStats(stats) }
         case tree @ g.ClassDef(mods, name, tparams, impl) =>
-          // FIXME: tparams unused?
           //pickleDef
           val sym = tree.symbol
           val tag = TYPEDEF
@@ -594,7 +593,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           writeByte(tag)
           withLength {
             spickleName(name)
-            spickleTree(impl)
+            spickleTree(impl.copy(body = tparams ++ impl.body))
             spickleModifiers(sym)
           }
         case tree @ g.ModuleDef(_, name, impl) =>
