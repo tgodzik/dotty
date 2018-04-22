@@ -710,7 +710,6 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           }
         case g.Match(selector, cases) =>
           writeByte(MATCH)
-          println("selector: " + selector)
           withLength { spickleTree(selector); cases.foreach(spickleTree) }
         case g.CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
