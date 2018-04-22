@@ -63,9 +63,13 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   }
 
   def pickledSym(sym: g.Symbol): g.Symbol =
-    if (sym.isParamAccessor && !sym.isSetter)
-      sym.getterIn(sym.owner)
-    else
+    if (sym.isParamAccessor && !sym.isSetter) {
+      val getter = sym.getterIn(sym.owner)
+      if (getter.exists)
+        getter
+      else
+        sym
+    } else
       sym
 
   def spreRegister(tree: g.Tree): Unit = tree match {
