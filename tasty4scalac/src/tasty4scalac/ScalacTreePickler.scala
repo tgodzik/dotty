@@ -308,7 +308,12 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         throw ex
     }
 
-  private def spickleNamedType(pre: g.Type, sym: g.Symbol, isType: Boolean): Unit = {
+  private def spickleNamedType(pre0: g.Type, sym: g.Symbol, isType: Boolean): Unit = {
+    val pre =
+      if (pre0 == g.NoPrefix && sym.isTypeParameter)
+        sym.owner.thisType
+      else
+        pre0
     if (sym.hasPackageFlag) {
       writeByte(if (isType) TYPEREFpkg else TERMREFpkg)
       spickleName(sym.fullNameAsName('.'))
