@@ -63,7 +63,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   }
 
   def pickledSym(sym: g.Symbol): g.Symbol =
-    if (sym.isParamAccessor)
+    if (sym.isParamAccessor && !sym.isSetter)
       sym.getterIn(sym.owner)
     else
       sym
@@ -506,8 +506,12 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case _: g.Template => spickleTree(tpt)
         case _ if tpt.isType => spickleTree(tpt)
       }
-      spickleTreeUnlessEmpty(rhs)
-      spickleModifiers(sym)
+      if (!(sym0.isSetter && sym0.isAccessor)) spickleTreeUnlessEmpty(rhs)
+      spickleModifiers(sym,
+        mutable = sym0.isMutable, // Mutable flag is on field only
+        field = sym0 != sym,
+        methodParam = sym0.owner.isMethod && tag == PARAM
+      )
     }
   }
 
@@ -567,7 +571,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
 
   def spickleTree(tree: g.Tree): Unit = {
     // Accessors should not be pickled, they will be reconstructed
-    if (tree.isDef && tree.symbol != null && tree.symbol.isAccessor) {
+    if (tree.isDef && tree.symbol != null && tree.symbol.isAccessor && !tree.symbol.isSetter) {
       return
     }
 
@@ -617,12 +621,17 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
         case tree @ g.Template(parents, self, body) =>
           sregisterDef(tree.symbol)
           writeByte(TEMPLATE)
-          val (params, rest) = tree.body partition {
+          val (params, rest0) = tree.body partition {
             case stat: g.TypeDef => stat.symbol.isParameter
             case stat: g.ValOrDefDef =>
               stat.symbol.isParamAccessor && !stat.symbol.isSetter && !stat.symbol.isAccessor
             case _ => false
           }
+          val (constructors, rest1) = rest0 partition {
+            case stat: g.DefDef => stat.symbol.isConstructor
+            case _ => false
+          }
+
           // val primaryCtr = g.treeInfo.firstConstructor(body)
           withLength {
             spickleParams(params)
@@ -637,7 +646,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
                 val pre = owner.owner.thisType
                 spickleNamedType(pre, owner.module, isType = false)
             }
-            spickleStats(rest)
+            spickleStats(constructors ++ rest1)
           }
         case g.This(qual) =>
           if (qual.isEmpty) {
@@ -1023,7 +1032,8 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     pickleName(id.name)
   }
 
-  def spickleModifiers(sym: g.Symbol, moduleClass: Boolean = false): Unit = {
+  def spickleModifiers(sym: g.Symbol, moduleClass: Boolean = false, mutable: Boolean = false,
+    field: Boolean = false, methodParam: Boolean = false): Unit = {
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
       writeByte(if (sym.isProtected) PROTECTEDqualified else PRIVATEqualified)
@@ -1049,11 +1059,11 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       // if (sym is Erased) writeByte(ERASED)
       if ((sym.isLazy) && !(sym.isModule)) writeByte(LAZY)
       if (sym.hasFlag(scala.reflect.internal.Flags.ABSOVERRIDE)) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
-      if (sym.isMutable) writeByte(MUTABLE)
-      if (sym.isAccessor) writeByte(FIELDaccessor)
+      if (sym.isMutable || sym.isSetter || mutable) writeByte(MUTABLE)
+      if (sym.isAccessor && !field) writeByte(FIELDaccessor)
       if (sym.isCaseAccessor) writeByte(CASEaccessor)
       // if (sym.isDefaultParameterized) writeByte(DEFAULTparameterized) // TODO ?
-      if (sym.isStable) writeByte(STABLE)
+      if (sym.isStable && !methodParam) writeByte(STABLE)
       if ((sym.isParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
     } else {
       if (sym.isSealed) writeByte(SEALED)
