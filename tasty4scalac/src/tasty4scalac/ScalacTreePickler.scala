@@ -1052,7 +1052,7 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
       writeByte(if (sym.isProtected) PROTECTEDqualified else PRIVATEqualified)
-      ??? //pickleType(privateWithin.typeRef)
+      spickleType(privateWithin.toType)
     }
     if (sym.isPrivate) writeByte(PRIVATE)
     if (sym.isProtected) if (!privateWithin.exists) writeByte(PROTECTED)
