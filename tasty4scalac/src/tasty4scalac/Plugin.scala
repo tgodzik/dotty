@@ -63,7 +63,9 @@ class Plugin(val global: Global) extends NscPlugin { self =>
         val ctx = (new dotty.tools.dotc.core.Contexts.ContextBase).initialCtx
         new TastyPrinter(pickled)(ctx).printContents()
 
-        val path = Paths.get("Test.tasty")
+        val dir = Paths.get("mine/collection/immutable")
+        Files.createDirectories(dir)
+        val path = dir.resolve("Vector.tasty")
         Files.write(path, pickled)
 
         // dotty.tools.dotc.core.Main.process("-from-tasty"
