@@ -1597,7 +1597,6 @@ object messages {
     extends Message(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._
     def reasonMessage: String = reason match {
-      case CannotBeOverridden => "class definitions cannot be overridden"
       case DefinedInSelf(self) =>
         s"""cannot define ${sym.showKind} member with the same name as a ${cls.showKind} member in self reference ${self.name}.
            |(Note: this can be resolved by using another name)
@@ -1610,7 +1609,6 @@ object messages {
   }
   object CannotHaveSameNameAs {
     sealed trait Reason
-    case object CannotBeOverridden extends Reason
     case class DefinedInSelf(self: tpd.ValDef) extends Reason
   }
 

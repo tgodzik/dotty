@@ -327,9 +327,8 @@ object RefChecks {
       if (!isOverrideAccessOK) {
         overrideAccessError()
       } else if (other.isClass) {
-        // direct overrides were already checked on completion (see Checking.chckWellFormed)
-        // the test here catches indirect overriddes between two inherited base types.
-        overrideError("cannot be used here - class definitions cannot be overridden")
+        // overriding classes with classes is fine.
+        // XXX rework the logic below, and restrict this check here: we must check
       } else if (!other.is(Deferred) && member.isClass) {
         overrideError("cannot be used here - classes can only override abstract types")
       } else if (other.isEffectivelyFinal) { // (1.2)
