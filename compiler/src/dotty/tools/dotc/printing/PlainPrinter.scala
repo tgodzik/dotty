@@ -505,7 +505,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  def toText(importInfo: ImportInfo): Text = {
+  def toText[T >: Untyped](importInfo: ImportInfo[T]): Text = {
     val siteStr = importInfo.site.show
     val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
     val selectorStr = importInfo.selectors match {

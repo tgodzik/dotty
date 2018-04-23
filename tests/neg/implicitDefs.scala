@@ -1,7 +1,7 @@
 package test
 
 import dotty._
-import Predef.{any2stringadd => _, StringAdd => _, _}
+import Predef.{any2stringadd => _, _}
 
 object implicitDefs {
 

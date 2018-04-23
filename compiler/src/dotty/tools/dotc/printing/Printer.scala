@@ -101,7 +101,7 @@ abstract class Printer {
   def toText(result: SearchResult): Text
 
   /** Textual representation of info relating to an import clause */
-  def toText(result: ImportInfo): Text
+  def toText[T >: Untyped](result: ImportInfo[T]): Text
 
   /** Render element within highest precedence */
   def toTextLocal(elem: Showable): Text =

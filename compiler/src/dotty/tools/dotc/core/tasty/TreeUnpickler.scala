@@ -885,13 +885,27 @@ class TreeUnpickler(reader: TastyReader,
         case IMPORTED =>
           val start = currentAddr
           readByte()
-          val from = setPos(start, untpd.Ident(readName()))
+          val fromName = readName()
+          val tpe = {
+            if (fromName == nme.WILDCARD || fromName == nme.ERROR) defn.AnyType
+            else {
+              readType() match {
+                case tref @ TermRef(prefix, _) if prefix.member(fromName).isOverloaded =>
+                  val sname = SignedName(fromName, tref.denot.signature)
+                  TermRef(prefix, sname, tref.denot)
+                case other =>
+                  other
+              }
+            }
+          }
+          val ident = untpd.Ident(fromName).withType(tpe)
+          val from = setPos(start, ident)
           nextByte match {
             case RENAMED =>
               val start2 = currentAddr
               readByte()
-              val to = setPos(start2, untpd.Ident(readName()))
-              untpd.Thicket(from, to) :: readSelectors()
+              val to = setPos(start2, untpd.Ident(readName())).withType(tpe)
+              untpd.Thicket(from, to).withType(tpe) :: readSelectors()
             case _ =>
               from :: readSelectors()
           }

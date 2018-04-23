@@ -707,7 +707,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[Untyped]])
+  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[Tree[T]])
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }

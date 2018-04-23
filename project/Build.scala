@@ -343,6 +343,7 @@ object Build {
   lazy val `dotty-optimised` = project.asDottyRoot(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
+    disablePlugins(ScriptedPlugin).
     settings(commonScala2Settings). // Java-only project, so this is fine
     settings(
       // Do not append Scala versions to the generated artifacts
@@ -705,7 +706,7 @@ object Build {
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
-  lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+  lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped).disablePlugins(ScriptedPlugin)
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped).disablePlugins(ScriptedPlugin)
   lazy val `dotty-compiler-optimised` = project.in(file("compiler")).asDottyCompiler(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
 
@@ -720,7 +721,7 @@ object Build {
       libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
   )
 
-  lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
+  lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped).disablePlugins(ScriptedPlugin)
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped).disablePlugins(ScriptedPlugin)
   lazy val `dotty-library-optimised`: Project = project.in(file("library")).asDottyLibrary(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
 

@@ -549,6 +549,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)
 
+  def assignType(tree: untpd.Thicket, tp: Type)(implicit ctx: Context) =
+    tree.withType(tp)
+
 }
 
 object TypeAssigner extends TypeAssigner

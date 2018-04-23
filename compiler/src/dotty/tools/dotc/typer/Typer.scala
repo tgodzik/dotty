@@ -190,7 +190,7 @@ class Typer extends Namer
           previous
         }
 
-      def selection(imp: ImportInfo, name: Name) =
+      def selection(imp: ImportInfo[Untyped], name: Name) =
         if (imp.sym.isCompleting) {
           ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
           NoType
@@ -207,7 +207,7 @@ class Typer extends Namer
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
-      def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
+      def namedImportRef(imp: ImportInfo[Untyped])(implicit ctx: Context): Type = {
         val Name = name.toTermName
         def recur(selectors: List[untpd.Tree]): Type = selectors match {
           case selector :: rest =>
@@ -240,7 +240,7 @@ class Typer extends Namer
       /** The type representing a wildcard import with enclosing name when imported
        *  from given import info
        */
-      def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
+      def wildImportRef(imp: ImportInfo[Untyped])(implicit ctx: Context): Type =
         if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
           selection(imp, name)
         else NoType
@@ -1619,9 +1619,49 @@ class Typer extends Namer
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
+    /** Find the member to consider for the import.
+     *  Selects the type member `id` if it exists and is accessible from `expr1`,
+     *  selects the term member otherwise.
+     */
+    def selectMember(id: untpd.Ident): Denotation = {
+      val member = ({
+        val member = expr1.tpe.member(id.name.toTypeName)
+        if (member.exists && member.info.exists && member.symbol.isAccessibleFrom(expr1.tpe)) member
+        else expr1.tpe.member(id.name.toTermName)
+      })
+      member
+    }
+    def selectType(d: Denotation): Type = d.name match {
+      case name: TermName if !d.isOverloaded =>
+        TermRef(expr1.tpe, name, d)
+      case name: TermName =>
+        val signed = SignedName(name, d.signature)
+        TermRef(expr1.tpe, signed, d)
+      case name: TypeName =>
+        TypeRef(expr1.tpe, name, d)
+    }
+
+      // if (d.name.isTermName) TermRef(expr1.tpe, d.name.toTermName,)
+      // else TypeRef(expr1.tpe, d.name)
+    val sels1 = imp.selectors.mapConserve {
+      case id @ Ident(nme.ERROR | nme.WILDCARD) =>
+        val newid = assignType(cpy.Ident(id)(id.name), defn.AnyType)
+        newid
+      case id: untpd.Ident =>
+        val member = selectMember(id)
+        val select = typedSelect(Select(expr1, member.name), defn.AnyType).withType(selectType(member))
+        assignType(cpy.Ident(id)(id.name), select.tpe)
+      case thicket @ Thicket((id: untpd.Ident) :: (renamed: untpd.Ident) :: Nil) =>
+        val member = selectMember(id)
+        val tpe = selectType(member)
+        val select = typedSelect(Select(expr1, member.name), defn.AnyType).withType(tpe)
+        val newId = assignType(cpy.Ident(id)(id.name), select.tpe)
+        val newRenamed = assignType(cpy.Ident(renamed)(renamed.name), select.tpe)
+        assignType(cpy.Thicket(thicket)(newId :: newRenamed :: Nil), select.tpe)
+    }
     checkStable(expr1.tpe, imp.expr.pos)
     if (!ctx.isAfterTyper) checkRealizable(expr1.tpe, imp.expr.pos)
-    assignType(cpy.Import(imp)(expr1, imp.selectors), sym)
+    assignType(cpy.Import(imp)(expr1, sels1), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

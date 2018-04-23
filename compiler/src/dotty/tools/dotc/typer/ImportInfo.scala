@@ -29,7 +29,7 @@ object ImportInfo {
  *  @param   isRootImport true if this is one of the implicit imports of scala, java.lang,
  *                        scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
+class ImportInfo[-T >: Untyped](symf: Context => Symbol, val selectors: List[Tree[T]],
                  symNameOpt: Option[TermName], val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
@@ -71,7 +71,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     myExcluded = Set()
     myMapped = SimpleIdentityMap.Empty
     myOriginals = Set()
-    def recur(sels: List[untpd.Tree]): Unit = sels match {
+    def recur(sels: List[Tree[T]]): Unit = sels match {
       case sel :: sels1 =>
         sel match {
           case Thicket(Ident(name: TermName) :: Ident(nme.WILDCARD) :: Nil) =>

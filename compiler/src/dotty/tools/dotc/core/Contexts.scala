@@ -135,9 +135,9 @@ object Contexts {
     def typeAssigner: TypeAssigner = _typeAssigner
 
     /** The currently active import info */
-    private[this] var _importInfo: ImportInfo = _
-    protected def importInfo_=(importInfo: ImportInfo) = _importInfo = importInfo
-    def importInfo: ImportInfo = _importInfo
+    private[this] var _importInfo: ImportInfo[Untyped] = _
+    protected def importInfo_=(importInfo: ImportInfo[Untyped]) = _importInfo = importInfo
+    def importInfo: ImportInfo[Untyped] = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
     private[this] var _gadt: GADTMap = _
@@ -371,7 +371,7 @@ object Contexts {
       else ctx.fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[_], sym: Symbol) = {
+    def importContext[T >: Untyped](imp: Import[T], sym: Symbol) = {
       val impNameOpt = imp.expr match {
         case ref: RefTree[_] => Some(ref.name.asTermName)
         case _               => None
@@ -452,7 +452,7 @@ object Contexts {
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
-    def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
+    def setImportInfo(importInfo: ImportInfo[Untyped]): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }

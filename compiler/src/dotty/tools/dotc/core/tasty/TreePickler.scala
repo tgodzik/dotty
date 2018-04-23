@@ -504,9 +504,13 @@ class TreePickler(pickler: TastyPickler) {
             selectors foreach {
               case Thicket((from @ Ident(_)) :: (to @ Ident(_)) :: Nil) =>
                 pickleSelector(IMPORTED, from)
+                pickleType(from.tpe.asInstanceOf[Type])
                 pickleSelector(RENAMED, to)
+              case id @ Ident(nme.WILDCARD | nme.ERROR) =>
+                pickleSelector(IMPORTED, id)
               case id @ Ident(_) =>
                 pickleSelector(IMPORTED, id)
+                pickleType(id.tpe.asInstanceOf[Type])
             }
           }
         case PackageDef(pid, stats) =>
