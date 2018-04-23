@@ -4565,7 +4565,7 @@ object Types {
   }
 
   class CyclicReference private (val denot: SymDenotation)
-    extends TypeError(s"cyclic reference involving $denot") {
+    extends TypeError(s"cyclic reference (Types) involving $denot") {
     def toMessage(implicit ctx: Context) = CyclicReferenceInvolving(denot)
   }
 

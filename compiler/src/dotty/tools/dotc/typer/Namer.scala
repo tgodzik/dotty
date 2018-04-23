@@ -930,23 +930,23 @@ class Namer { typer: Typer =>
         else {
           val pt = checkClassType(ptype, parent.pos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
-          if (pt.derivesFrom(cls)) {
-            val addendum = parent match {
-              case Select(qual: Super, _) if ctx.scala2Mode =>
-                "\n(Note that inheriting a class of the same name is no longer allowed)"
-              case _ => ""
-            }
-            ctx.error(CyclicInheritance(cls, addendum), parent.pos)
-            defn.ObjectType
-          }
-          else {
+          // if (pt.derivesFrom(cls)) {
+          //   val addendum = parent match {
+          //     case Select(qual: Super, _) if ctx.scala2Mode =>
+          //       "\n(Note that inheriting a class of the same name is no longer allowed)"
+          //     case _ => ""
+          //   }
+          //   ctx.error(CyclicInheritance(cls, addendum), parent.pos)
+          //   defn.ObjectType
+          // }
+          // else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
               ctx.error(ExtendFinalClass(cls, pclazz), cls.pos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
               ctx.error(UnableToExtendSealedClass(pclazz), cls.pos)
             pt
-          }
+          //}
         }
       }
 
