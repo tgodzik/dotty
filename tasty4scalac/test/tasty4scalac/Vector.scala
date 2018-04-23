@@ -6,9 +6,16 @@
 **                          |/                                          **
 \*                                                                      */
 
-package scala
+// package scala
+// package collection
+// package immutable
+package mine
 package collection
 package immutable
+
+import scala.{IndexedSeq => _, Iterator => _, _}
+import scala.collection.{IndexedSeq => _, TraversableOnce => _, _}
+import scala.collection.immutable._
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.compat.Platform
@@ -78,7 +85,7 @@ final class Vector[+A] private[immutable] (private[collection] val startIndex: I
 
   def length = endIndex - startIndex
 
-  override def toVector: Vector[A] = this
+  override def toVector/*: Vector[A]*/ = ??? //this
 
   override def lengthCompare(len: Int): Int = length - len
 
