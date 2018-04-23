@@ -55,7 +55,7 @@ class Plugin(val global: Global) extends NscPlugin { self =>
         println("Hello: " + tree)
         val pickler = new ScalacTastyPickler(global)
         val treePkl = pickler.treePkl
-        treePkl.spickle(List(tree.asInstanceOf[treePkl.g.Tree]))
+        treePkl.pickle(List(tree.asInstanceOf[treePkl.g.Tree]))
 
         treePkl.compactify()
         val pickled = pickler.assembleParts()
