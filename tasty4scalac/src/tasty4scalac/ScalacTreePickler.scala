@@ -392,8 +392,6 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
       if (!tpe.isRepresentableWithWildcards) {
         assert(false, s"Cannot pickle existential type not representable using wildcards: $tpe")
       }
-      println("quantified: "+ quantified)
-      println("underlying: "+ underlying)
       spickleType(underlying)
   }
 
