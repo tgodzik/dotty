@@ -559,8 +559,10 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
           else
             g.Literal(g.Constant(()))
         }
-        else if (sym.isMutable && !sym.isDeferred && rhs0 == g.EmptyTree) // account for var x: A = _
-          g.Ident(g.nme.WILDCARD).setType(sym.info)
+        else if (!sym.isConstructor && !sym.isDeferred && rhs0 == g.EmptyTree) // account for var x: A = _
+                // FIXME: should be && isMutable but var fields in traits are missing Mutable field
+                // (it's present on the setter)
+          g.Ident(g.nme.WILDCARD).setType(sym.info.resultType)
         else
           rhs0
       if (rhs != null) spickleTreeUnlessEmpty(rhs)
