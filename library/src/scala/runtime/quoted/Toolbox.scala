@@ -8,6 +8,4 @@ import scala.tasty
 trait Toolbox[T] {
   def run(expr: Expr[T]): T
   def show(expr: Expr[T]): String
-  def toTasty(expr: Expr[T]): (tasty.trees.Term, tasty.Context)
-  def toTasty(expr: Type[T]): (tasty.trees.TypeTree, tasty.Context)
 }

@@ -16,11 +16,11 @@ object Asserts {
 
   object Ops
 
-  inline def macroAssert(cond: Boolean): Unit = ~impl('(cond))
+  inline def macroAssert(cond: Boolean): Unit =
+    ~impl('(cond))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
 
-  def impl(cond: Expr[Boolean]): Expr[Unit] = {
-    val (tree, ctx) = cond.toTasty
-    implicit val ctx2: Context = ctx
+  def impl(cond: Expr[Boolean])(implicit ctx: Context): Expr[Unit] = {
+    val tree = cond.toTasty
 
     def isOps(tpe: MaybeType): Boolean = tpe match {
       case SymRef(DefDef(Simple("Ops"), _, _, _, _), _) => true // TODO check that the parent is Asserts

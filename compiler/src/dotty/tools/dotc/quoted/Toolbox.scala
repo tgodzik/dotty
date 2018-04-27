@@ -46,21 +46,6 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
-    def toTasty(expr: Expr[T]): (trees.Term, scala.tasty.Context) = {
-      def box(tree: Tree, ctx: Context) = (internal.Term(tree),  new internal.TastyContext(ctx))
-      expr match {
-        case expr: TreeExpr[Tree, Context] @unchecked => box(expr.tree, expr.ctx)
-        case _ => new QuoteDriver().withTree(expr, (tree, ctx) => box(tree, ctx), Settings.run())
-      }
-    }
-
-    def toTasty(tpe: Type[T]): (trees.TypeTree, scala.tasty.Context) = {
-      def box(tree: TypTree, ctx: Context) = (internal.TypeTree(tree), new internal.TastyContext(ctx))
-      tpe match {
-        case typeTree: TreeType[TypeTree, Context] @unchecked => box(typeTree.typeTree, typeTree.ctx)
-        case _ => new QuoteDriver().withTypeTree(tpe, (tpt, ctx) => box(tpt, ctx), Settings.run())
-      }
-    }
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])

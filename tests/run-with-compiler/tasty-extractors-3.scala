@@ -1,7 +1,9 @@
 
-import dotty.tools.dotc.quoted.Toolbox._
-
 import scala.quoted._
+
+import dotty.tools.dotc.quoted.Toolbox._
+import dotty.tools.dotc.tasty.ContextProvider._
+
 import scala.tasty.util.{TastyPrinter, TreeTraverser}
 import scala.tasty.trees._
 import scala.tasty.Context
@@ -32,8 +34,9 @@ object Test {
       }
     }
 
-    val (tree, ctx) = q.toTasty
-    traverser.traverse(tree)(ctx)
-
+    Context.provided { implicit ctx =>
+      val tree = q.toTasty
+      traverser.traverse(tree)(ctx)
+    }
   }
 }

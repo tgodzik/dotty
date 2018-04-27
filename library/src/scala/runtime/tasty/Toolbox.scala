@@ -1,7 +1,5 @@
 package scala.runtime.tasty
 
-import scala.annotation.implicitNotFound
-
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers._
 import scala.tasty.names._
@@ -9,7 +7,6 @@ import scala.tasty.trees._
 import scala.tasty.types._
 import scala.tasty.Context
 
-@implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
 trait Toolbox {
 
   // Statements

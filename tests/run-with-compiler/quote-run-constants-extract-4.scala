@@ -1,6 +1,9 @@
 import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
+import dotty.tools.dotc.tasty.ContextProvider._
+
+import scala.tasty.Context
 
 object Test {
 
@@ -12,9 +15,11 @@ object Test {
   }
 
   def power(n: Expr[Int], x: Expr[Double]): Expr[Double] = {
-    n match {
-      case Constant(n1) => powerCode(n1, x)
-      case _ => '{ dynamicPower(~n, ~x) }
+    Context.provided { implicit cxt =>
+      n match {
+        case Constant(n1) => powerCode(n1, x)
+        case _ => '{ dynamicPower(~n, ~x) }
+      }
     }
   }
 

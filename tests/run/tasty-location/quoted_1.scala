@@ -10,10 +10,10 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit inline def location[T]: Location = ~impl('[T])
+  implicit inline def location: Location =
+    ~impl(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
 
-  def impl[T](x: Type[T]): Expr[Location] = {
-    val (tree, ctx) = x.toTasty
+  def impl(implicit ctx: Context): Expr[Location] = {
     val list = listOwnerNames(ctx.owner, Nil)(ctx)
     '(new Location(~list.toExpr))
   }

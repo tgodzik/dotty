@@ -1,16 +1,21 @@
 
 import scala.quoted._
+
 import dotty.tools.dotc.quoted.Toolbox._
+import dotty.tools.dotc.tasty.ContextProvider._
 
 import scala.tasty.util.TastyPrinter
+import scala.tasty.Context
 
 object Test {
   def main(args: Array[String]): Unit = {
-    for (q <- quotes) {
-      val (tree, ctx) = q.toTasty
-      println(TastyPrinter.stringOf(tree)(ctx))
-      println(TastyPrinter.stringOf(tree.tpe)(ctx))
-      println()
+    Context.provided { implicit ctx =>
+      for (q <- quotes) {
+        val tree = q.toTasty
+        println(TastyPrinter.stringOf(tree))
+        println(TastyPrinter.stringOf(tree.tpe))
+        println()
+      }
     }
   }
 

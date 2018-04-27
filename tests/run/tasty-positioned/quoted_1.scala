@@ -2,6 +2,7 @@ import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
+import scala.tasty.Context
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
@@ -10,13 +11,11 @@ case class Positioned[T](value: T, position: Position)
 
 object Positioned {
 
-  implicit inline def apply[T](x: T): Positioned[T] = ~impl('(x))('[T])
+  implicit inline def apply[T](x: T): Positioned[T] =
+    ~impl('(x))('[T], Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
 
-  def impl[T](x: Expr[T])(implicit ev: Type[T]): Expr[Positioned[T]] = {
-    val pos = {
-      val (tree, ctx) = x.toTasty
-      tree.pos(ctx)
-    }
+  def impl[T](x: Expr[T])(implicit ev: Type[T], ctx: Context): Expr[Positioned[T]] = {
+    val pos = x.toTasty.pos
 
     val path = pos.sourceFile.toString.toExpr
     val start = pos.start.toExpr
