@@ -19,7 +19,7 @@ object SignedName {
   }
 
   private[tasty] class Impl(val name: Names.TermName) extends names.SignedName {
-    override def toString: String = "SignedName"
+    override def toString: String = s"SignedName<$name>"
   }
 
 }

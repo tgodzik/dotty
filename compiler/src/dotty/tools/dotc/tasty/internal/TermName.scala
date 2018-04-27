@@ -57,7 +57,7 @@ object TermName {
   }
 
   private[tasty] class Impl(val name: Names.TermName) extends names.TermName {
-    override def toString: String = "TermName"
+    override def toString: String = s"TermName<$name>"
   }
 
 }
