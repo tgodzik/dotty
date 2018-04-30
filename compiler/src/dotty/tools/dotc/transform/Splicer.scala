@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.tasty.CompilationUniverse
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.Positions.Position
@@ -36,8 +37,8 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      val tctx = new tasty.internal.TastyContext(ctx)
-      interpreted.flatMap(lambda => evaluateLambda(lambda, tctx :: liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
+      val cu = new CompilationUniverse(ctx)
+      interpreted.flatMap(lambda => evaluateLambda(lambda, cu :: liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
   }
 
   /** Given the inline code and bindings, compute the lifted arguments that will be used to execute the macro
