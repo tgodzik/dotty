@@ -1,15 +1,14 @@
 package scala.tasty
 
-import scala.runtime.tasty.Toolbox
-import scala.tasty.trees._
-
 trait Context {
-  def owner: Definition
 
-  def toTasty[T](expr: quoted.Expr[T]): Term
-  def toTasty[T](expr: quoted.Type[T]): TypeTree
+  val impl: Tasty
 
-  protected[tasty] def toolbox: Toolbox
+  def owner: impl.Definition
+
+  def toTasty[T](expr: quoted.Expr[T]): impl.Term
+  def toTasty[T](expr: quoted.Type[T]): impl.TypeTree
+
 }
 
 object Context {

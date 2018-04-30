@@ -5,7 +5,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 
-import scala.tasty.modifiers
 
 object QualifiedModifier {
 

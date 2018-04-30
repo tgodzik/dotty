@@ -24,49 +24,6 @@ object Toolbox extends scala.runtime.tasty.Toolbox {
 
   override def unapplyPackageDef(arg: trees.PackageDef)(implicit ctx: scala.tasty.Context) = PackageDef.unapplyPackageDef(impl(arg))(ictx)
 
-  // Terms
-
-  override def unapplyIdent(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyIdent(impl(arg))(ictx)
-
-  override def unapplySelect(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplySelect(impl(arg))(ictx)
-
-  override def unapplyLiteral(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyLiteral(impl(arg))(ictx)
-
-  override def unapplyThis(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyThis(impl(arg))(ictx)
-
-  override def unapplyNew(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyNew(impl(arg))(ictx)
-
-  override def unapplyNamedArg(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyNamedArg(impl(arg))(ictx)
-
-  override def unapplyApply(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyApply(impl(arg))(ictx)
-
-  override def unapplyTypeApply(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyTypeApply(impl(arg))(ictx)
-
-  override def unapplySuper(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplySuper(impl(arg))(ictx)
-
-  override def unapplyTyped(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyTyped(impl(arg))(ictx)
-
-  override def unapplyAssign(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyAssign(impl(arg))(ictx)
-
-  override def unapplyBlock(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyBlock(impl(arg))(ictx)
-
-  override def unapplyInlined(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyInlined(impl(arg))(ictx)
-
-  override def unapplyLambda(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyLambda(impl(arg))(ictx)
-
-  override def unapplyIf(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyIf(impl(arg))(ictx)
-
-  override def unapplyMatch(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyMatch(impl(arg))(ictx)
-
-  override def unapplyTry(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyTry(impl(arg))(ictx)
-
-  override def unapplyReturn(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyReturn(impl(arg))(ictx)
-
-  override def unapplyRepeated(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplyRepeated(impl(arg))(ictx)
-
-  override def unapplySelectOuter(arg: trees.Term)(implicit ctx: scala.tasty.Context) = Term.unapplySelectOuter(impl(arg))(ictx)
-
-
   // Pattern
 
   override def unapplyCaseDef(arg: trees.CaseDef)(implicit ctx: scala.tasty.Context) = CaseDef.unapplyCaseDef(impl(arg))(ictx)
@@ -126,30 +83,6 @@ object Toolbox extends scala.runtime.tasty.Toolbox {
   override def unapplySignedName(arg: names.SignedName) = SignedName.unapplySignedName(impl(arg))
 
   override def unapplyTypeName(arg: names.TypeName) = TypeName.unapplyTypeName(impl(arg))
-
-  // Constants
-
-  override def unapplyUnit(arg: constants.Constant) = Constant.unapplyUnit(impl(arg))
-
-  override def unapplyNull(arg: constants.Constant) = Constant.unapplyNull(impl(arg))
-
-  override def unapplyBoolean(arg: constants.Constant) = Constant.unapplyBoolean(impl(arg))
-
-  override def unapplyByte(arg: constants.Constant) = Constant.unapplyByte(impl(arg))
-
-  override def unapplyChar(arg: constants.Constant) = Constant.unapplyChar(impl(arg))
-
-  override def unapplyShort(arg: constants.Constant) = Constant.unapplyShort(impl(arg))
-
-  override def unapplyInt(arg: constants.Constant) = Constant.unapplyInt(impl(arg))
-
-  override def unapplyLong(arg: constants.Constant) = Constant.unapplyLong(impl(arg))
-
-  override def unapplyFloat(arg: constants.Constant) = Constant.unapplyFloat(impl(arg))
-
-  override def unapplyDouble(arg: constants.Constant) = Constant.unapplyDouble(impl(arg))
-
-  override def unapplyString(arg: constants.Constant) = Constant.unapplyString(impl(arg))
 
   // Types
 
