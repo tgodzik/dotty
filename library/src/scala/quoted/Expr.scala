@@ -2,13 +2,11 @@ package scala.quoted
 
 import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
-import scala.tasty.Context
 
 sealed abstract class Expr[T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
   final def run(implicit toolbox: Toolbox[T]): T = toolbox.run(this)
   final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
-  final def toTasty(implicit ctx: Context): ctx.impl.Term = ctx.toTasty(this)
 }
 
 object Expr {

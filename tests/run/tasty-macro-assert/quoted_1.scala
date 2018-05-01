@@ -17,7 +17,7 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: Boolean): Unit =
-    ~impl('(cond))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl('(cond))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
   def impl(cond: Expr[Boolean])(implicit ctx: Context): Expr[Unit] = {
     val tree = cond.toTasty

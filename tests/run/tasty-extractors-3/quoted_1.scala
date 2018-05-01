@@ -1,29 +1,24 @@
 import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Context
-import scala.tasty.trees.{Tree, TypeBoundsTree, TypeTree}
+import scala.tasty.Universe
 import scala.tasty.util.{TastyPrinter, TreeTraverser}
 
 object Macros {
 
   implicit inline def printTypes[T](x: => T): Unit =
-    ~impl('(x))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl('(x))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
-  def impl[T](x: Expr[T])(implicit ctx: Context): Expr[Unit] = {
+  def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
+    import u._
+    import tasty._
     val buff = new StringBuilder
     val traverser = new TreeTraverser {
-      override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-        tree match {
-          case tree: TypeTree =>
-            buff.append(TastyPrinter.stringOf(tree.tpe))
-            buff.append("\n\n")
-          case tree: TypeBoundsTree =>
-            buff.append(TastyPrinter.stringOf(tree.tpe))
-            buff.append("\n\n")
-          case _ =>
-        }
-        traverseChildren(tree)
+
+      override def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: this.tasty.Context): Unit = {
+        buff.append(TastyPrinter.stringOfType(tasty)(tree.tpe))
+        buff.append("\n\n")
+        traverseTypeTreeChildren(tree)
       }
     }
 

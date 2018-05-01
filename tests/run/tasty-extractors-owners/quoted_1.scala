@@ -9,7 +9,7 @@ import scala.tasty.util.{TastyPrinter, TreeTraverser}
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
-    ~impl('(x))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl('(x))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
   def impl[T](x: Expr[T])(implicit ctx: Context): Expr[Unit] = {
     val buff = new StringBuilder

@@ -9,7 +9,7 @@ import scala.tasty.util.{TastyPrinter, TreeTraverser}
 object Macros {
 
   inline def testMacro: Unit =
-    ~impl(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
   def impl(implicit ctx: Context): Expr[Unit] = {
     // 2 is a lifted constant

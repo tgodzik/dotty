@@ -1,10 +1,11 @@
 package scala.quoted
 
-import scala.tasty.Context
+import scala.tasty.Tasty
 
-object Constant {
+class Constant(implicit tasty: Tasty) {
+  import tasty._
+
   def unapply[T](expr: Expr[T])(implicit ctx: Context): Option[T] = {
-    import ctx.impl._
     def const(tree: Term): Option[T] = tree match {
       case Literal(c) => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => const(e)

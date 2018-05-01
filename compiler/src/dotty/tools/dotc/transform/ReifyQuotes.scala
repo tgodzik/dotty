@@ -471,7 +471,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
                   else if (tree.symbol.is(Inline)) tpw // inlined term
-                  else if (tree.symbol == defn.TastyContext_compilationContext) tpw
+                  else if (tree.symbol == defn.TastyUniverse_compilationUniverse) tpw
                   else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
@@ -502,9 +502,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       outer.enteredSyms.foreach(registerCapturer)
 
       if (ctx.owner.owner.is(Macro)) {
-        registerCapturer(defn.TastyContext_compilationContext)
+        registerCapturer(defn.TastyUniverse_compilationUniverse)
         // Force a macro to have the context in first position
-        forceCapture(defn.TastyContext_compilationContext)
+        forceCapture(defn.TastyUniverse_compilationUniverse)
         // Force all parameters of the macro to be created in the definition order
         outer.enteredSyms.reverse.foreach(forceCapture)
       }
@@ -520,7 +520,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       // Check phase consistency and presence of capturer
       ( (level == 1 && levelOf.get(tree.symbol).contains(1)) ||
         (level == 0 && tree.symbol.is(Inline)) ||
-        (level == 0 && tree.symbol == defn.TastyContext_compilationContext)
+        (level == 0 && tree.symbol == defn.TastyUniverse_compilationUniverse)
       ) && capturers.contains(tree.symbol)
     }
 
@@ -560,7 +560,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             splice(tree)
           case tree: RefTree if isCaptured(tree, level) =>
             val capturer = capturers(tree.symbol)
-            if (tree.symbol.is(Inline) || tree.symbol == defn.TastyContext_compilationContext) capturer(tree)
+            if (tree.symbol.is(Inline) || tree.symbol == defn.TastyUniverse_compilationUniverse) capturer(tree)
             else splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms

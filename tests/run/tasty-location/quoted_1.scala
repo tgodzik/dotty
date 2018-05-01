@@ -11,7 +11,7 @@ case class Location(owners: List[String])
 object Location {
 
   implicit inline def location: Location =
-    ~impl(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
   def impl(implicit ctx: Context): Expr[Location] = {
     val list = listOwnerNames(ctx.owner, Nil)(ctx)

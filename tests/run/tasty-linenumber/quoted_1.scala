@@ -11,7 +11,7 @@ class LineNumber(val value: Int) {
 object LineNumber {
 
   implicit inline def line[T >: Unit <: Unit]: LineNumber =
-    ~lineImpl('[T])(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~lineImpl('[T])(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
   def lineImpl(x: Type[Unit])(implicit ctx: Context): Expr[LineNumber] =
     '(new LineNumber(~x.toTasty.pos.startLine.toExpr))
