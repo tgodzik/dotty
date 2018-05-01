@@ -4,6 +4,14 @@ abstract class Tasty {
 
   type Id
 
+  trait Positioned {
+    def pos(implicit ctx: Context): Position
+  }
+
+  trait Typed {
+    def tpe: Type
+  }
+
   // ===== Names ====================================================
 
   type Name
@@ -82,11 +90,7 @@ abstract class Tasty {
   // ===== Trees ====================================================
 
   type Tree
-
-  trait TypedPositioned {
-    val pos: Position
-    val tpe: Type
-  }
+  implicit def TreeDeco(t: Tree): Positioned
 
   // ----- Top Level Statements -----------------------------------------------
 
@@ -139,37 +143,37 @@ abstract class Tasty {
   type ClassDef <: Definition
   val ClassDef: ClassDefExtractor
   abstract class ClassDefExtractor {
-    def unapply(x: ClassDef): Option[(TypeName, DefDef, List[Tree] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])]
+    def unapply(x: ClassDef)(implicit ctx: Context): Option[(TypeName, DefDef, List[Tree] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])]
   }
 
   type DefDef <: Definition
   val DefDef: DefDefExtractor
   abstract class DefDefExtractor {
-    def unapply(x: DefDef): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
+    def unapply(x: DefDef)(implicit ctx: Context): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
 
   type ValDef <: Definition
   val ValDef: ValDefExtractor
   abstract class ValDefExtractor {
-    def unapply(x: ValDef): Option[(TermName, TypeTree, Option[Term])]
+    def unapply(x: ValDef)(implicit ctx: Context): Option[(TermName, TypeTree, Option[Term])]
   }
 
   type TypeDef <: Definition
   val TypeDef: TypeDefExtractor
   abstract class TypeDefExtractor {
-    def unapply(x: TypeDef): Option[(TypeName, Tree /* Type | TypeBounds */)]
+    def unapply(x: TypeDef)(implicit ctx: Context): Option[(TypeName, Tree /* Type | TypeBounds */)]
   }
 
-  type PackageDef <: Definition
-  val PackageDef: PackageDefExtractor
-  abstract class PackageDefExtractor {
-    def unapply(x: PackageDef): Option[(Name, List[Statement])]
-  }
+//  type PackageDef <: Definition
+//  val PackageDef: PackageDefExtractor
+//  abstract class PackageDefExtractor {
+//    def unapply(x: PackageDef)(implicit ctx: Context): Option[(Name, List[Statement])]
+//  }
 
   // ----- Terms ----------------------------------------------------
 
   type Term <: Statement
-  implicit def TermDeco(t: Term): TypedPositioned
+  implicit def TermDeco(t: Term): Typed
 
   val Ident: IdentExtractor
   abstract class IdentExtractor {
@@ -273,7 +277,7 @@ abstract class Tasty {
 
   // ----- CaseDef --------------------------------------------------
 
-  type CaseDef
+  type CaseDef <: Tree
 
   val CaseDef: CaseDefExtractor
   abstract class CaseDefExtractor {
@@ -282,16 +286,13 @@ abstract class Tasty {
 
   // ----- Patterns -------------------------------------------------
 
-  type Pattern
+  type Pattern <: Tree
 
-  trait AbstractPattern {
-    def tpe: Type
-  }
-  implicit def PatternDeco(x: Pattern): AbstractPattern
+  implicit def PatternDeco(x: Pattern): Typed
 
   val Value: ValueExtractor
   abstract class ValueExtractor {
-    def unapply(x: Any): Option[Term]
+    def unapply(x: Term): Option[Term]
   }
 
   val Bind: BindExtractor
@@ -316,7 +317,7 @@ abstract class Tasty {
 
   // ----- TypeTrees ------------------------------------------------
 
-  type TypeTree
+  type TypeTree <: Tree
 
   trait AbstractTypeTree {
     def tpe: Type
@@ -384,7 +385,7 @@ abstract class Tasty {
 
   val TypeBoundsTree: TypeBoundsTreeExtractor
   abstract class TypeBoundsTreeExtractor {
-    def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
+    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
   }
 
   // ===== Types ====================================================
@@ -397,90 +398,102 @@ abstract class Tasty {
 
   val ConstantType: ConstantTypeExtractor
   abstract class ConstantTypeExtractor {
-    def unapply(x: Type): Option[Constant]
+    def unapply(x: Type)(implicit ctx: Context): Option[Constant]
   }
 
   val SymRef: SymRefExtractor
   abstract class SymRefExtractor {
-    def unapply(x: Type): Option[(Definition, MaybeType /* Type | NoPrefix */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, MaybeType /* Type | NoPrefix */)]
   }
 
   val NameRef: NameRefExtractor
   abstract class NameRefExtractor {
-    def unapply(x: Type): Option[(Name, MaybeType /* Type | NoPrefix */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Name, MaybeType /* Type | NoPrefix */)]
   }
 
   val SuperType: SuperTypeExtractor
   abstract class SuperTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)]
   }
 
   val Refinement: RefinementExtractor
   abstract class RefinementExtractor {
-    def unapply(x: Type): Option[(Type, Name, MaybeType /* Type | TypeBounds */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Name, MaybeType /* Type | TypeBounds */)]
   }
 
   val AppliedType: AppliedTypeExtractor
   abstract class AppliedTypeExtractor {
-    def unapply(x: Type): Option[(Type, List[MaybeType /* Type | TypeBounds */])]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[MaybeType /* Type | TypeBounds */])]
   }
 
   val AnnotatedType: AnnotatedTypeExtractor
   abstract class AnnotatedTypeExtractor {
-    def unapply(x: Type): Option[(Type, Term)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)]
   }
 
   val AndType: AndTypeExtractor
   abstract class AndTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)]
   }
 
   val OrType: OrTypeExtractor
   abstract class OrTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)]
   }
 
   val ByNameType: ByNameTypeExtractor
   abstract class ByNameTypeExtractor {
-    def unapply(x: Type): Option[Type]
+    def unapply(x: Type)(implicit ctx: Context): Option[Type]
   }
 
   val ParamRef: ParamRefExtractor
   abstract class ParamRefExtractor {
-    def unapply(x: Type): Option[(LambdaType[_, _], Int)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[_, _], Int)]
   }
 
   val ThisType: ThisTypeExtractor
   abstract class ThisTypeExtractor {
-    def unapply(x: Type): Option[Type]
+    def unapply(x: Type)(implicit ctx: Context): Option[Type]
   }
 
   val RecursiveThis: RecursiveThisExtractor
   abstract class RecursiveThisExtractor {
-    def unapply(x: Type): Option[RecursiveType]
+    def unapply(x: Type)(implicit ctx: Context): Option[RecursiveType]
   }
 
   type RecursiveType <: Type
   val RecursiveType: RecursiveTypeExtractor
   abstract class RecursiveTypeExtractor {
-    def unapply(x: RecursiveType): Option[Type]
+    def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type]
   }
+
+  // ----- Methodic Types -------------------------------------------
 
   type LambdaType[ParamName <: Name, ParamInfo <: MaybeType] <: Type
 
   type MethodType <: LambdaType[TermName, Type]
+
+  trait AbstractMethodType {
+    def isImplicit: Boolean
+    def isErased: Boolean
+  }
+  implicit def MethodTypeDeco(x: MethodType): AbstractMethodType
+
   val MethodType: MethodTypeExtractor
   abstract class MethodTypeExtractor {
     def unapply(x: MethodType): Option[(List[TermName], List[Type], Type)]
   }
 
+
   type PolyType <: LambdaType[TypeName, TypeBounds]
+
   val PolyType: PolyTypeExtractor
   abstract class PolyTypeExtractor {
     def unapply(x: PolyType): Option[(List[TypeName], List[TypeBounds], Type)]
   }
 
   type TypeLambda <: LambdaType[TypeName, TypeBounds]
+
   val TypeLambda: TypeLambdaExtractor
   abstract class TypeLambdaExtractor {
     def unapply(x: TypeLambda): Option[(List[TypeName], List[TypeBounds], Type)]

@@ -1,11 +1,13 @@
 package dotty.tools.dotc.tasty
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import dotty.tools.dotc.core.{Constants, NameKinds, Names, Types}
+import dotty.tools.dotc.core
+import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, Symbol}
+import dotty.tools.dotc.core.Decorators._
 
-import scala.tasty.{Context, FlagSet}
+import scala.tasty.{Context, Position}
 
 object TastyImpl extends scala.tasty.Tasty {
 
@@ -99,6 +101,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Tree = tpd.Tree
 
+  implicit def TreeDeco(t: Tree): Positioned = new Positioned {
+    override def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
+  }
+
   // ----- Top Level Statements -----------------------------------------------
 
   type TopLevelStatement = tpd.Tree
@@ -148,14 +154,33 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Definition = tpd.Tree
 
-  def Definition(sym: Symbol): Definition = ???
+  def Definition(sym: Symbol)(implicit ctx: Context): Definition = {
+//    if (sym.is(Package)) PackageDef(sym)
+//    else if (sym == defn.AnyClass) NoDefinition // FIXME
+//    else if (sym == defn.NothingClass) NoDefinition // FIXME
+//    else if (sym.isClass) ClassDef(sym.asClass)
+//    else if (sym.isType) TypeDef(sym.asType)
+//    else if (sym.is(core.Flags.Method)) DefDef(sym.asTerm)
+//    else ValDef(sym.asTerm)
+    ???
+  }
 
   implicit def DefinitionDeco(x: Definition): AbstractDefinition = new AbstractDefinition {
-    def owner(implicit ctx: Context): TastyImpl.Definition = ???
 
-    def mods(implicit ctx: Context): List[Any] = ???
+    def owner(implicit ctx: Context): Definition = Definition(x.symbol.owner)
 
-    def localContext(implicit ctx: Context): Context = ???
+    def mods(implicit ctx: Context): List[Modifier] = {
+      val privateWithin = x.symbol.privateWithin
+      val isProtected = x.symbol.is(core.Flags.Protected)
+      ModFlags(new FlagSet(x.symbol.flags)) ::
+      (if (privateWithin.exists) List(ModQual(privateWithin.typeRef, isProtected)) else Nil) :::
+      x.symbol.annotations.map(t => ModAnnot(t.tree))
+    }
+
+    def localContext(implicit ctx: Context): Context =  new TastyContext(
+      if (x.hasType && x.symbol.exists) context.withOwner(x.symbol)
+      else context
+    )
   }
 
   type ClassDef = tpd.TypeDef
@@ -176,7 +201,7 @@ object TastyImpl extends scala.tasty.Tasty {
 //      new Impl(toTree(sym))
 //    }
 
-    def unapply(x: ClassDef): Option[(TypeName, DefDef, List[Tree] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])] = x match {
+    def unapply(x: ClassDef)(implicit ctx: Context): Option[(TypeName, DefDef, List[Tree] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])] = x match {
       case x @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)) =>
         val selfVal = if (self.isEmpty) None else Some(self)
         Some((name, constr, parents, selfVal, impl.body))
@@ -186,7 +211,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type DefDef = tpd.DefDef
   val DefDef: DefDefExtractor = new DefDefExtractor {
-    def unapply(x: DefDef): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = x match {
+    def unapply(x: DefDef)(implicit ctx: Context): Option[(TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = x match {
       case x @ Trees.DefDef(name, tparams, vparamss, tpt, _) =>
         Some((name, tparams, vparamss, tpt, if (x.rhs.isEmpty) None else Some(x.rhs)))
       case _ => None
@@ -195,7 +220,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type ValDef = tpd.ValDef
   val ValDef: ValDefExtractor = new ValDefExtractor {
-    def unapply(x: ValDef): Option[(TermName, TypeTree, Option[Term])] = x match {
+    def unapply(x: ValDef)(implicit ctx: Context): Option[(TermName, TypeTree, Option[Term])] = x match {
       case x @ Trees.ValDef(name, tpt, _) =>
         Some((name, tpt, if (x.rhs.isEmpty) None else Some(x.rhs)))
       case _ => None
@@ -204,22 +229,22 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeDef = tpd.TypeDef
   val TypeDef: TypeDefExtractor = new TypeDefExtractor {
-    def unapply(x: TypeDef): Option[(TypeName, Tree /* Type | TypeBounds */)] = x match {
-      case x @ Trees.TypeDef(name, rhs) => Some((name, rhs))
+    def unapply(x: TypeDef)(implicit ctx: Context): Option[(TypeName, Tree /* Type | TypeBounds */)] = x match {
+      case x @ Trees.TypeDef(name, rhs) if !x.symbol.isClass => Some((name, rhs))
       case _ => None
     }
   }
 
-  type PackageDef = this.type
-  val PackageDef: PackageDefExtractor = new PackageDefExtractor {
-    def unapply(x: PackageDef): Option[(Name, List[Statement])] = ???
-  }
+//  type PackageDef = Symbol
+//  val PackageDef: PackageDefExtractor = new PackageDefExtractor {
+//    def unapply(x: PackageDef)(implicit ctx: Context): Option[(Name, List[Statement])] = ???
+//  }
 
   // ----- Terms ----------------------------------------------------
 
   type Term = tpd.Tree
 
-  implicit def TermDeco(t: Term): TypedPositioned = ???
+  override implicit def TermDeco(t: Term): Typed = typed(t)
 
   val Ident: IdentExtractor = new IdentExtractor {
     def unapply(x: Term): Option[TermName] = x match {
@@ -378,12 +403,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Pattern = tpd.Tree
 
-  implicit def PatternDeco(x: Pattern): AbstractPattern = new AbstractPattern {
-    override def tpe: Types.Type = ???
-  }
+  override implicit def PatternDeco(x: Pattern): Typed = typed(x)
 
   val Value: ValueExtractor = new ValueExtractor {
-    def unapply(x: Any): Option[Term] = x match {
+    def unapply(x: Term): Option[Term] = x match {
       case lit: tpd.Literal => Some(lit)
       case ident: tpd.Ident => Some(ident)
       case _ => None
@@ -423,7 +446,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type TypeTree = tpd.Tree
 
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
-    def tpe: Types.Type = ???
+    def tpe: Types.Type = x.tpe
   }
 
   val Synthetic: SyntheticExtractor = new SyntheticExtractor {
@@ -503,7 +526,7 @@ object TastyImpl extends scala.tasty.Tasty {
   implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree = ???
 
   val TypeBoundsTree: TypeBoundsTreeExtractor = new TypeBoundsTreeExtractor {
-    def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)] = x match {
+    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
       case Trees.TypeBoundsTree(lo, hi) => Some(lo, hi)
       case _ => None
     }
@@ -518,17 +541,17 @@ object TastyImpl extends scala.tasty.Tasty {
   type Type = Types.Type
 
   val ConstantType: ConstantTypeExtractor = new ConstantTypeExtractor {
-    def unapply(x: Type): Option[Constant] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[Constant] = x match {
       case Types.ConstantType(value) => Some(value)
       case _ => None
     }
   }
 
   val SymRef: SymRefExtractor = new SymRefExtractor {
-    def unapply(x: Type): Option[(Definition, MaybeType /* Type | NoPrefix */)] = x  match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, MaybeType /* Type | NoPrefix */)] = x  match {
       case tp: Types.NamedType =>
         tp.designator match {
-          case sym: Symbol => Some(Definition(sym), tp.prefix)
+          case sym: Symbol => Some((Definition(sym), tp.prefix))
           case _ => None
         }
       case _ => None
@@ -536,65 +559,81 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val NameRef: NameRefExtractor = new NameRefExtractor {
-    def unapply(x: Type): Option[(Name, MaybeType /* Type | NoPrefix */)] = ???
+    def unapply(x: Type)(implicit ctx: Context): Option[(Name, MaybeType /* Type | NoPrefix */)] = x match {
+      case tp: Types.NamedType =>
+        tp.designator match {
+          case name: Names.Name => Some(name, tp.prefix)
+          case _ => None
+        }
+      case _ => None
+    }
   }
 
   val SuperType: SuperTypeExtractor = new SuperTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)] = ???
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+      case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
+      case _ => None
+    }
   }
 
   val Refinement: RefinementExtractor = new RefinementExtractor {
-    def unapply(x: Type): Option[(Type, Name, MaybeType /* Type | TypeBounds */)] = ???
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Name, MaybeType /* Type | TypeBounds */)] = x match {
+      case Types.RefinedType(parent, name, info) => Some(parent, name, info)
+      case _ => None
+    }
   }
 
   val AppliedType: AppliedTypeExtractor = new AppliedTypeExtractor {
-    def unapply(x: Type): Option[(Type, List[MaybeType /* Type | TypeBounds */])] = ???
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[MaybeType /* Type | TypeBounds */])] = x match {
+      case Types.AppliedType(tycon, args) => Some((tycon, args))
+      case _ => None
+    }
   }
 
   val AnnotatedType: AnnotatedTypeExtractor = new AnnotatedTypeExtractor {
-    def unapply(x: Type): Option[(Type, Term)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
       case Types.AnnotatedType(underlying, annot) => Some((underlying, annot.tree))
       case _ => None
     }
   }
 
   val AndType: AndTypeExtractor = new AndTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
       case Types.AndType(left, right) => Some(left, right)
       case _ => None
     }
   }
 
   val OrType: OrTypeExtractor = new OrTypeExtractor {
-    def unapply(x: Type): Option[(Type, Type)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
       case Types.OrType(left, right) => Some(left, right)
       case _ => None
     }
   }
 
   val ByNameType: ByNameTypeExtractor = new ByNameTypeExtractor {
-    def unapply(x: Type): Option[Type] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
       case Types.ExprType(resType) => Some(resType)
       case _ => None
     }
   }
 
   val ParamRef: ParamRefExtractor = new ParamRefExtractor {
-    def unapply(x: Type): Option[(LambdaType, Int)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[_, _], Int)] = x match {
       case Types.TypeParamRef(binder, idx) => Some(binder, idx)
       case _ => None
     }
   }
 
   val ThisType: ThisTypeExtractor = new ThisTypeExtractor {
-    def unapply(x: Type): Option[Type] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
       case Types.ThisType(tp) => Some(tp)
       case _ => None
     }
   }
 
   val RecursiveThis: RecursiveThisExtractor = new RecursiveThisExtractor {
-    def unapply(x: Type): Option[RecursiveType] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[RecursiveType] = x match {
       case Types.RecThis(binder) => Some(binder)
       case _ => None
     }
@@ -602,27 +641,45 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type RecursiveType = Types.RecType
   val RecursiveType: RecursiveTypeExtractor = new RecursiveTypeExtractor {
-    def unapply(x: RecursiveType): Option[Type] = x match {
+    def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
       case tp: Types.RecType => Some(tp.underlying)
       case _ => None
     }
   }
 
-  type LambdaType = Types.LambdaType
+  // ----- Methodic Types -------------------------------------------
+
+  type LambdaType[ParamName <: Name, ParamInfo <: MaybeType] =
+    Types.LambdaType { type ThisName = ParamName; type PInfo = ParamInfo }
 
   type MethodType = Types.MethodType
+
+  override implicit def MethodTypeDeco(x: MethodType): AbstractMethodType = new AbstractMethodType {
+    def isErased: Boolean = x.isErasedMethod
+    def isImplicit: Boolean = x.isImplicitMethod
+  }
+
   val MethodType: MethodTypeExtractor = new MethodTypeExtractor {
-    def unapply(x: MethodType): Option[(List[TermName], List[Type], Type)] = ???
+    def unapply(x: MethodType): Option[(List[TermName], List[Type], Type)] = x match {
+      case x: MethodType => Some(x.paramNames, x.paramInfos, x.resType)
+      case _ => None
+    }
   }
 
   type PolyType = Types.PolyType
   val PolyType: PolyTypeExtractor = new PolyTypeExtractor {
-    def unapply(x: PolyType): Option[(List[TypeName], List[TypeBounds], Type)] = ???
+    def unapply(x: PolyType): Option[(List[TypeName], List[TypeBounds], Type)] = x match {
+      case x: PolyType => Some(x.paramNames, x.paramInfos, x.resType)
+      case _ => None
+    }
   }
 
   type TypeLambda = Types.TypeLambda
   val TypeLambda: TypeLambdaExtractor = new TypeLambdaExtractor {
-    def unapply(x: TypeLambda): Option[(List[TypeName], List[TypeBounds], Type)] = ???
+    def unapply(x: TypeLambda): Option[(List[TypeName], List[TypeBounds], Type)] = x match {
+      case x: TypeLambda => Some(x.paramNames, x.paramInfos, x.resType)
+      case _ => None
+    }
   }
 
   // ----- TypeBounds ------------------------------------------------
@@ -630,7 +687,10 @@ object TastyImpl extends scala.tasty.Tasty {
   type TypeBounds = Types.TypeBounds
 
   val TypeBounds: TypeBoundsExtractor = new TypeBoundsExtractor {
-    def unapply(x: TypeBounds): Option[(Type, Type)] = ???
+    def unapply(x: TypeBounds): Option[(Type, Type)] = x match {
+      case x: Types.TypeBounds => Some(x.lo, x.hi)
+      case _ => None
+    }
   }
 
   // ----- NoPrefix --------------------------------------------------
@@ -638,7 +698,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type NoPrefix = Types.NoPrefix.type
 
   val NoPrefix: NoPrefixExtractor = new NoPrefixExtractor {
-    def unapply(x: NoPrefix): Boolean = ???
+    def unapply(x: NoPrefix): Boolean = x == Types.NoPrefix
   }
 
   // ===== Constants ================================================
@@ -691,21 +751,48 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ===== Constants ================================================
 
-  type Modifier = Any // TODO
+  type Modifier = ModImpl // TODO
+
+  trait ModImpl
+  case class ModAnnot(tree: Term) extends ModImpl
+  case class ModFlags(flags: FlagSet) extends ModImpl
+  case class ModQual(tp: Type, protect: Boolean) extends ModImpl
+
 
   val Annotation: AnnotationExtractor = new AnnotationExtractor {
-    def unapply(x: Modifier): Option[Term] = ???
+    def unapply(x: Modifier): Option[Term] = x match {
+      case ModAnnot(tree) => Some(tree)
+      case _ => None
+    }
   }
 
   val Flags: FlagsExtractor = new FlagsExtractor {
-    def unapply(x: Modifier): Option[FlagSet] = ???
+    def unapply(x: Modifier): Option[FlagSet] = x match {
+      case ModFlags(flags) => Some(flags)
+      case _ => None
+    }
   }
 
   val QualifiedPrivate: QualifiedPrivateExtractor = new QualifiedPrivateExtractor {
-    def unapply(x: Modifier): Option[Type] = ???
+    def unapply(x: Modifier): Option[Type] = x match {
+      case ModQual(tp, false) => Some(tp)
+      case _ => None
+    }
   }
 
   val QualifiedProtected: QualifiedProtectedExtractor = new QualifiedProtectedExtractor {
-    def unapply(x: Modifier): Option[Type] = ???
+    def unapply(x: Modifier): Option[Type] = x match {
+      case ModQual(tp, true) => Some(tp)
+      case _ => None
+    }
+  }
+
+  // ===== Private Methids ==========================================
+
+  private implicit def context(implicit tctx: Context): Contexts.Context =
+    tctx.asInstanceOf[TastyContext].ctx
+
+  def typed(tree: tpd.Tree): Typed = new Typed {
+    def tpe: Types.Type = tree.tpe
   }
 }

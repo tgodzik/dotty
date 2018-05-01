@@ -1,8 +1,8 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
 
 import dotty.tools.dotc.util.SourcePosition
 
-private[tasty] class Position(val pos: SourcePosition) extends scala.tasty.Position {
+private[tasty] class TastyPosition(val pos: SourcePosition) extends scala.tasty.Position {
   override def start = pos.start
   override def end = pos.end
 

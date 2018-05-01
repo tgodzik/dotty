@@ -36,7 +36,7 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      val tctx = new tasty.internal.TastyContext(ctx)
+      val tctx = new dotty.tools.dotc.tasty.TastyContext(ctx)
       interpreted.flatMap(lambda => evaluateLambda(lambda, tctx :: liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
   }
 

@@ -2,17 +2,12 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.printing.RefinedPrinter
-import dotty.tools.dotc.tasty.internal
-import dotty.tools.dotc.tasty.internal.TastyContext
 
-import scala.quoted.{Expr, Type}
-import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
-import scala.quoted.Types.TreeType
+import scala.quoted.Expr
+import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.BoxedUnit
 import scala.runtime.quoted._
-import scala.tasty.trees
 
 /** Default runners for quoted expressions */
 object Toolbox {
