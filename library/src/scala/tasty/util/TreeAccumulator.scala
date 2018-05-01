@@ -61,22 +61,22 @@ abstract class TreeAccumulator[X](implicit val tasty: Tasty) {
       case Inlined(call, bindings, expansion) =>
         foldTree(foldTree(x, bindings), expansion)
 
-      case Definition(vdef @ ValDef(_, tpt, rhs)) =>
+      case vdef @ ValDef(_, tpt, rhs) =>
         implicit val ctx = localCtx(vdef)
         foldTree(foldTypeTree(x, tpt), rhs)
-      case Definition(ddef @ DefDef(_, tparams, vparamss, tpt, rhs)) =>
+      case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
         implicit val ctx = localCtx(ddef)
         foldTree(foldTypeTree((foldTree(x, tparams) /: vparamss)(foldTree), tpt), rhs)
-      case Definition(tdef @ TypeDef(name, rhs)) =>
+      case tdef @ TypeDef(name, rhs) =>
         implicit val ctx = localCtx(tdef)
         foldTypeTree(x, rhs)
-      case Definition(cdef @ ClassDef(_, constr, parents, self, body)) =>
+      case cdef @ ClassDef(_, constr, parents, self, body) =>
         implicit val ctx = localCtx(cdef)
         foldTree(foldTree(foldParent(foldTree(x, constr), parents), self), body)
       case Import(expr, selectors) =>
         foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
-        foldTree(foldTree(x, pid), stats)(localCtx(??? /*clause.definition*/))
+        foldTree(foldTree(x, pid), stats)(localCtx(clause.definition))
       case _ =>
         x
     }
