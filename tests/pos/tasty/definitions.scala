@@ -136,6 +136,7 @@ object definitions {
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: TypeTree)
+    case Wildcard
   }
 
   /** Tree denoting pattern match case */

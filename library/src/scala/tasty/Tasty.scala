@@ -102,7 +102,7 @@ abstract class Tasty {
   }
   implicit def DefinitionDeco(x: Definition): AbstractDefinition
 
-  type Parent // Term | TypeTree
+  type Parent = scala.util.Either[Term, TypeTree]
 
   type ClassDef <: Definition
 
@@ -110,7 +110,7 @@ abstract class Tasty {
 
   val ClassDef: ClassDefExtractor
   abstract class ClassDefExtractor {
-    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])]
+    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
   }
 
   type DefDef <: Definition
@@ -148,7 +148,7 @@ abstract class Tasty {
 
   // ----- Terms ----------------------------------------------------
 
-  type Term <: Statement with Parent
+  type Term <: Statement
   implicit def TermDeco(t: Term): Typed
 
   implicit def termClassTag: reflect.ClassTag[Term]
@@ -190,7 +190,7 @@ abstract class Tasty {
 
   val TypeApply: TypeApplyExtractor
   abstract class TypeApplyExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])]
+    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])]
   }
 
   val Super: SuperExtractor
@@ -297,6 +297,11 @@ abstract class Tasty {
     def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree]
   }
 
+  val Wildcard: WildcardExtractor
+  abstract class WildcardExtractor {
+    def unapply(x: Pattern)(implicit ctx: Context): Boolean
+  }
+
   // ----- TypeTrees ------------------------------------------------
 
   type MaybeTypeTree
@@ -309,7 +314,7 @@ abstract class Tasty {
 
   // ----- TypeTrees ------------------------------------------------
 
-  type TypeTree <: MaybeTypeTree with Pattern
+  type TypeTree <: MaybeTypeTree
 
   implicit def TypeTreeDeco(x: TypeTree): Typed
 
@@ -447,7 +452,7 @@ abstract class Tasty {
 
   val ParamRef: ParamRefExtractor
   abstract class ParamRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[_], Int)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[MaybeType], Int)]
   }
 
   val ThisType: ThisTypeExtractor

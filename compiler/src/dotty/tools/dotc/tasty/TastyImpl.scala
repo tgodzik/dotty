@@ -137,16 +137,15 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def definitionClassTag: reflect.ClassTag[Definition] = implicitly[reflect.ClassTag[Definition]]
 
-  type Parent = tpd.Tree
-
   type ClassDef = tpd.TypeDef
   def classDefClassTag: reflect.ClassTag[ClassDef] = implicitly[reflect.ClassTag[ClassDef]]
   val ClassDef: ClassDefExtractor = new ClassDefExtractor {
-    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement])] = x match {
+    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Either[Term, TypeTree]],  Option[ValDef], List[Statement])] = x match {
       case x: tpd.TypeDef @unchecked if x.isClassDef =>
         val temp @ Trees.Template(constr, parents, self, _) = x.rhs
         val selfVal = if (self.isEmpty) None else Some(self)
-        Some((x.name.toString, constr, parents, selfVal, temp.body))
+        val boxedParent = parents.map(p => if (p.isTerm) Left(p) else Right(p))
+        Some((x.name.toString, constr, boxedParent, selfVal, temp.body))
       case _ => None
     }
   }
@@ -197,7 +196,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   val Ident: IdentExtractor = new IdentExtractor {
     def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
-      case x @ Trees.Ident(name: Names.TermName) if x.isTerm => Some(name.show)
+      case x: tpd.Ident @unchecked if x.isTerm => Some(x.name.show)
       case _ => None
     }
   }
@@ -245,7 +244,7 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val TypeApply: TypeApplyExtractor = new TypeApplyExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])] = x match {
+    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])] = x match {
       case x: tpd.TypeApply @unchecked => Some((x.fun, x.args))
       case _ => None
     }
@@ -367,7 +366,7 @@ object TastyImpl extends scala.tasty.Tasty {
   val Value: ValueExtractor = new ValueExtractor {
     def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
       case lit: tpd.Literal @unchecked => Some(lit)
-      case ident: tpd.Ident @unchecked => Some(ident)
+      case ident: tpd.Ident @unchecked if ident.isTerm && ident.name != nme.WILDCARD => Some(ident)
       case _ => None
     }
   }
@@ -397,6 +396,13 @@ object TastyImpl extends scala.tasty.Tasty {
     def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
       case x: tpd.Typed @unchecked => Some(x.tpt)
       case _ => None
+    }
+  }
+
+  val Wildcard: WildcardExtractor = new WildcardExtractor {
+    def unapply(x: Pattern)(implicit ctx: Context): Boolean = x match {
+      case ident: tpd.Ident @unchecked => ident.name == nme.WILDCARD
+      case _ => false
     }
   }
 
@@ -592,8 +598,11 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val ParamRef: ParamRefExtractor = new ParamRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[_], Int)] = x match {
-      case Types.TypeParamRef(binder, idx) => Some(binder, idx)
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[MaybeType], Int)] = x match {
+      case Types.TypeParamRef(binder, idx) =>
+        Some((
+          binder.asInstanceOf[LambdaType[MaybeType]], // Cast to tpd
+          idx))
       case _ => None
     }
   }

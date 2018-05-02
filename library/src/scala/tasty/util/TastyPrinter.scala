@@ -6,423 +6,644 @@ object TastyPrinter {
 
   def stringOfTree(tasty: Tasty)(tree: tasty.TopLevelStatement)(implicit ctx: tasty.Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
-    visit(tasty)(tree)
+    visitTree(tasty)(tree)
+    buff.toString()
+  }
+
+  def stringOfTypeTree(tasty: Tasty)(tree: tasty.MaybeTypeTree)(implicit ctx: tasty.Context): String = {
+    implicit val buff: StringBuilder = new StringBuilder
+    visitTypeTree(tasty)(tree)
     buff.toString()
   }
 
   def stringOfType(tasty: Tasty)(tpe: tasty.MaybeType)(implicit ctx: tasty.Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
-    visit(tasty)(tpe)
+    visitType(tasty)(tpe)
     buff.toString()
   }
 
   def stringOfModifier(tasty: Tasty)(mod: tasty.Modifier)(implicit ctx: tasty.Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
-    visit(tasty)(mod)
+    visitModifier(tasty)(mod)
     buff.toString()
   }
 
   def stringOfConstant(tasty: Tasty)(mod: tasty.Constant)(implicit ctx: tasty.Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
-    visit(tasty)(mod)
+    visitConstant(tasty)(mod)
     buff.toString()
   }
 
-  private def visit(tasty: Tasty)(x: Any)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+  private def visitTree(tasty: Tasty)(x: tasty.TopLevelStatement)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
     import tasty._
     x match {
       case Ident(name) =>
         buff append "Ident(" append name append ")"
       case Select(qualifier, name) =>
         buff append "Select("
-        visit(tasty)(qualifier)
+        visitTree(tasty)(qualifier)
         buff append ", " append name append ")"
       case This(qual) =>
-        buff append "This(" append qual append ")"
+        buff append "This("
+        qual match {
+          case Some(id) =>
+            buff append "Some("
+            visitId(tasty)(id)
+            buff append ")"
+          case None => buff append "None"
+        }
+        buff append ")"
       case Super(qual, mix) =>
         buff append "TypeApply("
-        visit(tasty)(qual)
-        buff append ", " append mix append ")"
+        visitTree(tasty)(qual)
+        buff append ", "
+        mix match {
+          case Some(id) =>
+            buff append "Some("
+            visitId(tasty)(id)
+            buff append ")"
+          case None => buff append "None"
+        }
+        buff append ")"
       case Apply(fun, args) =>
         buff append "Apply("
-        visit(tasty)(fun)
+        visitTree(tasty)(fun)
         buff append ", "
-        visit(tasty)(args)
+        visitTrees(tasty)(args)
         buff append ")"
       case TypeApply(fun, args) =>
         buff append "TypeApply("
-        visit(tasty)(fun)
+        visitTree(tasty)(fun)
         buff append ", "
-        visit(tasty)(args)
+        visitTypeTrees(tasty)(args)
         buff append ")"
       case Literal(const) =>
         buff append "Literal("
-        visit(tasty)(const)
+        visitConstant(tasty)(const)
         buff append ")"
       case New(tpt) =>
         buff append "New("
-        visit(tasty)(tpt)
+        visitTypeTree(tasty)(tpt)
         buff append ")"
       case Typed(expr, tpt) =>
         buff append "Typed("
-        visit(tasty)(expr)
+        visitTree(tasty)(expr)
         buff append ", "
-        visit(tasty)(tpt)
+        visitTypeTree(tasty)(tpt)
         buff append ")"
       case NamedArg(name, arg) =>
         buff append "NamedArg(" append name append ", "
-        visit(tasty)(arg)
+        visitTree(tasty)(arg)
         buff append ")"
       case Assign(lhs, rhs) =>
         buff append "Assign("
-        visit(tasty)(lhs)
+        visitTree(tasty)(lhs)
         buff append ", "
-        visit(tasty)(rhs)
+        visitTree(tasty)(rhs)
         buff append ")"
       case Block(stats, expr) =>
         buff append "Block("
-        visit(tasty)(stats)
+        visitTrees(tasty)(stats)
         buff append ", "
-        visit(tasty)(expr)
+        visitTree(tasty)(expr)
         buff append ")"
       case If(cond, thenp, elsep) =>
         buff append "If("
-        visit(tasty)(cond)
+        visitTree(tasty)(cond)
         buff append ", "
-        visit(tasty)(thenp)
+        visitTree(tasty)(thenp)
         buff append ", "
-        visit(tasty)(elsep)
+        visitTree(tasty)(elsep)
         buff append ")"
       case Lambda(meth, tpt) =>
         buff append "Lambda("
-        visit(tasty)(meth)
+        visitTree(tasty)(meth)
         buff append ", "
-        visit(tasty)(tpt)
+        tpt match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTypeTree(tasty)(tree)
+            buff append ")"
+          case _ => buff append "None"
+        }
         buff append ")"
       case Match(selector, cases) =>
         buff append "Match("
-        visit(tasty)(selector)
+        visitTree(tasty)(selector)
         buff append ", "
-        visit(tasty)(cases)
-        buff append ")"
-      case CaseDef(pat, guard, body) =>
-        buff append "CaseDef("
-        visit(tasty)(pat)
-        buff append ", "
-        visit(tasty)(guard)
-        buff append ", "
-        visit(tasty)(body)
+        visitCaseDefs(tasty)(cases)
         buff append ")"
       case Return(expr) =>
         buff append "Return("
-        visit(tasty)(expr)
+        visitTree(tasty)(expr)
         buff append ")"
       case Try(block, handlers, finalizer) =>
         buff append "Try("
-        visit(tasty)(block)
+        visitTree(tasty)(block)
         buff append ", "
-        visit(tasty)(handlers)
+        visitCaseDefs(tasty)(handlers)
         buff append ", "
-        visit(tasty)(finalizer)
+        finalizer match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTree(tasty)(tree)
+            buff append ")"
+          case _ => buff append "None"
+        }
         buff append ")"
       case Repeated(elems) =>
         buff append "Repeated("
-        visit(tasty)(elems)
+        visitTrees(tasty)(elems)
         buff append ")"
       case Inlined(call, bindings, expansion) =>
         buff append "Inlined("
-        visit(tasty)(call)
+        visitTree(tasty)(call)
         buff append ", "
-        visit(tasty)(bindings)
+        visitTrees(tasty)(bindings)
         buff append ", "
-        visit(tasty)(expansion)
-        buff append ")"
-      case Synthetic() =>
-        buff append "Synthetic()"
-      case TypeIdent(name) =>
-        buff append "Ident(" // FIXME print as TypeIdent
-        visit(tasty)(name)
-        buff append ")"
-      case TypeSelect(qualifier, name) =>
-        buff append "TypeSelect("
-        visit(tasty)(qualifier)
-        buff append ", "
-        visit(tasty)(name)
-        buff append ")"
-      case Singleton(ref) =>
-        buff append "Singleton("
-        visit(tasty)(ref)
-        buff append ")"
-      case And(left, right) =>
-        buff append "And("
-        visit(tasty)(left)
-        buff append ", "
-        visit(tasty)(right)
-        buff append ")"
-      case Or(left, right) =>
-        buff append "Or("
-        visit(tasty)(left)
-        buff append ", "
-        visit(tasty)(right)
-        buff append ")"
-      case Refined(tpt, refinements) =>
-        buff append "Refined("
-        visit(tasty)(tpt)
-        buff append ", "
-        visit(tasty)(refinements)
-        buff append ")"
-      case Applied(tpt, args) =>
-        buff append "Applied("
-        visit(tasty)(tpt)
-        buff append ", "
-        visit(tasty)(args)
-        buff append ")"
-      case ByName(result) =>
-        buff append "ByName("
-        visit(tasty)(result)
-        buff append ")"
-      case TypeBoundsTree(lo, hi) =>
-        buff append "TypeBoundsTree("
-        visit(tasty)(lo)
-        buff append ", "
-        visit(tasty)(hi)
-        buff append ")"
-      case Annotated(arg, annot) =>
-        buff append "Annotated("
-        visit(tasty)(arg)
-        buff append ", "
-        visit(tasty)(annot)
-        buff append ")"
-      case Value(v) =>
-        buff append "Value("
-        visit(tasty)(v)
-        buff append ")"
-      case Bind(name, body) =>
-        buff append "Bind(" append name append ", "
-        visit(tasty)(body)
-        buff append ")"
-      case Unapply(fun, implicits, patterns) =>
-        buff append "Unapply("
-        visit(tasty)(fun)
-        buff append ", "
-        visit(tasty)(implicits)
-        buff append ", "
-        visit(tasty)(patterns)
-        buff append ")"
-      case Alternative(patterns) =>
-        buff append "Alternative("
-        visit(tasty)(patterns)
-        buff append ")"
-      case TypeTest(tpt) =>
-        buff append "TypeTest("
-        visit(tasty)(tpt)
+        visitTree(tasty)(expansion)
         buff append ")"
       case ValDef(name, tpt, rhs) =>
         buff append "ValDef(" append name append ", "
-        visit(tasty)(tpt)
+        visitTypeTree(tasty)(tpt)
         buff append ", "
-        visit(tasty)(rhs)
+        rhs match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTree(tasty)(tree)
+            buff append ")"
+          case _ => buff append "None"
+        }
         buff append ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
         buff append "DefDef(" append name append ", "
-        visit(tasty)(typeParams)
+        visitTrees(tasty)(typeParams)
         buff append ", "
-        visit(tasty)(paramss)
+        paramss match {
+          case x0 :: xs =>
+            buff append "List("
+            visitTrees(tasty)(x0)
+            def visitNext(xs: List[List[tasty.ValDef]]): Unit = xs match {
+              case y :: ys =>
+                buff append ", "
+                visitTrees(tasty)(y)
+                visitNext(ys)
+              case Nil =>
+            }
+            visitNext(xs)
+            buff append ")"
+          case Nil => buff append "Nil"
+        }
         buff append ", "
-        visit(tasty)(returnTpt)
+        visitTypeTree(tasty)(returnTpt)
         buff append ", "
-        visit(tasty)(rhs)
+        rhs match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTree(tasty)(tree)
+            buff append ")"
+          case None => buff append "None"
+        }
         buff append ")"
       case TypeDef(name, rhs) =>
         buff append "TypeDef(" append name append ", "
-        visit(tasty)(rhs)
+        visitTypeTree(tasty)(rhs)
         buff append ")"
       case ClassDef(name, constr, parents, self, body) =>
         buff append "ClassDef(" append name append ", "
-        visit(tasty)(constr)
+        visitTree(tasty)(constr)
         buff append ", "
-        visit(tasty)(parents)
+        visitParents(tasty)(parents)
         buff append ", "
-        visit(tasty)(self)
+        self match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTree(tasty)(tree)
+            buff append ")"
+          case _ => buff append "None"
+        }
         buff append ", "
-        visit(tasty)(body)
+        visitTrees(tasty)(body)
         buff append ")"
       //    case PackageDef(name, members) =>
       //      buff append "PackageDef("
       //      buff append name
       //      buff append ", "
-      //      visit(tasty)(members)
+      //      visitTree(tasty)(members)
       //      buff append ")"
       case Import(expr, selectors) =>
         buff append "Import("
-        visit(tasty)(expr)
+        visitTree(tasty)(expr)
         buff append ", "
-        visit(tasty)(selectors)
+
+        buff append "List("
+        selectors.foreach {
+          case SimpleSelector(id) =>
+            buff append "SimpleSelector("
+            visitId(tasty)(id)
+            buff append ")"
+          case RenameSelector(id1, id2) =>
+            buff append "RenameSelector("
+            visitId(tasty)(id1)
+            buff append ", "
+            visitId(tasty)(id2)
+            buff append ")"
+          case OmitSelector(id) =>
+            buff append "OmitSelector("
+            visitId(tasty)(id)
+            buff append ")"
+        }
+        buff append ")"
         buff append ")"
       case PackageClause(pid, stats) =>
         buff append "PackageClause("
-        visit(tasty)(pid)
+        visitTree(tasty)(pid)
         buff append ", "
-        visit(tasty)(stats)
+        visitTrees(tasty)(stats)
         buff append ")"
-
-      case UnitConstant() => buff append "Unit()"
-      case NullConstant() => buff append "Null()"
-      case BooleanConstant(value) => buff append "Boolean(" append value append ")"
-      case ByteConstant(value) => buff append "Byte(" append value append ")"
-      case ShortConstant(value) => buff append "Short(" append value append ")"
-      case CharConstant(value) => buff append "Char('" append value append "')"
-      case IntConstant(value) => buff append "Int(" append value append ")"
-      case LongConstant(value) => buff append "Long(" append value append ")"
-      case FloatConstant(value) => buff append "Float(" append value append ")"
-      case DoubleConstant(value) => buff append "Double(" append value append ")"
-      case StringConstant(value) => buff append "String(\"" append value append "\")" // TODO escape string characters?
-
-      case ConstantType(value) =>
-        buff append "ConstantType("
-        visit(tasty)(value)
-        buff append ")"
-      case SymRef(sym, qual) =>
-        def visitName(sym: Definition): Unit = sym match {
-    case ValDef(name, _, _) => buff append name
-    case DefDef(name, _, _, _, _) => buff append name
-    case TypeDef(name, _) => buff append name
-    case ClassDef(name, _, _, _, _) => buff append name
-      //      case PackageDef(name, _) => name
-    case _ => buff append "NoDefinition"
     }
-    buff append "SymRef(<"
-    visitName(sym)
-    buff append ">, "
-    visit(tasty)(qual)
-    buff append ")"
-      case NameRef(name, qual) =>
-        buff append "NameRef("
-        visit(tasty)(name)
-        buff append ", "
-        visit(tasty)(qual)
-        buff append ")"
-      case Refinement(parent, name, info) =>
-        buff append "Refinement("
-        visit(tasty)(parent)
-        buff append ", "
-        visit(tasty)(name)
-        buff append ", "
-        visit(tasty)(info)
-        buff append ")"
-      case AppliedType(tycon, args) =>
-        buff append "AppliedType("
-        visit(tasty)(tycon)
-        buff append ", "
-        visit(tasty)(args)
-        buff append ")"
-      case AnnotatedType(underlying, annot) =>
-        buff append "AnnotatedType("
-        visit(tasty)(underlying)
-        buff append ", "
-        visit(tasty)(annot)
-        buff append ")"
-      case AndType(left, right) =>
-        buff append "AndType("
-        visit(tasty)(left)
-        buff append ", "
-        visit(tasty)(right)
-        buff append ")"
-      case OrType(left, right) =>
-        buff append "OrType("
-        visit(tasty)(left)
-        buff append ", "
-        visit(tasty)(right)
-        buff append ")"
-      case ByNameType(underlying) =>
-        buff append "ByNameType("
-        visit(tasty)(underlying)
-        buff append ")"
-      case ParamRef(binder, idx) =>
-        buff append "ParamRef("
-        visit(tasty)(binder)
-        buff append ", " append idx append ")"
-      case ThisType(tp) =>
-        buff append "ThisType("
-        visit(tasty)(tp)
-        buff append ")"
-      case RecursiveThis(binder) =>
-        buff append "RecursiveThis("
-        visit(tasty)(binder)
-        buff append ")"
-      case MethodType(argNames, argTypes, resType) =>
-        buff append "MethodType("
-        visit(tasty)(argNames)
-        buff append ", "
-        visit(tasty)(argTypes)
-        buff append ", "
-        visit(tasty)(resType)
-        buff append ")"
-      case PolyType(argNames, argBounds, resType) =>
-        buff append "PolyType("
-        visit(tasty)(argNames)
-        buff append ", "
-        visit(tasty)(argBounds)
-        buff append ", "
-        visit(tasty)(resType)
-        buff append ")"
-      case TypeLambda(argNames, argBounds, resType) =>
-        buff append "TypeLambda("
-        visit(tasty)(argNames)
-        buff append ", "
-        visit(tasty)(argBounds)
-        buff append ", "
-        visit(tasty)(resType)
-        buff append ")"
-      case TypeBounds(lo, hi) =>
-        buff append "TypeBounds("
-        visit(tasty)(lo)
-        buff append ", "
-        visit(tasty)(hi)
-        buff append ")"
-      case NoPrefix() =>
-        buff append "NoPrefix"
+  }
 
-      case SimpleSelector(id) => buff append "SimpleSelector(" append id append ")"
-      case OmitSelector(id) => buff append "OmitSelector(" append id append ")"
-      case RenameSelector(id1, id2) =>
-        buff append "RenameSelector(" append id1 append ", " append id2 append ")"
-
-      case Flags(flags) =>
-        buff append "Flags(" append flags append ")"
-      case QualifiedPrivate(tp) =>
-        buff append "QualifiedPrivate("
-        visit(tasty)(tp)
-        buff append ")"
-      case QualifiedProtected(tp) =>
-        buff append "QualifiedProtected("
-        visit(tasty)(tp)
-        buff append ")"
-      case Annotation(tree) =>
-        buff append "Annotation("
-        visit(tasty)(tree)
-        buff append ")"
-
+  private def visitTrees(tasty: Tasty)(list: List[tasty.TopLevelStatement])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
       case x0 :: xs =>
         buff append "List("
-        visit(tasty)(x0)
-        def visitNext(xs: List[_]): Unit = xs match {
+        visitTree(tasty)(x0)
+        def visitNext(xs: List[tasty.TopLevelStatement]): Unit = xs match {
           case y :: ys =>
             buff append ", "
-            visit(tasty)(y)
+            visitTree(tasty)(y)
             visitNext(ys)
           case Nil =>
         }
         visitNext(xs)
         buff append ")"
       case Nil => buff append "Nil"
-      case Some(y) =>
-        buff append "Some("
-        visit(tasty)(y)
-        buff append ")"
-      case None => buff append "None"
-      case str: String => buff append "(\"" append str append "\")" // TODO escape string characters?
     }
   }
 
+  private def visitTypeTree(tasty: Tasty)(x: tasty.MaybeTypeTree)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case Synthetic() =>
+        buff append "Synthetic()"
+      case TypeIdent(name) =>
+        buff append "TypeIdent(" append name append ")"
+      case TypeSelect(qualifier, name) =>
+        buff append "TypeSelect("
+        visitTree(tasty)(qualifier)
+        buff append ", " append name append ")"
+      case Singleton(ref) =>
+        buff append "Singleton("
+        visitTree(tasty)(ref)
+        buff append ")"
+      case And(left, right) =>
+        buff append "And("
+        visitTypeTree(tasty)(left)
+        buff append ", "
+        visitTypeTree(tasty)(right)
+        buff append ")"
+      case Or(left, right) =>
+        buff append "Or("
+        visitTypeTree(tasty)(left)
+        buff append ", "
+        visitTypeTree(tasty)(right)
+        buff append ")"
+      case Refined(tpt, refinements) =>
+        buff append "Refined("
+        visitTypeTree(tasty)(tpt)
+        buff append ", "
+        visitTrees(tasty)(refinements)
+        buff append ")"
+      case Applied(tpt, args) =>
+        buff append "Applied("
+        visitTypeTree(tasty)(tpt)
+        buff append ", "
+        visitTypeTrees(tasty)(args)
+        buff append ")"
+      case ByName(result) =>
+        buff append "ByName("
+        visitTypeTree(tasty)(result)
+        buff append ")"
+      case Annotated(arg, annot) =>
+        buff append "Annotated("
+        visitTypeTree(tasty)(arg)
+        buff append ", "
+        visitTree(tasty)(annot)
+        buff append ")"
+      case TypeBoundsTree(lo, hi) =>
+        buff append "TypeBoundsTree("
+        visitTypeTree(tasty)(lo)
+        buff append ", "
+        visitTypeTree(tasty)(hi)
+        buff append ")"
+    }
+  }
+
+  private def visitTypeTrees(tasty: Tasty)(list: List[tasty.TypeTree])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
+      case x0 :: xs =>
+        buff append "List("
+        visitTypeTree(tasty)(x0)
+        def visitNext(xs: List[tasty.TypeTree]): Unit = xs match {
+          case y :: ys =>
+            buff append ", "
+            visitTypeTree(tasty)(y)
+            visitNext(ys)
+          case Nil =>
+        }
+        visitNext(xs)
+        buff append ")"
+      case Nil => buff append "Nil"
+    }
+  }
+
+  private def visitCaseDef(tasty: Tasty)(x: tasty.CaseDef)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case CaseDef(pat, guard, body) =>
+        buff append "CaseDef("
+        visitPattern(tasty)(pat)
+        buff append ", "
+        guard match {
+          case Some(tree) =>
+            buff append "Some("
+            visitTree(tasty)(guard.get)
+            buff append ")"
+          case None =>
+            buff append "None"
+        }
+        buff append ", "
+        visitTree(tasty)(body)
+        buff append ")"
+    }
+  }
+
+  private def visitCaseDefs(tasty: Tasty)(list: List[tasty.CaseDef])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
+      case x0 :: xs =>
+        buff append "List("
+        visitCaseDef(tasty)(x0)
+        def visitNext(xs: List[tasty.CaseDef]): Unit = xs match {
+          case y :: ys =>
+            buff append ", "
+            visitCaseDef(tasty)(y)
+            visitNext(ys)
+          case Nil =>
+        }
+        visitNext(xs)
+        buff append ")"
+      case Nil => buff append "Nil"
+    }
+  }
+
+  private def visitPattern(tasty: Tasty)(x: tasty.Pattern)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case Value(v) =>
+        buff append "Value("
+        visitTree(tasty)(v)
+        buff append ")"
+      case Bind(name, body) =>
+        buff append "Bind(" append name append ", "
+        visitPattern(tasty)(body)
+        buff append ")"
+      case Unapply(fun, implicits, patterns) =>
+        buff append "Unapply("
+        visitTree(tasty)(fun)
+        buff append ", "
+        visitTrees(tasty)(implicits)
+        buff append ", "
+        visitPatterns(tasty)(patterns)
+        buff append ")"
+      case Alternative(patterns) =>
+        buff append "Alternative("
+        visitPatterns(tasty)(patterns)
+        buff append ")"
+      case TypeTest(tpt) =>
+        buff append "TypeTest("
+        visitTypeTree(tasty)(tpt)
+        buff append ")"
+      case Wildcard() =>
+        buff append "Wildcard()"
+    }
+  }
+
+  private def visitPatterns(tasty: Tasty)(list: List[tasty.Pattern])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
+      case x0 :: xs =>
+        buff append "List("
+        visitPattern(tasty)(x0)
+        def visitNext(xs: List[tasty.Pattern]): Unit = xs match {
+          case y :: ys =>
+            buff append ", "
+            visitPattern(tasty)(y)
+            visitNext(ys)
+          case Nil =>
+        }
+        visitNext(xs)
+        buff append ")"
+      case Nil => buff append "Nil"
+    }
+  }
+
+  private def visitConstant(tasty: Tasty)(x: tasty.Constant)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case UnitConstant() => buff append "Unit()"
+      case NullConstant() => buff append "Null()"
+      case BooleanConstant(value) => buff append "Boolean(" append value append ")"
+      case ByteConstant(value) => buff append "Byte(" append value append ")"
+      case ShortConstant(value) => buff append "Short(" append value append ")"
+      case CharConstant(value) => buff append "Char(" append value append ")"
+      case IntConstant(value) => buff append "Int(" append value append ")"
+      case LongConstant(value) => buff append "Long(" append value append ")"
+      case FloatConstant(value) => buff append "Float(" append value append ")"
+      case DoubleConstant(value) => buff append "Double(" append value append ")"
+      case StringConstant(value) => buff append "String(" append value append ")"
+    }
+  }
+
+  private def visitType(tasty: Tasty)(x: tasty.MaybeType)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case ConstantType(value) =>
+        buff append "ConstantType("
+        visitConstant(tasty)(value)
+        buff append ")"
+      case SymRef(sym, qual) =>
+        def visitName(sym: Definition): Unit = sym match {
+          case ValDef(name, _, _) => buff append name
+          case DefDef(name, _, _, _, _) => buff append name
+          case TypeDef(name, _) => buff append name
+          case ClassDef(name, _, _, _, _) => buff append name
+          //      case PackageDef(name, _) => name
+          case _ => buff append "NoDefinition"
+        }
+        buff append "SymRef(<"
+        visitName(sym)
+        buff append ">, "
+        visitType(tasty)(qual)
+        buff append ")"
+      case NameRef(name, qual) =>
+        buff append "NameRef(" append name append ", "
+        visitType(tasty)(qual)
+        buff append ")"
+      case Refinement(parent, name, info) =>
+        buff append "Refinement("
+        visitType(tasty)(parent)
+        buff append ", " append name append ", "
+        visitType(tasty)(info)
+        buff append ")"
+      case AppliedType(tycon, args) =>
+        buff append "AppliedType("
+        visitType(tasty)(tycon)
+        buff append ", "
+        visitTypes(tasty)(args)
+        buff append ")"
+      case AnnotatedType(underlying, annot) =>
+        buff append "AnnotatedType("
+        visitType(tasty)(underlying)
+        buff append ", "
+        visitTree(tasty)(annot)
+        buff append ")"
+      case AndType(left, right) =>
+        buff append "AndType("
+        visitType(tasty)(left)
+        buff append ", "
+        visitType(tasty)(right)
+        buff append ")"
+      case OrType(left, right) =>
+        buff append "OrType("
+        visitType(tasty)(left)
+        buff append ", "
+        visitType(tasty)(right)
+        buff append ")"
+      case ByNameType(underlying) =>
+        buff append "ByNameType("
+        visitType(tasty)(underlying)
+        buff append ")"
+      case ParamRef(binder, idx) =>
+        buff append "ParamRef("
+        visitType(tasty)(binder)
+        buff append ", " append idx append ")"
+      case ThisType(tp) =>
+        buff append "ThisType("
+        visitType(tasty)(tp)
+        buff append ")"
+      case RecursiveThis(binder) =>
+        buff append "RecursiveThis("
+        visitType(tasty)(binder)
+        buff append ")"
+      case MethodType(argNames, argTypes, resType) =>
+        buff append "MethodType("
+        if (argNames.isEmpty) buff append "Nil"
+        else buff append argNames
+        buff append ", "
+        visitTypes(tasty)(argTypes)
+        buff append ", "
+        visitType(tasty)(resType)
+        buff append ")"
+      case PolyType(argNames, argBounds, resType) =>
+        buff append "PolyType("
+        if (argNames.isEmpty) buff append "Nil"
+        else buff append argNames
+        buff append ", "
+        visitTypes(tasty)(argBounds)
+        buff append ", "
+        visitType(tasty)(resType)
+        buff append ")"
+      case TypeLambda(argNames, argBounds, resType) =>
+        buff append "TypeLambda("
+        if (argNames.isEmpty) buff append "Nil"
+        else buff append argNames
+        buff append ", "
+        visitTypes(tasty)(argBounds)
+        buff append ", "
+        visitType(tasty)(resType)
+        buff append ")"
+      case TypeBounds(lo, hi) =>
+        buff append "TypeBounds("
+        visitType(tasty)(lo)
+        buff append ", "
+        visitType(tasty)(hi)
+        buff append ")"
+      case NoPrefix() =>
+        buff append "NoPrefix"
+    }
+  }
+
+  private def visitTypes(tasty: Tasty)(list: List[tasty.MaybeType])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
+      case x0 :: xs =>
+        buff append "List("
+        visitType(tasty)(x0)
+        def visitNext(xs: List[tasty.MaybeType]): Unit = xs match {
+          case y :: ys =>
+            buff append ", "
+            visitType(tasty)(y)
+            visitNext(ys)
+          case Nil =>
+        }
+        visitNext(xs)
+        buff append ")"
+      case Nil => buff append "Nil"
+    }
+  }
+
+  private def visitModifier(tasty: Tasty)(x: tasty.Modifier)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case Flags(flags) =>
+        buff append "Flags(" append flags append ")"
+      case QualifiedPrivate(tp) =>
+        buff append "QualifiedPrivate("
+        visitType(tasty)(tp)
+        buff append ")"
+      case QualifiedProtected(tp) =>
+        buff append "QualifiedProtected("
+        visitType(tasty)(tp)
+        buff append ")"
+      case Annotation(tree) =>
+        buff append "Annotation("
+        visitTree(tasty)(tree)
+        buff append ")"
+    }
+  }
+
+  private def visitParent(tasty: Tasty)(x: tasty.Parent)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = x match {
+    case Left(term) =>
+      buff append "Left("
+      visitTree(tasty)(term)
+      buff append ")"
+    case Right(typeTree) =>
+      buff append "Right("
+      visitTypeTree(tasty)(typeTree)
+      buff append ")"
+  }
+
+  private def visitParents(tasty: Tasty)(list: List[tasty.Parent])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    list match {
+      case x0 :: xs =>
+        buff append "List("
+        visitParent(tasty)(x0)
+        def visitNext(xs: List[tasty.Parent]): Unit = xs match {
+          case y :: ys =>
+            buff append ", "
+            visitParent(tasty)(y)
+            visitNext(ys)
+          case Nil =>
+        }
+        visitNext(xs)
+        buff append ")"
+      case Nil => buff append "Nil"
+    }
+  }
+
+  private def visitId(tasty: Tasty)(x: tasty.Id)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case Id(name) => buff append "Id(" append name append ")"
+    }
+  }
 }

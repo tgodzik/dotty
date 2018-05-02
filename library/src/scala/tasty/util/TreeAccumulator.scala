@@ -32,7 +32,7 @@ abstract class TreeAccumulator[X](implicit val tasty: Tasty) {
       case Apply(fun, args) =>
         foldTree(foldTree(x, fun), args)
       case TypeApply(fun, args) =>
-        foldTree(foldTree(x, fun), args)
+        foldTypeTree(foldTree(x, fun), args)
       case Literal(const) =>
         x
       case New(tpt) =>
@@ -107,8 +107,9 @@ abstract class TreeAccumulator[X](implicit val tasty: Tasty) {
     case TypeTest(tpt) => foldTypeTree(x, tpt)
   }
 
-  def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = {
-    ???
+  def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {
+    case Left(term) => foldOverTree(x, term)
+    case Right(typeTree) =>foldOverTypeTree(x, typeTree)
   }
 
 }
