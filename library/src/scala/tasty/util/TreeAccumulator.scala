@@ -2,7 +2,7 @@ package scala.tasty.util
 
 import scala.tasty.Tasty
 
-abstract class TreeAccumulator[X](implicit val tasty: Tasty) {
+abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   import tasty._
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.

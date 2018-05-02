@@ -11,19 +11,19 @@ object Macros {
 
   def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
     import u._
-    import tasty._
-    val buff = new StringBuilder
-    val traverser = new TreeTraverser {
+    import u.tasty._
 
-      override def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: this.tasty.Context): Unit = {
-        buff.append(TastyPrinter.stringOfType(tasty)(tree.tpe))
+    val buff = new StringBuilder
+    val traverser = new TreeTraverser(u.tasty) {
+      override def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): Unit = {
+        buff.append(TastyPrinter.stringOfType(u.tasty)(tree.tpe))
         buff.append("\n\n")
         traverseTypeTreeChildren(tree)
       }
     }
 
     val tree = x.toTasty
-    traverser.traverse(tree)(ctx)
+    traverser.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }
 }

@@ -2,14 +2,14 @@ package scala.tasty.util
 
 import scala.tasty.Tasty
 
-abstract class TreeTraverser(implicit tasty0: Tasty) extends TreeAccumulator[Unit] {
+abstract class TreeTraverser[T <: Tasty with Singleton](tasty0: T) extends TreeAccumulator[Unit, T](tasty0) {
   import tasty._
 
-  def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit
-  def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): Unit
-  def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit
-  def traversePattern(tree: Pattern)(implicit ctx: Context): Unit
-  def traverseParent(tree: Parent)(implicit ctx: Context): Unit
+  def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit = traverseTreeChildren(tree)
+  def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): Unit = traverseTypeTreeChildren(tree)
+  def traverseCaseDef(tree: CaseDef)(implicit ctx: Context): Unit = traverseCaseDef(tree)
+  def traversePattern(tree: Pattern)(implicit ctx: Context): Unit = traversePatternChildren(tree)
+  def traverseParent(tree: Parent)(implicit ctx: Context): Unit = traverseParentChildren(tree)
 
   def foldTree(x: Unit, tree: TopLevelStatement)(implicit ctx: Context): Unit = traverseTree(tree)
   def foldTypeTree(x: Unit, tree: MaybeTypeTree)(implicit ctx: Context) = traverseTypeTree(tree)
