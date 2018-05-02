@@ -104,6 +104,8 @@ abstract class Tasty {
   }
   implicit def DefinitionDeco(x: Definition): AbstractDefinition
 
+  // ClassDef
+
   type ClassDef <: Definition
 
   implicit def classDefClassTag: ClassTag[ClassDef]
@@ -112,6 +114,8 @@ abstract class Tasty {
   abstract class ClassDefExtractor {
     def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
   }
+
+  // DefDef
 
   type DefDef <: Definition
 
@@ -122,6 +126,8 @@ abstract class Tasty {
     def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
 
+  // ValDef
+
   type ValDef <: Definition
 
   implicit def valDefClassTag: ClassTag[ValDef]
@@ -130,6 +136,8 @@ abstract class Tasty {
   abstract class ValDefExtractor {
     def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
   }
+
+  // TypeDef
 
   type TypeDef <: Definition
 
@@ -140,11 +148,16 @@ abstract class Tasty {
     def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, MaybeTypeTree /* TypeTree | TypeBoundsTree */)]
   }
 
-//  type PackageDef <: Definition
-//  val PackageDef: PackageDefExtractor
-//  abstract class PackageDefExtractor {
-//    def unapply(x: PackageDef)(implicit ctx: Context): Option[(Name, List[Statement])]
-//  }
+  // PackageDef
+
+  type PackageDef <: Definition
+
+  implicit def packageDefClassTag: ClassTag[PackageDef]
+
+  val PackageDef: PackageDefExtractor
+  abstract class PackageDefExtractor {
+    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, List[Statement])]
+  }
 
   // ----- Parents --------------------------------------------------
 

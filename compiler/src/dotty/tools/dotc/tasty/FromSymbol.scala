@@ -18,24 +18,20 @@ object FromSymbol {
     else valDef(sym.asTerm)
   }
 
-  def packageDef(sym: Symbol)(implicit ctx: Context): tpd.Tree = {
-    tpd.EmptyTree // FIXME
+  def packageDef(sym: Symbol)(implicit ctx: Context): tpd.PackageDef =
+    tpd.PackageDef(tpd.Ident(sym.typeRef), Nil)
+
+  def classDef(cls: ClassSymbol)(implicit ctx: Context): tpd.Tree = {
+    val constr = tpd.DefDef(cls.unforcedDecls.find(_.isPrimaryConstructor).asTerm)
+    val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definition(s))
+    val superArgs = Nil // TODO
+    tpd.ClassDef(cls, constr, body, superArgs)
   }
 
-  def classDef(sym: ClassSymbol)(implicit ctx: Context): tpd.Tree = {
-    def toTree(sym: ClassSymbol): tpd.TypeDef = {
-      val constr = tpd.DefDef(sym.unforcedDecls.find(_.isPrimaryConstructor).asTerm)
-      val body = sym.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definition(s))
-      val superArgs = Nil // TODO
-      tpd.ClassDef(sym, constr, body, superArgs)
-    }
-    toTree(sym)
-  }
+  def typeDef(sym: TypeSymbol)(implicit ctx: Context): tpd.TypeDef = tpd.TypeDef(sym)
 
-  def typeDef(sym: TypeSymbol)(implicit ctx: Context): tpd.Tree = tpd.TypeDef(sym)
+  def defDef(sym: TermSymbol)(implicit ctx: Context): tpd.DefDef = tpd.DefDef(sym)
 
-  def defDef(sym: TermSymbol)(implicit ctx: Context): tpd.Tree = tpd.DefDef(sym)
-
-  def valDef(sym: TermSymbol)(implicit ctx: Context): tpd.Tree = tpd.ValDef(sym)
+  def valDef(sym: TermSymbol)(implicit ctx: Context): tpd.ValDef = tpd.ValDef(sym)
 
 }

@@ -77,8 +77,6 @@ abstract class TreeAccumulator[X](implicit val tasty: Tasty) {
         foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
         foldTree(foldTree(x, pid), stats)(localCtx(clause.definition))
-      case _ =>
-        x
     }
   }
 

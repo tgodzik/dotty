@@ -477,12 +477,12 @@ object TastyPrinter {
           case DefDef(name, _, _, _, _) => buff append name
           case TypeDef(name, _) => buff append name
           case ClassDef(name, _, _, _, _) => buff append name
-          //      case PackageDef(name, _) => name
-          case _ => buff append "NoDefinition"
+          case PackageDef(name, _) => buff append name
+          case _ => buff append "#"
         }
-        buff append "SymRef(<"
+        buff append "SymRef("
         visitName(sym)
-        buff append ">, "
+        buff append ", "
         visitType(tasty)(qual)
         buff append ")"
       case NameRef(name, qual) =>
@@ -615,11 +615,11 @@ object TastyPrinter {
     import tasty._
     x match {
       case TermParent(term) =>
-        buff append "Left("
+        buff append "TermParent("
         visitTree(tasty)(term)
         buff append ")"
       case TypeParent(typeTree) =>
-        buff append "Right("
+        buff append "TypeParent("
         visitTypeTree(tasty)(typeTree)
         buff append ")"
     }
