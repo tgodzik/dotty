@@ -1,5 +1,7 @@
 package scala.tasty
 
+import scala.reflect.ClassTag
+
 abstract class Tasty {
 
   // ===== Quotes ===================================================
@@ -29,7 +31,7 @@ abstract class Tasty {
 
   implicit def IdDeco(x: Id): Positioned
 
-  implicit def idClassTag: reflect.ClassTag[Id]
+  implicit def idClassTag: ClassTag[Id]
 
   val Id: IdExtractor
   abstract class IdExtractor {
@@ -45,7 +47,7 @@ abstract class Tasty {
 
   type PackageClause <: TopLevelStatement
 
-  implicit def packageClauseClassTag: reflect.ClassTag[PackageClause]
+  implicit def packageClauseClassTag: ClassTag[PackageClause]
 
   val PackageClause: PackageClauseExtractor
   abstract class PackageClauseExtractor {
@@ -63,7 +65,7 @@ abstract class Tasty {
 
   type Import <: Statement
 
-  implicit def importClassTag: reflect.ClassTag[Import]
+  implicit def importClassTag: ClassTag[Import]
 
   val Import: ImportExtractor
   abstract class ImportExtractor {
@@ -72,7 +74,7 @@ abstract class Tasty {
 
   type ImportSelector
 
-  implicit def importSelectorClassTag: reflect.ClassTag[ImportSelector]
+  implicit def importSelectorClassTag: ClassTag[ImportSelector]
 
   val SimpleSelector: SimpleSelectorExtractor
   abstract class SimpleSelectorExtractor {
@@ -93,7 +95,7 @@ abstract class Tasty {
 
   type Definition <: Statement
 
-  implicit def definitionClassTag: reflect.ClassTag[Definition]
+  implicit def definitionClassTag: ClassTag[Definition]
 
   trait AbstractDefinition {
     def mods(implicit ctx: Context): List[Modifier]
@@ -102,11 +104,9 @@ abstract class Tasty {
   }
   implicit def DefinitionDeco(x: Definition): AbstractDefinition
 
-  type Parent = scala.util.Either[Term, TypeTree]
-
   type ClassDef <: Definition
 
-  implicit def classDefClassTag: reflect.ClassTag[ClassDef]
+  implicit def classDefClassTag: ClassTag[ClassDef]
 
   val ClassDef: ClassDefExtractor
   abstract class ClassDefExtractor {
@@ -115,7 +115,7 @@ abstract class Tasty {
 
   type DefDef <: Definition
 
-  implicit def defDefClassTag: reflect.ClassTag[DefDef]
+  implicit def defDefClassTag: ClassTag[DefDef]
 
   val DefDef: DefDefExtractor
   abstract class DefDefExtractor {
@@ -124,7 +124,7 @@ abstract class Tasty {
 
   type ValDef <: Definition
 
-  implicit def valDefClassTag: reflect.ClassTag[ValDef]
+  implicit def valDefClassTag: ClassTag[ValDef]
 
   val ValDef: ValDefExtractor
   abstract class ValDefExtractor {
@@ -133,7 +133,7 @@ abstract class Tasty {
 
   type TypeDef <: Definition
 
-  implicit def typeDefClassTag: reflect.ClassTag[TypeDef]
+  implicit def typeDefClassTag: ClassTag[TypeDef]
 
   val TypeDef: TypeDefExtractor
   abstract class TypeDefExtractor {
@@ -146,12 +146,28 @@ abstract class Tasty {
 //    def unapply(x: PackageDef)(implicit ctx: Context): Option[(Name, List[Statement])]
 //  }
 
+  // ----- Parents --------------------------------------------------
+
+  type Parent
+
+  implicit def parentClassTag: ClassTag[Parent]
+
+  val TermParent: TermParentExtractor
+  abstract class TermParentExtractor {
+    def unapply(x: Parent)(implicit ctx: Context): Option[Term]
+  }
+
+  val TypeParent: TypeParentExtractor
+  abstract class TypeParentExtractor {
+    def unapply(x: Parent)(implicit ctx: Context): Option[TypeTree]
+  }
+
   // ----- Terms ----------------------------------------------------
 
   type Term <: Statement
   implicit def TermDeco(t: Term): Typed
 
-  implicit def termClassTag: reflect.ClassTag[Term]
+  implicit def termClassTag: ClassTag[Term]
 
   val Ident: IdentExtractor
   abstract class IdentExtractor {
@@ -257,7 +273,7 @@ abstract class Tasty {
 
   type CaseDef
 
-  implicit def caseDefClassTag: reflect.ClassTag[CaseDef]
+  implicit def caseDefClassTag: ClassTag[CaseDef]
 
   val CaseDef: CaseDefExtractor
   abstract class CaseDefExtractor {
@@ -270,7 +286,7 @@ abstract class Tasty {
 
   implicit def PatternDeco(x: Pattern): Typed
 
-  implicit def patternClassTag: reflect.ClassTag[Pattern]
+  implicit def patternClassTag: ClassTag[Pattern]
 
   val Value: ValueExtractor
   abstract class ValueExtractor {
@@ -318,7 +334,7 @@ abstract class Tasty {
 
   implicit def TypeTreeDeco(x: TypeTree): Typed
 
-  implicit def typeTreeClassTag: reflect.ClassTag[TypeTree]
+  implicit def typeTreeClassTag: ClassTag[TypeTree]
 
   val Synthetic: SyntheticExtractor
   abstract class SyntheticExtractor {
@@ -379,7 +395,7 @@ abstract class Tasty {
   }
   implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree
 
-  implicit def typeBoundsTreeClassTag: reflect.ClassTag[TypeBoundsTree]
+  implicit def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree]
 
   val TypeBoundsTree: TypeBoundsTreeExtractor
   abstract class TypeBoundsTreeExtractor {
@@ -398,7 +414,7 @@ abstract class Tasty {
 
   type Type <: MaybeType
 
-  implicit def typeClassTag: reflect.ClassTag[Type]
+  implicit def typeClassTag: ClassTag[Type]
 
   val ConstantType: ConstantTypeExtractor
   abstract class ConstantTypeExtractor {
@@ -466,7 +482,7 @@ abstract class Tasty {
   }
 
   type RecursiveType <: Type
-  implicit def recursiveTypeClassTag: reflect.ClassTag[RecursiveType]
+  implicit def recursiveTypeClassTag: ClassTag[RecursiveType]
   val RecursiveType: RecursiveTypeExtractor
   abstract class RecursiveTypeExtractor {
     def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type]
@@ -484,7 +500,7 @@ abstract class Tasty {
   }
   implicit def MethodTypeDeco(x: MethodType): AbstractMethodType
 
-  implicit def methodTypeClassTag: reflect.ClassTag[MethodType]
+  implicit def methodTypeClassTag: ClassTag[MethodType]
 
   val MethodType: MethodTypeExtractor
   abstract class MethodTypeExtractor {
@@ -493,7 +509,7 @@ abstract class Tasty {
 
   type PolyType <: LambdaType[TypeBounds]
 
-  implicit def polyTypeClassTag: reflect.ClassTag[PolyType]
+  implicit def polyTypeClassTag: ClassTag[PolyType]
 
   val PolyType: PolyTypeExtractor
   abstract class PolyTypeExtractor {
@@ -502,7 +518,7 @@ abstract class Tasty {
 
   type TypeLambda <: LambdaType[TypeBounds]
 
-  implicit def typeLambdaClassTag: reflect.ClassTag[TypeLambda]
+  implicit def typeLambdaClassTag: ClassTag[TypeLambda]
 
   val TypeLambda: TypeLambdaExtractor
   abstract class TypeLambdaExtractor {
@@ -513,7 +529,7 @@ abstract class Tasty {
 
   type TypeBounds <: MaybeType
 
-  implicit def typeBoundsClassTag: reflect.ClassTag[TypeBounds]
+  implicit def typeBoundsClassTag: ClassTag[TypeBounds]
 
   val TypeBounds: TypeBoundsExtractor
   abstract class TypeBoundsExtractor {
@@ -524,7 +540,7 @@ abstract class Tasty {
 
   type NoPrefix <: MaybeType
 
-  implicit def noPrefixClassTag: reflect.ClassTag[NoPrefix]
+  implicit def noPrefixClassTag: ClassTag[NoPrefix]
 
   val NoPrefix: NoPrefixExtractor
   abstract class NoPrefixExtractor {
@@ -539,7 +555,7 @@ abstract class Tasty {
   }
   implicit def ConstantDeco(x: Constant): AbstractConstant
 
-  implicit def constantClassTag: reflect.ClassTag[Constant]
+  implicit def constantClassTag: ClassTag[Constant]
 
   val UnitConstant: UnitExtractor
   abstract class UnitExtractor {
@@ -600,7 +616,7 @@ abstract class Tasty {
 
   type Modifier
 
-  implicit def modifierClassTag: reflect.ClassTag[Modifier]
+  implicit def modifierClassTag: ClassTag[Modifier]
 
   val Annotation: AnnotationExtractor
   abstract class AnnotationExtractor {

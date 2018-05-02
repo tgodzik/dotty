@@ -611,15 +611,18 @@ object TastyPrinter {
     }
   }
 
-  private def visitParent(tasty: Tasty)(x: tasty.Parent)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = x match {
-    case Left(term) =>
-      buff append "Left("
-      visitTree(tasty)(term)
-      buff append ")"
-    case Right(typeTree) =>
-      buff append "Right("
-      visitTypeTree(tasty)(typeTree)
-      buff append ")"
+  private def visitParent(tasty: Tasty)(x: tasty.Parent)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+    import tasty._
+    x match {
+      case TermParent(term) =>
+        buff append "Left("
+        visitTree(tasty)(term)
+        buff append ")"
+      case TypeParent(typeTree) =>
+        buff append "Right("
+        visitTypeTree(tasty)(typeTree)
+        buff append ")"
+    }
   }
 
   private def visitParents(tasty: Tasty)(list: List[tasty.Parent])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {

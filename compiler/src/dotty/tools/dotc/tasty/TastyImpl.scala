@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.quoted
+import scala.reflect.ClassTag
 
 object TastyImpl extends scala.tasty.Tasty {
 
@@ -39,7 +40,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
   }
 
-  def idClassTag: reflect.ClassTag[Id] = implicitly[reflect.ClassTag[Id]]
+  def idClassTag: ClassTag[Id] = implicitly[ClassTag[Id]]
 
   val Id: IdExtractor = new IdExtractor {
     def unapply(x: Id) = x match {
@@ -61,7 +62,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type PackageClause = tpd.PackageDef
 
-  def packageClauseClassTag: reflect.ClassTag[PackageClause] = implicitly[reflect.ClassTag[PackageClause]]
+  def packageClauseClassTag: ClassTag[PackageClause] = implicitly[ClassTag[PackageClause]]
 
   val PackageClause: PackageClauseExtractor = new PackageClauseExtractor {
     def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[TopLevelStatement])] = x match {
@@ -80,7 +81,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Import = tpd.Import
 
-  def importClassTag: reflect.ClassTag[Import] = implicitly[reflect.ClassTag[Import]]
+  def importClassTag: ClassTag[Import] = implicitly[ClassTag[Import]]
 
   val Import: ImportExtractor = new ImportExtractor {
     def unapply(x: Import)(implicit ctx: Context): Option[(Term, List[ImportSelector])] = x match {
@@ -91,7 +92,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type ImportSelector = untpd.Tree
 
-  def importSelectorClassTag: reflect.ClassTag[ImportSelector] = implicitly[reflect.ClassTag[ImportSelector]]
+  def importSelectorClassTag: ClassTag[ImportSelector] = implicitly[ClassTag[ImportSelector]]
 
   val SimpleSelector: SimpleSelectorExtractor = new SimpleSelectorExtractor {
     def unapply(x: ImportSelector)(implicit ctx: Context): Option[Id] = x match {
@@ -135,23 +136,30 @@ object TastyImpl extends scala.tasty.Tasty {
       else ctx
   }
 
-  def definitionClassTag: reflect.ClassTag[Definition] = implicitly[reflect.ClassTag[Definition]]
+  def definitionClassTag: ClassTag[Definition] = implicitly[ClassTag[Definition]]
+
+  // ClassDef
 
   type ClassDef = tpd.TypeDef
-  def classDefClassTag: reflect.ClassTag[ClassDef] = implicitly[reflect.ClassTag[ClassDef]]
+
+  def classDefClassTag: ClassTag[ClassDef] = implicitly[ClassTag[ClassDef]]
+
   val ClassDef: ClassDefExtractor = new ClassDefExtractor {
-    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Either[Term, TypeTree]],  Option[ValDef], List[Statement])] = x match {
+    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = x match {
       case x: tpd.TypeDef @unchecked if x.isClassDef =>
         val temp @ Trees.Template(constr, parents, self, _) = x.rhs
         val selfVal = if (self.isEmpty) None else Some(self)
-        val boxedParent = parents.map(p => if (p.isTerm) Left(p) else Right(p))
-        Some((x.name.toString, constr, boxedParent, selfVal, temp.body))
+        Some((x.name.toString, constr, parents, selfVal, temp.body))
       case _ => None
     }
   }
 
+  // DefDef
+
   type DefDef = tpd.DefDef
-  def defDefClassTag: reflect.ClassTag[DefDef] = implicitly[reflect.ClassTag[DefDef]]
+
+  def defDefClassTag: ClassTag[DefDef] = implicitly[ClassTag[DefDef]]
+
   val DefDef: DefDefExtractor = new DefDefExtractor {
     def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = x match {
       case x: tpd.DefDef @unchecked =>
@@ -160,8 +168,12 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
+  // ValDef
+
   type ValDef = tpd.ValDef
-  def valDefClassTag: reflect.ClassTag[ValDef] = implicitly[reflect.ClassTag[ValDef]]
+
+  def valDefClassTag: ClassTag[ValDef] = implicitly[ClassTag[ValDef]]
+
   val ValDef: ValDefExtractor = new ValDefExtractor {
     def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] = x match {
       case x: tpd.ValDef @unchecked =>
@@ -170,8 +182,12 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
+  // TypeDef
+
   type TypeDef = tpd.TypeDef
-  def typeDefClassTag: reflect.ClassTag[TypeDef] = implicitly[reflect.ClassTag[TypeDef]]
+
+  def typeDefClassTag: ClassTag[TypeDef] = implicitly[ClassTag[TypeDef]]
+
   val TypeDef: TypeDefExtractor = new TypeDefExtractor {
     def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, MaybeTypeTree /* TypeTree | TypeBoundsTree */)] = x match {
       case x: tpd.TypeDef @unchecked if !x.symbol.isClass => Some((x.name.toString, x.rhs))
@@ -184,6 +200,22 @@ object TastyImpl extends scala.tasty.Tasty {
 //    def unapply(x: PackageDef)(implicit ctx: Context): Option[(Name, List[Statement])] = ???
 //  }
 
+  // ----- Parents --------------------------------------------------
+
+  type Parent = tpd.Tree
+
+  def parentClassTag: ClassTag[Parent] = implicitly[ClassTag[Parent]]
+
+  val TermParent: TermParentExtractor = new TermParentExtractor {
+    def unapply(x: Parent)(implicit ctx: Context): Option[Term] =
+      if (x.isTerm) Some(x) else None
+  }
+
+  val TypeParent: TypeParentExtractor = new TypeParentExtractor {
+    def unapply(x: Parent)(implicit ctx: Context): Option[TypeTree] =
+      if (x.isTerm) None else Some(x)
+  }
+
   // ----- Terms ----------------------------------------------------
 
   type Term = tpd.Tree
@@ -192,7 +224,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def tpe: Types.Type = t.tpe
   }
 
-  def termClassTag: reflect.ClassTag[Term] = implicitly[reflect.ClassTag[Term]]
+  def termClassTag: ClassTag[Term] = implicitly[ClassTag[Term]]
 
   val Ident: IdentExtractor = new IdentExtractor {
     def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
@@ -343,7 +375,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type CaseDef = tpd.CaseDef
 
-  def caseDefClassTag: reflect.ClassTag[CaseDef] = implicitly[reflect.ClassTag[CaseDef]]
+  def caseDefClassTag: ClassTag[CaseDef] = implicitly[ClassTag[CaseDef]]
 
   val CaseDef: CaseDefExtractor = new CaseDefExtractor {
     def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)] = x match {
@@ -361,7 +393,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def tpe: Types.Type = x.tpe
   }
 
-  def patternClassTag: reflect.ClassTag[Pattern] = implicitly[reflect.ClassTag[Pattern]]
+  def patternClassTag: ClassTag[Pattern] = implicitly[ClassTag[Pattern]]
 
   val Value: ValueExtractor = new ValueExtractor {
     def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
@@ -418,7 +450,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeTree = tpd.Tree
 
-  def typeTreeClassTag: reflect.ClassTag[TypeTree] = implicitly[reflect.ClassTag[TypeTree]]
+  def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
 
   implicit def TypeTreeDeco(x: TypeTree): Typed = new Typed {
     def tpe: Types.Type = x.tpe
@@ -500,7 +532,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree = ???
 
-  def typeBoundsTreeClassTag: reflect.ClassTag[TypeBoundsTree] = implicitly[reflect.ClassTag[TypeBoundsTree]]
+  def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree] = implicitly[ClassTag[TypeBoundsTree]]
 
   val TypeBoundsTree: TypeBoundsTreeExtractor = new TypeBoundsTreeExtractor {
     def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
@@ -517,7 +549,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Type = Types.Type
 
-  def typeClassTag: reflect.ClassTag[Type] = implicitly[reflect.ClassTag[Type]]
+  def typeClassTag: ClassTag[Type] = implicitly[ClassTag[Type]]
 
   val ConstantType: ConstantTypeExtractor = new ConstantTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[Constant] = x match {
@@ -623,7 +655,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type RecursiveType = Types.RecType
 
-  def recursiveTypeClassTag: reflect.ClassTag[RecursiveType] = implicitly[reflect.ClassTag[RecursiveType]]
+  def recursiveTypeClassTag: ClassTag[RecursiveType] = implicitly[ClassTag[RecursiveType]]
 
   val RecursiveType: RecursiveTypeExtractor = new RecursiveTypeExtractor {
     def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
@@ -643,7 +675,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def isImplicit: Boolean = x.isImplicitMethod
   }
 
-  def methodTypeClassTag: reflect.ClassTag[MethodType] = implicitly[reflect.ClassTag[MethodType]]
+  def methodTypeClassTag: ClassTag[MethodType] = implicitly[ClassTag[MethodType]]
 
   val MethodType: MethodTypeExtractor = new MethodTypeExtractor {
     def unapply(x: MethodType)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
@@ -654,7 +686,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type PolyType = Types.PolyType
 
-  def polyTypeClassTag: reflect.ClassTag[PolyType] = implicitly[reflect.ClassTag[PolyType]]
+  def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
 
   val PolyType: PolyTypeExtractor = new PolyTypeExtractor {
     def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
@@ -665,7 +697,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeLambda = Types.TypeLambda
 
-  def typeLambdaClassTag: reflect.ClassTag[TypeLambda] = implicitly[reflect.ClassTag[TypeLambda]]
+  def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
 
   val TypeLambda: TypeLambdaExtractor = new TypeLambdaExtractor {
     def unapply(x: TypeLambda)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
@@ -678,7 +710,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeBounds = Types.TypeBounds
 
-  def typeBoundsClassTag: reflect.ClassTag[TypeBounds] = implicitly[reflect.ClassTag[TypeBounds]]
+  def typeBoundsClassTag: ClassTag[TypeBounds] = implicitly[ClassTag[TypeBounds]]
 
   val TypeBounds: TypeBoundsExtractor = new TypeBoundsExtractor {
     def unapply(x: TypeBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
@@ -691,7 +723,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type NoPrefix = Types.NoPrefix.type
 
-  def noPrefixClassTag: reflect.ClassTag[NoPrefix] = implicitly[reflect.ClassTag[NoPrefix]]
+  def noPrefixClassTag: ClassTag[NoPrefix] = implicitly[ClassTag[NoPrefix]]
 
   val NoPrefix: NoPrefixExtractor = new NoPrefixExtractor {
     def unapply(x: NoPrefix)(implicit ctx: Context): Boolean = x == Types.NoPrefix
@@ -705,7 +737,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def value: Any = x.value
   }
 
-  def constantClassTag: reflect.ClassTag[Constant] = implicitly[reflect.ClassTag[Constant]]
+  def constantClassTag: ClassTag[Constant] = implicitly[ClassTag[Constant]]
 
   val UnitConstant: UnitExtractor = new UnitExtractor {
     def unapply(x: Constant): Boolean = x match {
@@ -793,7 +825,7 @@ object TastyImpl extends scala.tasty.Tasty {
   case class ModFlags(flags: FlagSet) extends ModImpl
   case class ModQual(tp: Type, protect: Boolean) extends ModImpl
 
-  def modifierClassTag: reflect.ClassTag[Modifier] = implicitly[reflect.ClassTag[Modifier]]
+  def modifierClassTag: ClassTag[Modifier] = implicitly[ClassTag[Modifier]]
 
   val Annotation: AnnotationExtractor = new AnnotationExtractor {
     def unapply(x: Modifier)(implicit ctx: Context): Option[Term] = x match {
