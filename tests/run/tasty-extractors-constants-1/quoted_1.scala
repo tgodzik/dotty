@@ -2,7 +2,7 @@ import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.tasty.Universe
-import scala.tasty.util.{TastyPrinter, TreeTraverser}
+import scala.tasty.util._
 
 object Macros {
 
@@ -15,6 +15,8 @@ object Macros {
 
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"
+
+    val Constant = new ConstantExtractor(tasty)
 
     3.toExpr match { case Constant(n) => stagedPrintln(n) }
     '(4) match { case Constant(n) => stagedPrintln(n) }

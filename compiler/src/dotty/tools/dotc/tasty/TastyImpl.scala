@@ -36,7 +36,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Id = untpd.Ident
 
-  implicit def IdDeco(x: Id): Positioned =  new Positioned {
+  implicit def IdDeco(x: Id): AbstractId = new AbstractId {
     def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
   }
 
@@ -56,7 +56,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TopLevelStatement = tpd.Tree
 
-  implicit def TopLevelStatementDeco(t: TopLevelStatement): Positioned = new Positioned {
+  implicit def TopLevelStatementDeco(t: TopLevelStatement): AbstractTopLevelStatement = new AbstractTopLevelStatement {
     def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
   }
 
@@ -232,7 +232,8 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Term = tpd.Tree
 
-  implicit def TermDeco(t: Term): Typed = new Typed {
+  implicit def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
+    def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
     def tpe: Types.Type = t.tpe
   }
 
@@ -401,7 +402,8 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Pattern = tpd.Tree
 
-  implicit def PatternDeco(x: Pattern): Typed = new Typed {
+  implicit def PatternDeco(x: Pattern): AbstractPattern = new AbstractPattern {
+    def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
     def tpe: Types.Type = x.tpe
   }
 
@@ -464,7 +466,8 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
 
-  implicit def TypeTreeDeco(x: TypeTree): Typed = new Typed {
+  implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
+    def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
     def tpe: Types.Type = x.tpe
   }
 

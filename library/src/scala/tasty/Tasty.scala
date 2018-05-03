@@ -29,7 +29,8 @@ abstract class Tasty {
 
   type Id
 
-  implicit def IdDeco(x: Id): Positioned
+  trait AbstractId extends Positioned
+  implicit def IdDeco(x: Id): AbstractId
 
   implicit def idClassTag: ClassTag[Id]
 
@@ -43,7 +44,9 @@ abstract class Tasty {
   // ----- Top Level Statements -----------------------------------------------
 
   type TopLevelStatement
-  implicit def TopLevelStatementDeco(t: TopLevelStatement): Positioned
+
+  trait AbstractTopLevelStatement extends Positioned
+  implicit def TopLevelStatementDeco(t: TopLevelStatement): AbstractTopLevelStatement
 
   type PackageClause <: TopLevelStatement
 
@@ -178,7 +181,9 @@ abstract class Tasty {
   // ----- Terms ----------------------------------------------------
 
   type Term <: Statement
-  implicit def TermDeco(t: Term): Typed
+
+  trait AbstractTerm extends Typed with Positioned
+  implicit def TermDeco(t: Term): AbstractTerm
 
   implicit def termClassTag: ClassTag[Term]
 
@@ -297,7 +302,8 @@ abstract class Tasty {
 
   type Pattern
 
-  implicit def PatternDeco(x: Pattern): Typed
+  trait AbstractPattern extends Typed with Positioned
+  implicit def PatternDeco(x: Pattern): AbstractPattern
 
   implicit def patternClassTag: ClassTag[Pattern]
 
@@ -345,7 +351,8 @@ abstract class Tasty {
 
   type TypeTree <: MaybeTypeTree
 
-  implicit def TypeTreeDeco(x: TypeTree): Typed
+  trait AbstractTypeTree extends Typed with Positioned
+  implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree
 
   implicit def typeTreeClassTag: ClassTag[TypeTree]
 
