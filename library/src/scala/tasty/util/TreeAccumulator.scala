@@ -81,6 +81,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   }
 
   def foldOverTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X = tree match {
+    case Synthetic() => x
     case TypeIdent(name) => x
     case TypeSelect(qualifier, name) => foldTree(x, qualifier)
     case Singleton(ref) => foldTree(x, ref)

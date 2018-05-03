@@ -13,35 +13,32 @@ object Macros {
   def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
     import u._
     import u.tasty._
-    val printer = new Printer
-    val tree = x.toTasty
-    printer.traverseTree(tree)
-    '(print(~printer.result().toExpr))
-  }
 
-  class Printer(implicit t: Tasty) extends TreeTraverser(t) {
-    import tasty._
+    val buff = new StringBuilder
 
-    private val buff = new StringBuilder
-
-    def result(): String = buff.result()
-
-    override def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit = {
-      tree match {
-        case tree @ DefDef(name, _, _, _, _) =>
-          buff.append(name)
-          buff.append("\n")
-          buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
-          buff.append("\n\n")
-        case tree @ ValDef(name, _, _) =>
-          buff.append(name)
-          buff.append("\n")
-          buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
-          buff.append("\n\n")
-        case _ =>
+    val printer = new TreeTraverser(u.tasty) {
+      import tasty._
+      override def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit = {
+        tree match {
+          case tree @ DefDef(name, _, _, _, _) =>
+            buff.append(name)
+            buff.append("\n")
+            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
+            buff.append("\n\n")
+          case tree @ ValDef(name, _, _) =>
+            buff.append(name)
+            buff.append("\n")
+            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
+            buff.append("\n\n")
+          case _ =>
+        }
+        traverseTreeChildren(tree)
       }
-      traverseTreeChildren(tree)
     }
 
+    val tree = x.toTasty
+    printer.traverseTree(tree)
+    '(print(~buff.result().toExpr))
   }
+
 }
