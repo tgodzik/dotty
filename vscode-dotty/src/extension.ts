@@ -90,7 +90,11 @@ function run(serverOptions: ServerOptions) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
-      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' }
+      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' },
+      { language: 'hasTasty', scheme: 'file', pattern: '**/*.hasTasty' },
+      { language: 'hasTasty', scheme: 'untitled', pattern: '**/*.hasTasty' },
+      { language: 'tasty', scheme: 'file', pattern: '**/*.tasty' },
+      { language: 'tasty', scheme: 'untitled', pattern: '**/*.tasty' }
     ],
     synchronize: {
       configurationSection: 'dotty'

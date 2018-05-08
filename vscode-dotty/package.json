@@ -20,7 +20,8 @@
     "scala",
     "dotty",
     "jvm",
-    "language-server"
+    "language-server",
+    "tasty"
   ],
   "main": "./out/src/extension",
   "activationEvents": [
@@ -34,6 +35,24 @@
       ],
       "aliases": [
         "Scala"
+      ]
+    },
+    {
+      "id": "hasTasty",
+      "extensions": [
+        ".hasTasty"
+      ],
+      "aliases": [
+        "hasTasty"
+      ]
+    },
+    {
+      "id": "tasty",
+      "extensions": [
+        ".tasty"
+      ],
+      "aliases": [
+        "Tasty"
       ]
     }
   ],

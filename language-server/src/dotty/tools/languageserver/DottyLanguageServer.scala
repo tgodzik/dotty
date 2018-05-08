@@ -174,6 +174,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didOpen(params: DidOpenTextDocumentParams): Unit = thisServer.synchronized {
+    println("didOpen " + params)
     checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
@@ -188,6 +189,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = thisServer.synchronized {
+    println("didChange " + params)
     checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
@@ -205,6 +207,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didClose(params: DidCloseTextDocumentParams): Unit = thisServer.synchronized {
+    println("didClose " + params)
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
 
