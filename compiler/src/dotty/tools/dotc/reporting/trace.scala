@@ -11,7 +11,7 @@ object trace {
 
   @inline
   def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
-    conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
+    conditionally(Config.tracingEnabled && ctx.settings.YdebugTrace.value, question, false)(op)
 
   @inline
   def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC = {
