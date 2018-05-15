@@ -3,7 +3,7 @@ import Macros._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    def x = 2
-    println(foo(1, 2, x))
+    val seq = IndexedSeq.tabulate[Int](21)(x => x)
+    unrolledForeach(seq, (x: Int) => println(2*x), 3)
   }
 }
