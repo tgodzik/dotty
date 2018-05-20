@@ -10,9 +10,45 @@ Overview
 
 Quotes and splices
 ------------------
+
+The basic building blocks of all staging and macros are two operators `'` and `~`. 
+
+Code in quotes `'(...)`, `'{...}` and `'[...]` represent the actual code inside them. This code is not excecuted but staged for excecution in a later phase. 
+// TODO mention `Expr` and `Type`
+
+Splices `~` are the oposite of quoting, they allow the conversion from an `Expr[T]` or `Type[T]` to a `T` inside of another quote.
+
 // TODO basics
 
-// power example
+
+```scala
+def power(x: Double, n: Int): Double = 
+  if (n == 0) 1.0
+  else if (n % 2 == 1) { x * power(x, n - 1) }
+  else { val y = power(x, n / 2); y * y }
+```
+Now assume that we know the value of `n` and we want to create code that evaluates it away. As we don't know the value of `x` yet it will also be code. Hence we will recive a `Expr[Double]` as `x` and will return an `Expr[Double]`. 
+
+```scala
+def powerCode(x: Expr[Double], n: Int): Expr[Double] = 
+  ???
+```
+The first branch had `if (n == 0) 1.0` but we need to return an `Expr[Double]`. We can just use `'(1.0)` create the code needed.
+
+```scala
+def powerCode(x: Expr[Double], n: Int): Expr[Double] = 
+  if (n == 0) '(1.0)
+  else ???
+```
+
+Now we are left with two cases that have a recursion. The first one was `if (n % 2 == 1) { x * power(x, n - 1) }`, we could try to rewrite it as `if (n % 2 == 1) '{ ~x * power(~x, n - 1) }` which would create the code `x * power(x, n - 1)` but this code is not the one that we are aming for, we want to completly eliminate `n` from the result. Then we need to create code for `power(x, n - 1)` which is basically what `powerCode(x, n -1)` does. We just need to use it inside our quoted code. To insert the code we use the `~` operator on the computed value of `powerCode(x, n -1)`. This would be written as `val rec = powerCode(x, n - 1); '{ ~x * ~rec }` or just `'{ ~x * ~powerCode(x, n - 1) }`. Similarly for the other branch
+
+```scala
+def powerCode(x: Expr[Double], n: Int): Expr[Double] = 
+  if (n == 0) '(0)
+  else if (n % 2 == 1) '{ ~x * ~powerCode(x, n - 1) }
+  else '{ val y = ~powerCode(x, n / 2); y * y }
+```
 
 
 Runtime Meta Programing (staging)
@@ -52,6 +88,11 @@ def stagedPower(n: Int): Double => Double = {
 val square: Double => Double = stagedPower(2) // (x: Double) => x * x
 val forthPower: Double => Double = stagedPower(4) // (x: Double) => { val x1 = x * x; x1 * x1 }
 ```
+
+
+#### Showing the quoted code
+
+### Lifting values to quotes
 
 
 Compile-time Meta Programing (macros)
