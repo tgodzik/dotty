@@ -9,9 +9,9 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.util.SourcePosition
 
-import scala.quoted
+import scala.{quoted, tasty}
 import scala.reflect.ClassTag
-import scala.tasty.util.{Show, ShowExtractors}
+import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
 object TastyImpl extends scala.tasty.Tasty {
 
@@ -31,8 +31,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def showExtractors: Show[this.type] = new ShowExtractors(this)
 
-  // TODO
-  // def showSourceCode: Show[this.type] = ???
+  def showSourceCode: Show[this.type] = new ShowSourceCode(this)
 
   // ===== Contexts =================================================
 
@@ -127,9 +126,17 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Definition = tpd.Tree
 
+  object Definition extends DefinitionExtractor {
+    def unapply(x: Definition)(implicit ctx: Context): Boolean =
+      x.isInstanceOf[Trees.MemberDef[_]]
+  }
+
   def DefinitionDeco(x: Definition): AbstractDefinition = new AbstractDefinition {
 
     def owner(implicit ctx: Context): Definition = FromSymbol.definition(x.symbol.owner)
+
+    def flags(implicit ctx: Contexts.Context): FlagSet =
+      new FlagSet(x.symbol.flags)
 
     def mods(implicit ctx: Context): List[Modifier] = {
       val privateWithin = x.symbol.privateWithin

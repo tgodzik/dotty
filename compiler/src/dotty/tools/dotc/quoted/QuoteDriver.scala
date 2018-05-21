@@ -5,13 +5,12 @@ import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
-import dotty.tools.dotc.printing.DecompilerPrinter
 
 import scala.quoted.{Expr, Type}
-
 import java.net.URLClassLoader
 
-import Toolbox.{Settings, Run, Show}
+import Toolbox.{Run, Settings, Show}
+import dotty.tools.dotc.tasty.TastyImpl
 
 class QuoteDriver extends Driver {
   import tpd._
@@ -28,7 +27,7 @@ class QuoteDriver extends Driver {
         new VirtualDirectory("(memory)", None)
     }
 
-    val driver = new QuoteCompiler(outDir)
+    val driver = new ExprCompiler(outDir)
     driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
@@ -42,10 +41,8 @@ class QuoteDriver extends Driver {
 
   def show(expr: Expr[_], settings: Settings[Show]): String = {
     def show(tree: Tree, ctx: Context): String = {
-      val printer = new DecompilerPrinter(ctx)
-      val pageWidth = ctx.settings.pageWidth.value(ctx)
       val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
-      printer.toText(tree1).mkString(pageWidth, false)
+      TastyImpl.showSourceCode.showTree(tree1)(ctx)
     }
     withTree(expr, show, settings)
   }
@@ -54,11 +51,13 @@ class QuoteDriver extends Driver {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
-      assert(output.isEmpty)
-      output = Some(f(tree, ctx))
+    val reflector = new ExprReflector {
+      def reflect(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+        assert(output.isEmpty)
+        output = Some(f(tree, ctx))
+      }
     }
-    new QuoteDecompiler(registerTree).newRun(ctx).compileExpr(expr)
+    reflector.newRun(ctx).compileExpr(expr)
     output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
@@ -66,11 +65,13 @@ class QuoteDriver extends Driver {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
-      assert(output.isEmpty)
-      output = Some(f(tree.asInstanceOf[TypTree], ctx))
+    val reflector = new TypeReflector {
+      def reflect(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+        assert(output.isEmpty)
+        output = Some(f(tree.asInstanceOf[TypTree], ctx))
+      }
     }
-    new QuoteDecompiler(registerTree).newRun(ctx).compileType(tpe)
+    reflector.newRun(ctx).compileType(tpe)
     output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
