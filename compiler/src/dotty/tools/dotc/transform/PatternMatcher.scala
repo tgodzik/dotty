@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import collection.mutable
+import scala.collection.mutable
 import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
 import ast.Trees._
 import util.Positions._
@@ -636,7 +636,7 @@ object PatternMatcher {
         }
         override def hashCode: Int = tree.hash
       }
-      type SeenVars = Map[RHS, TermSymbol]
+      type SeenVars = mutable.LinkedHashMap[RHS, TermSymbol]
 
       /** The variables known at entry to label */
       val seenAtLabel = newMutableSymbolMap[SeenVars]
@@ -664,7 +664,7 @@ object PatternMatcher {
 
         override def apply(plan: LetPlan): Plan = {
           initializer(plan.sym) = apply(initializer(plan.sym))
-          val seenVars1 =
+          val seenVars1: SeenVars =
             if (isPatmatGenerated(plan.sym)) {
               val thisRhs = new RHS(initializer(plan.sym))
               seenVars.get(thisRhs) match {
@@ -672,7 +672,10 @@ object PatternMatcher {
                   initializer(plan.sym) = ref(seen)
                   seenVars
                 case none =>
-                  seenVars.updated(thisRhs, plan.sym)
+                  val seenVars1: SeenVars = mutable.LinkedHashMap.empty
+                  seenVars1 ++= seenVars
+                  seenVars1(thisRhs) = plan.sym
+                  seenVars1
               }
             }
             else seenVars
@@ -685,7 +688,9 @@ object PatternMatcher {
           plan.body = apply(plan.body)
           val paramsMap = paramsOfLabel.getOrElse(plan.sym, Map())
           plan.params = paramsMap.values.toList.sortBy(_.name.toString)
-          val seenVars1 = seenVars ++ paramsMap
+          val seenVars1: SeenVars = mutable.LinkedHashMap.empty
+          seenVars1 ++= seenVars
+          seenVars1 ++= paramsMap
           labelled(plan.sym) = new Merge(seenVars1)(labelled(plan.sym))
           plan
         }
@@ -709,7 +714,7 @@ object PatternMatcher {
           else CallPlan(plan.label, newArgs)
         }
       }
-      (new Merge(Map()))(plan)
+      (new Merge(new mutable.LinkedHashMap()))(plan)
     }
 
     /** Inline let-bound trees that are referenced only once.
