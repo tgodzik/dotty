@@ -19,9 +19,9 @@ abstract class Tasty { tasty =>
 
   // ===== Show =====================================================
 
-  implicit def defaultShow: Show[tasty.type]
+  implicit val defaultShow: Show[tasty.type]
 
-  def showExtractors: Show[tasty.type]
+  val showExtractors: Show[tasty.type]
 
   // TODO
   // def showSourceCode: Show[tasty.type]
