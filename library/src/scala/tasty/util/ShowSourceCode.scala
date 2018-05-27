@@ -17,7 +17,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = {
     implicit val ident0 = new Ident(0)
     out.clear()
-    printTypeOrBoundTree(tpt)
+    printTypeOrBoundsTree(tpt)
     out.result()
   }
 
@@ -34,7 +34,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     printConstant(const)
     out.result()
   }
-
 
   protected def lineBreak(implicit ident: Ident): String = "\n" + ident.pad
 
@@ -174,13 +173,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Term.Apply(fn, args) =>
       printTree(fn)
       out.append("(")
-      printSeparated(args, ", ", printTree)
+      printTrees(args, ", ")
       out.append(")")
 
     case Term.TypeApply(fn, args) =>
       printTree(fn)
       out.append("[")
-      printSeparated(args, ", ", printTypeTree)
+      printTypeTrees(args, ", ")
       out.append("]")
 
     case Term.Super(qual, tptOpt) =>
@@ -267,7 +266,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       out.append(" match {")
       indented { implicit ident =>
         out.append(lineBreak)
-        printSeparated(cases, lineBreak, printCase)
+        printCases(cases, lineBreak)
       }
       out.append(lineBreak)
       out.append("}")
@@ -279,7 +278,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       ???
 
     case Term.Repeated(elems) =>
-      printSeparated(elems, ", ", printTree)
+      printTrees(elems, ", ")
 
     case Term.SelectOuter(_, _, _) =>
       ???
@@ -306,6 +305,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   }
 
   protected def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(trees, sep, printTree)
+  protected def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(cases, sep, printCase)
   protected def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(typesTrees, sep, printTypeTree)
   protected def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit ctx: Context): Unit = printSeparated(types, sep, printTypeOrBound)
 
@@ -411,7 +411,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Constant.String(v) => out.append('"').append(v.toString).append('"') // TODO escape string
   }
 
-  protected def printTypeOrBoundTree(tpt: TypeOrBoundsTree)(implicit ident: Ident, ctx: Context): Unit = tpt match {
+  protected def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ident: Ident, ctx: Context): Unit = tpt match {
     case TypeBoundsTree(lo, hi) => ???
     case tpt @ Type() => printType(tpt)
   }
