@@ -35,9 +35,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     out.result()
   }
 
-  protected def lineBreak(implicit ident: Ident): String = "\n" + ident.pad
+  private def lineBreak(implicit ident: Ident): String = "\n" + ident.pad
 
-  protected def printTree(tree: Tree)(implicit ident: Ident, ctx: Context): Unit = tree match {
+  private def printTree(tree: Tree)(implicit ident: Ident, ctx: Context): Unit = tree match {
     case tree @ PackageClause(Term.Ident(name), stats) =>
       val stats1 = stats.collect {
         case stat@Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
@@ -304,12 +304,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  protected def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(trees, sep, printTree)
-  protected def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(cases, sep, printCase)
-  protected def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(typesTrees, sep, printTypeTree)
-  protected def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit ctx: Context): Unit = printSeparated(types, sep, printTypeOrBound)
+  private def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(trees, sep, printTree)
+  private def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(cases, sep, printCase)
+  private def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(typesTrees, sep, printTypeTree)
+  private def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit ctx: Context): Unit = printSeparated(types, sep, printTypeOrBound)
 
-  protected def printTargsDefs(targs: List[TypeDef])(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTargsDefs(targs: List[TypeDef])(implicit ident: Ident, ctx: Context): Unit = {
     if (!targs.isEmpty) {
       out.append("[")
       printSeparated(targs, ", ", printTargDef)
@@ -317,7 +317,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  protected def printTargDef(arg: TypeDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTargDef(arg: TypeDef)(implicit ident: Ident, ctx: Context): Unit = {
     val TypeDef(name, rhs) = arg
     out.append(name)
     rhs match {
@@ -340,19 +340,19 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  protected def printArgsDefs(args: List[ValDef])(implicit ident: Ident, ctx: Context): Unit = {
+  private def printArgsDefs(args: List[ValDef])(implicit ident: Ident, ctx: Context): Unit = {
     out.append("(")
     printSeparated(args, ", ", printArgDef)
     out.append(")")
   }
 
-  protected def printArgDef(arg: ValDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printArgDef(arg: ValDef)(implicit ident: Ident, ctx: Context): Unit = {
     val ValDef(name, tpt, rhs) = arg
     out.append(name).append(": ")
     printTypeTree(tpt)
   }
 
-  protected def printCase(caseDef: CaseDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printCase(caseDef: CaseDef)(implicit ident: Ident, ctx: Context): Unit = {
     val CaseDef(pat, guard, body) = caseDef
     out.append("case ")
     printPattern(pat)
@@ -365,7 +365,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   }
 
-  protected def printPattern(pattern: Pattern)(implicit ident: Ident, ctx: Context): Unit = pattern match {
+  private def printPattern(pattern: Pattern)(implicit ident: Ident, ctx: Context): Unit = pattern match {
     case Pattern.Value(v) =>
       v match {
         case Term.Ident("_") => out.append("_")
@@ -387,17 +387,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   }
 
-  protected def printSeparated[U](list: List[U], sep: String, add: U => Unit): Unit = list match {
-    case x :: Nil =>
-      add(x)
+  private def printSeparated[U](list: List[U], sep: String, add: U => Unit): Unit = list match {
+    case Nil =>
+    case x :: Nil => add(x)
     case x :: xs =>
       add(x)
       out.append(sep)
       printSeparated(xs, sep, add)
-    case Nil =>
   }
 
-  protected def printConstant(const: Constant)(implicit ctx: Context): Unit = const match {
+  private def printConstant(const: Constant)(implicit ctx: Context): Unit = const match {
     case Constant.Unit() => out.append("()")
     case Constant.Null() => out.append("null")
     case Constant.Boolean(v) => out.append(v.toString)
@@ -411,12 +410,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Constant.String(v) => out.append('"').append(v.toString).append('"') // TODO escape string
   }
 
-  protected def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ident: Ident, ctx: Context): Unit = tpt match {
+  private def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ident: Ident, ctx: Context): Unit = tpt match {
     case TypeBoundsTree(lo, hi) => ???
     case tpt @ Type() => printType(tpt)
   }
 
-  protected def printTypeTree(tree: TypeTree)(implicit ident: Ident, ctx: Context): Unit = tree match {
+  private def printTypeTree(tree: TypeTree)(implicit ident: Ident, ctx: Context): Unit = tree match {
     case TypeTree.Synthetic() =>
       printType(tree.tpe)
 
@@ -464,12 +463,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   }
 
-  protected def printTypeOrBound(tpe: TypeOrBounds)(implicit ctx: Context): Unit = tpe match {
+  private def printTypeOrBound(tpe: TypeOrBounds)(implicit ctx: Context): Unit = tpe match {
     case tpe @ TypeBounds(lo, hi) => ???
     case tpe @ Type() => printType(tpe)
   }
 
-  protected def printType(tpe: Type)(implicit ctx: Context): Unit = tpe match {
+  private def printType(tpe: Type)(implicit ctx: Context): Unit = tpe match {
     case Type.ConstantType(const) =>
       printConstant(const)
 
