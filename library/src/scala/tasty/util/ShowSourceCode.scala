@@ -3,41 +3,36 @@ package util
 
 class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty._
-  import ShowSourceCode._
 
   private[this] val out = new StringBuilder
 
   def showTree(tree: Tree)(implicit ctx: Context): String = {
-    implicit val ident0 = new Ident(0)
     out.clear()
     printTree(tree)
     out.result()
   }
 
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = {
-    implicit val ident0 = new Ident(0)
     out.clear()
     printTypeOrBoundsTree(tpt)
     out.result()
   }
 
   def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = {
-    implicit val ident0 = new Ident(0)
     out.clear()
     printTypeOrBound(tpe)
     out.result()
   }
 
   def showConstant(const: Constant)(implicit ctx: Context): String = {
-    implicit val ident0 = new Ident(0)
     out.clear()
     printConstant(const)
     out.result()
   }
 
-  private def lineBreak(implicit ident: Ident): String = "\n" + ident.pad
+  private def lineBreak: String = "\n" + ("  " * indent)
 
-  private def printTree(tree: Tree)(implicit ident: Ident, ctx: Context): Unit = tree match {
+  private def printTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree @ PackageClause(Term.Ident(name), stats) =>
       val stats1 = stats.collect {
         case stat@Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
@@ -48,7 +43,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTrees(stats1, lineBreak)
       } else {
         out.append("package " + name + " {")
-        indented { implicit ident =>
+        indented {
           out.append(lineBreak)
           printTrees(stats1, lineBreak)
         }
@@ -66,7 +61,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       if (!cdef.flags.isObject) {
         printTargsDefs(targs)
-        argss.foreach(printArgsDefs)
+        argss.foreach(x => printArgsDefs(x))
       }
 
       val parents1 = parents.filter {
@@ -99,7 +94,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
       if (stats1.nonEmpty) {
         out.append(" {")
-        indented { implicit ident =>
+        indented {
           out.append(lineBreak)
           printTrees(stats1, lineBreak)
         }
@@ -225,7 +220,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         case _ =>
           out.append("{")
-          indented { implicit ident =>
+          indented {
             if (!stats.isEmpty) {
               out.append(lineBreak)
               printTrees(stats, lineBreak)
@@ -239,7 +234,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     case Term.Inlined(call, bindings, expansion) =>
       out.append("{ // inlined")
-      indented { implicit ident =>
+      indented {
         if (!bindings.isEmpty) {
           out.append(lineBreak)
           printTrees(bindings, lineBreak)
@@ -264,7 +259,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Term.Match(selector, cases) =>
       printTree(selector)
       out.append(" match {")
-      indented { implicit ident =>
+      indented {
         out.append(lineBreak)
         printCases(cases, lineBreak)
       }
@@ -304,7 +299,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  private def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTrees(trees: List[Tree], sep: String)(implicit ctx: Context): Unit = {
     def printSeparated(list: List[Tree]): Unit = list match {
       case Nil =>
       case x :: Nil => printTree(x)
@@ -316,7 +311,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     printSeparated(trees)
   }
 
-  private def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printCases(cases: List[CaseDef], sep: String)(implicit ctx: Context): Unit = {
     def printSeparated(list: List[CaseDef]): Unit = list match {
       case Nil =>
       case x :: Nil => printCase(x)
@@ -328,7 +323,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     printSeparated(cases)
   }
 
-  private def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ctx: Context): Unit = {
     def printSeparated(list: List[TypeTree]): Unit = list match {
       case Nil =>
       case x :: Nil => printTypeTree(x)
@@ -352,7 +347,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     printSeparated(types)
   }
 
-  private def printTargsDefs(targs: List[TypeDef])(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTargsDefs(targs: List[TypeDef])(implicit ctx: Context): Unit = {
     if (!targs.isEmpty) {
       def printSeparated(list: List[TypeDef]): Unit = list match {
         case Nil =>
@@ -368,7 +363,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  private def printTargDef(arg: TypeDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printTargDef(arg: TypeDef)(implicit ctx: Context): Unit = {
     val TypeDef(name, rhs) = arg
     out.append(name)
     rhs match {
@@ -391,7 +386,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  private def printArgsDefs(args: List[ValDef])(implicit ident: Ident, ctx: Context): Unit = {
+  private def printArgsDefs(args: List[ValDef])(implicit ctx: Context): Unit = {
     out.append("(")
     def printSeparated(list: List[ValDef]): Unit = list match {
       case Nil =>
@@ -405,26 +400,26 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     out.append(")")
   }
 
-  private def printArgDef(arg: ValDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printArgDef(arg: ValDef)(implicit ctx: Context): Unit = {
     val ValDef(name, tpt, rhs) = arg
     out.append(name).append(": ")
     printTypeTree(tpt)
   }
 
-  private def printCase(caseDef: CaseDef)(implicit ident: Ident, ctx: Context): Unit = {
+  private def printCase(caseDef: CaseDef)(implicit ctx: Context): Unit = {
     val CaseDef(pat, guard, body) = caseDef
     out.append("case ")
     printPattern(pat)
 //    out.append(" if ")
     out.append(" =>")
-    indented { implicit ident =>
+    indented {
       out.append(lineBreak)
       printTree(body)
     }
 
   }
 
-  private def printPattern(pattern: Pattern)(implicit ident: Ident, ctx: Context): Unit = pattern match {
+  private def printPattern(pattern: Pattern)(implicit ctx: Context): Unit = pattern match {
     case Pattern.Value(v) =>
       v match {
         case Term.Ident("_") => out.append("_")
@@ -460,12 +455,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Constant.String(v) => out.append('"').append(v.toString).append('"') // TODO escape string
   }
 
-  private def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ident: Ident, ctx: Context): Unit = tpt match {
+  private def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): Unit = tpt match {
     case TypeBoundsTree(lo, hi) => ???
     case tpt @ Type() => printType(tpt)
   }
 
-  private def printTypeTree(tree: TypeTree)(implicit ident: Ident, ctx: Context): Unit = tree match {
+  private def printTypeTree(tree: TypeTree)(implicit ctx: Context): Unit = tree match {
     case TypeTree.Synthetic() =>
       printType(tree.tpe)
 
@@ -482,7 +477,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case TypeTree.Refined(tpt, refinements) =>
       printTypeTree(tpt)
       out.append(" {")
-      indented { implicit ident =>
+      indented {
         out.append(lineBreak)
         printTrees(refinements, "; ")
       }
@@ -614,14 +609,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case PackageDef(name, _) => out.append(name)
   }
 
-  def indented(code: /*implicit*/ Ident => Unit)(implicit ident: Ident): Unit =
-    code(new Ident(ident.i + 1))
-
-}
-object ShowSourceCode {
-
-  private[ShowSourceCode] class Ident(val i: Int) extends AnyVal {
-    def pad: String = "  " * i
+  private[this] var indent: Int = 0
+  def indented(printIndented: => Unit): Unit = {
+    indent += 1
+    printIndented
+    indent -= 1
   }
 
 }
