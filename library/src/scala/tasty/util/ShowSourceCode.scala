@@ -61,7 +61,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       if (!cdef.flags.isObject) {
         printTargsDefs(targs)
-        argss.foreach((x: List[ValDef]) => printArgsDefs(x)(ctx))
+        val it = argss.iterator
+        while (it.hasNext)
+          printArgsDefs(it.next())
       }
 
       val parents1 = parents.filter {
@@ -130,7 +132,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       out.append("def " + name)
       printTargsDefs(targs)
-      argss.foreach((x: List[ValDef]) => printArgsDefs(x)(ctx))
+      val it = argss.iterator
+      while (it.hasNext)
+        printArgsDefs(it.next())
       out.append(": ")
       printTypeTree(tpt)
       rhs match {
