@@ -304,15 +304,66 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
-  private def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(trees, sep, printTree)
-  private def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(cases, sep, printCase)
-  private def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = printSeparated(typesTrees, sep, printTypeTree)
-  private def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit ctx: Context): Unit = printSeparated(types, sep, printTypeOrBound)
+  private def printTrees(trees: List[Tree], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+    def printSeparated(list: List[Tree]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printTree(x)
+      case x :: xs =>
+        printTree(x)
+        out.append(sep)
+        printSeparated(xs)
+    }
+    printSeparated(trees)
+  }
+
+  private def printCases(cases: List[CaseDef], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+    def printSeparated(list: List[CaseDef]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printCase(x)
+      case x :: xs =>
+        printCase(x)
+        out.append(sep)
+        printSeparated(xs)
+    }
+    printSeparated(cases)
+  }
+
+  private def printTypeTrees(typesTrees: List[TypeTree], sep: String)(implicit ident: Ident, ctx: Context): Unit = {
+    def printSeparated(list: List[TypeTree]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printTypeTree(x)
+      case x :: xs =>
+        printTypeTree(x)
+        out.append(sep)
+        printSeparated(xs)
+    }
+    printSeparated(typesTrees)
+  }
+
+  private def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit ctx: Context): Unit = {
+    def printSeparated(list: List[TypeOrBounds]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printTypeOrBound(x)
+      case x :: xs =>
+        printTypeOrBound(x)
+        out.append(sep)
+        printSeparated(xs)
+    }
+    printSeparated(types)
+  }
 
   private def printTargsDefs(targs: List[TypeDef])(implicit ident: Ident, ctx: Context): Unit = {
     if (!targs.isEmpty) {
+      def printSeparated(list: List[TypeDef]): Unit = list match {
+        case Nil =>
+        case x :: Nil => printTargDef(x)
+        case x :: xs =>
+          printTargDef(x)
+          out.append(", ")
+          printSeparated(xs)
+      }
       out.append("[")
-      printSeparated(targs, ", ", printTargDef)
+      printSeparated(targs)
       out.append("]")
     }
   }
@@ -342,7 +393,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   private def printArgsDefs(args: List[ValDef])(implicit ident: Ident, ctx: Context): Unit = {
     out.append("(")
-    printSeparated(args, ", ", printArgDef)
+    def printSeparated(list: List[ValDef]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printArgDef(x)
+      case x :: xs =>
+        printArgDef(x)
+        out.append(", ")
+        printSeparated(xs)
+    }
+    printSeparated(args)
     out.append(")")
   }
 
@@ -385,15 +444,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     case Pattern.TypeTest(_) =>
       ???
 
-  }
-
-  private def printSeparated[U](list: List[U], sep: String, add: U => Unit): Unit = list match {
-    case Nil =>
-    case x :: Nil => add(x)
-    case x :: xs =>
-      add(x)
-      out.append(sep)
-      printSeparated(xs, sep, add)
   }
 
   private def printConstant(const: Constant)(implicit ctx: Context): Unit = const match {
