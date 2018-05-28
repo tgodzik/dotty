@@ -479,7 +479,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => printTree(v)
         }
 
-      case Pattern.Bind(name, Pattern.Value(Pattern.Value("_"))) =>
+      case Pattern.Bind(name, Pattern.Value(Term.Ident("_"))) =>
         this += name
 
       case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
