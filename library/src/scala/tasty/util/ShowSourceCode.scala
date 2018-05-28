@@ -43,22 +43,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           if (name == "<empty>") {
             printTrees(stats1, lineBreak)
           } else {
-            sb.append("package " + name + " {")
+            this += "package " += name += " {"
             indented {
-              sb.append(lineBreak)
+              this += lineBreak
               printTrees(stats1, lineBreak)
             }
-            sb.append(lineBreak)
-            sb.append("}")
-            sb.append(lineBreak)
+            this += lineBreak += "}" += lineBreak
           }
 
         case cdef@ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
           val flags = cdef.flags
-          if (flags.isCase) sb.append("case ")
+          if (flags.isCase) this += "case "
 
-          if (cdef.flags.isObject) sb.append("object ").append(name.stripSuffix("$"))
-          else sb.append("class ").append(name)
+          if (cdef.flags.isObject) this += "object " += name.stripSuffix("$")
+          else this += "class " += name
 
           if (!cdef.flags.isObject) {
             printTargsDefs(targs)
@@ -76,12 +74,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             sb.append(" extends")
             parents1.foreach {
               case parent@Term.Apply(Term.Select(Term.New(tpt), _, _), args) =>
-                sb.append(" ")
+                this += " "
                 printTypeTree(tpt)
                 if (args.nonEmpty) {
-                  sb.append("(")
+                  this += "("
                   printTrees(args, ", ")
-                  sb.append(")")
+                  this += ")"
                 }
 
               case parent@TypeTree() =>
@@ -96,33 +94,31 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             case stat@Term() => stat
           }
           if (stats1.nonEmpty) {
-            sb.append(" {")
+            this += " {"
             indented {
-              sb.append(lineBreak)
+              this += lineBreak
               printTrees(stats1, lineBreak)
             }
-            sb.append(lineBreak)
-            sb.append("}")
+            this += lineBreak += "}"
           }
 
         case tdef@TypeDef(name, rhs) =>
-          sb.append("type ")
+          this += "type "
           printTargDef(tdef)
 
         case vdef@ValDef(name, tpt, rhs) =>
           val flags = vdef.flags
-          if (flags.isOverride) sb.append("override ")
+          if (flags.isOverride) this += "override "
 
-          if (flags.isLazy) sb.append("lazy ")
-          if (vdef.flags.isMutable) sb.append("var ")
-          else sb.append("val ")
+          if (flags.isLazy) this += "lazy "
+          if (vdef.flags.isMutable) this += "var "
+          else this += "val "
 
-          sb.append(name)
-          sb.append(": ")
+          this += name += ": "
           printTypeTree(tpt)
           rhs match {
             case Some(tree) =>
-              sb.append(" = ")
+              this += " = "
               printTree(tree)
             case None =>
           }
@@ -131,16 +127,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           val flags = ddef.flags
           if (flags.isOverride) sb.append("override ")
 
-          sb.append("def " + name)
+          this += "def " += name
           printTargsDefs(targs)
           val it = argss.iterator
           while (it.hasNext)
             printArgsDefs(it.next())
-          sb.append(": ")
+          this += ": "
           printTypeTree(tpt)
           rhs match {
             case Some(tree) =>
-              sb.append(" = ")
+              this += " = "
               printTree(tree)
             case None =>
           }
@@ -151,50 +147,50 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case Term.Select(qual, name, sig) =>
           printTree(qual)
           if (name != "<init>")
-            sb.append(".").append(name)
+            this += "." += name
 
         case Term.Literal(const) =>
           printConstant(const)
 
         case Term.This(id) =>
-          sb.append("this") // TODO add id
+          this += "this" // TODO add id
 
         case Term.New(tpt) =>
-          sb.append("new ")
+          this += "new "
           printTypeTree(tpt)
 
         case Term.NamedArg(name, arg) =>
           ???
 
         case SpecialOp("throw", expr :: Nil) =>
-          sb.append("throw ")
+          this += "throw "
           printTree(expr)
 
         case Term.Apply(fn, args) =>
           printTree(fn)
-          sb.append("(")
+          this += "("
           printTrees(args, ", ")
-          sb.append(")")
+          this += ")"
 
         case Term.TypeApply(fn, args) =>
           printTree(fn)
-          sb.append("[")
+          this += "["
           printTypeTrees(args, ", ")
-          sb.append("]")
+          this += "]"
 
         case Term.Super(qual, tptOpt) =>
           ???
 
         case Term.Typed(term, tpt) =>
-          sb.append("(")
+          this += "("
           printTree(term)
-          sb.append(": ")
+          this += ": "
           printTypeTree(tpt)
-          sb.append(")")
+          this += ")"
 
         case Term.Assign(lhs, rhs) =>
           printTree(lhs)
-          sb.append(" = ")
+          this += " = "
           printTree(rhs)
 
         case Term.Block(stats, expr) =>
@@ -202,74 +198,72 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             case Term.Lambda(_, _) =>
               // Decompile lambda from { def annon$(...) = ...; closure(annon$, ...)}
               val DefDef(_, _, args :: Nil, _, Some(rhs)) :: Nil = stats
-              sb.append("(")
+              this += "("
               printArgsDefs(args)
-              sb.append(" => ")
+              this += " => "
               printTree(rhs)
-              sb.append(")")
+              this += ")"
 
             case Term.Apply(Term.Ident("while$"), _) =>
               val DefDef("while$", _, _, _, Some(Term.If(cond, Term.Block(body :: Nil, _), _))) = stats.head
-              sb.append("while (")
+              this += "while ("
               printTree(cond)
-              sb.append(") ")
+              this += ") "
               printTree(body)
 
             case Term.Apply(Term.Ident("doWhile$"), _) =>
               val DefDef("doWhile$", _, _, _, Some(Term.Block(List(body), Term.If(cond, _, _)))) = stats.head
-              sb.append("do ")
+              this += "do "
               printTree(body)
-              sb.append(" while (")
+              this += " while ("
               printTree(cond)
-              sb.append(")")
+              this += ")"
 
             case _ =>
-              sb.append("{")
+              this += "{"
               indented {
                 if (!stats.isEmpty) {
-                  sb.append(lineBreak)
+                  this += lineBreak
                   printTrees(stats, lineBreak)
                 }
-                sb.append(lineBreak)
+                this += lineBreak
                 printTree(expr)
               }
-              sb.append(lineBreak)
-              sb.append("}")
+              this += lineBreak += "}"
           }
 
         case Term.Inlined(call, bindings, expansion) =>
           sb.append("{ // inlined")
           indented {
             if (!bindings.isEmpty) {
-              sb.append(lineBreak)
+              this += lineBreak
               printTrees(bindings, lineBreak)
             }
-            sb.append(lineBreak)
+            this += lineBreak
             printTree(expansion)
           }
-          sb.append(lineBreak)
-          sb.append("}")
+          this += lineBreak
+          this += "}"
 
         case Term.Lambda(meth, tpt) =>
         // Printed in Term.Block branch
 
         case Term.If(cond, thenp, elsep) =>
-          sb.append("if (")
+          this += "if ("
           printTree(cond)
-          sb.append(") ")
+          this += ") "
           printTree(thenp)
-          sb.append(" else ")
+          this += " else "
           printTree(elsep)
 
         case Term.Match(selector, cases) =>
           printTree(selector)
-          sb.append(" match {")
+          this += " match {"
           indented {
-            sb.append(lineBreak)
+            this += lineBreak
             printCases(cases, lineBreak)
           }
-          sb.append(lineBreak)
-          sb.append("}")
+          this += lineBreak += "}"
 
         case Term.Try(_, _, _) =>
           ???
@@ -295,7 +289,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case x :: Nil => printTree(x)
         case x :: xs =>
           printTree(x)
-          sb.append(sep)
+          this += sep
           printSeparated(xs)
       }
 
@@ -308,7 +302,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case x :: Nil => printCase(x)
         case x :: xs =>
           printCase(x)
-          sb.append(sep)
+          this += sep
           printSeparated(xs)
       }
 
@@ -321,7 +315,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case x :: Nil => printTypeTree(x)
         case x :: xs =>
           printTypeTree(x)
-          sb.append(sep)
+          this += sep
           printSeparated(xs)
       }
 
@@ -334,7 +328,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case x :: Nil => printTypeOrBound(x)
         case x :: xs =>
           printTypeOrBound(x)
-          sb.append(sep)
+          this += sep
           printSeparated(xs)
       }
 
@@ -348,13 +342,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case x :: Nil => printTargDef(x)
           case x :: xs =>
             printTargDef(x)
-            sb.append(", ")
+            this += ", "
             printSeparated(xs)
         }
 
-        sb.append("[")
+        this += "["
         printSeparated(targs)
-        sb.append("]")
+        this += "]"
       }
     }
 
@@ -366,51 +360,51 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           lo match {
             case TypeTree.Synthetic() =>
             case _ =>
-              sb.append(" >: ")
+              this += " >: "
               printTypeTree(lo)
           }
           hi match {
             case TypeTree.Synthetic() =>
             case _ =>
-              sb.append(" <: ")
+              this += " <: "
               printTypeTree(hi)
           }
         case tpt@TypeTree() =>
-          sb.append(" = ")
+          this += " = "
           printTypeTree(tpt)
       }
     }
 
     def printArgsDefs(args: List[ValDef]): Unit = {
-      sb.append("(")
+      this += "("
 
       def printSeparated(list: List[ValDef]): Unit = list match {
         case Nil =>
         case x :: Nil => printArgDef(x)
         case x :: xs =>
           printArgDef(x)
-          sb.append(", ")
+          this += ", "
           printSeparated(xs)
       }
 
       printSeparated(args)
-      sb.append(")")
+      this += ")"
     }
 
     def printArgDef(arg: ValDef): Unit = {
       val ValDef(name, tpt, rhs) = arg
-      sb.append(name).append(": ")
+      this += name += ": "
       printTypeTree(tpt)
     }
 
     def printCase(caseDef: CaseDef): Unit = {
       val CaseDef(pat, guard, body) = caseDef
-      sb.append("case ")
+      this += "case "
       printPattern(pat)
       //    out.append(" if ")
-      sb.append(" =>")
+      this += " =>"
       indented {
-        sb.append(lineBreak)
+        this += lineBreak
         printTree(body)
       }
 
@@ -424,7 +418,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
-        sb.append(name).append(": ")
+        this += name += ": "
         printTypeTree(tpt)
 
       case Pattern.Unapply(_, _, _) =>
@@ -438,21 +432,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     }
 
-    def printConstant(const: Constant): Buffer = {
-      const match {
-        case Constant.Unit() => sb.append("()")
-        case Constant.Null() => sb.append("null")
-        case Constant.Boolean(v) => sb.append(v.toString)
-        case Constant.Byte(v) => sb.append(v)
-        case Constant.Short(v) => sb.append(v)
-        case Constant.Int(v) => sb.append(v)
-        case Constant.Long(v) => sb.append(v).append("L")
-        case Constant.Float(v) => sb.append(v)
-        case Constant.Double(v) => sb.append(v)
-        case Constant.Char(v) => sb.append('\'').append(v.toString).append('\'') // TODO escape char
-        case Constant.String(v) => sb.append('"').append(v.toString).append('"') // TODO escape string
-      }
-      this
+    def printConstant(const: Constant): Buffer = const match {
+      case Constant.Unit() => this += "()"
+      case Constant.Null() => this += "null"
+      case Constant.Boolean(v) => this += v.toString
+      case Constant.Byte(v) => this += v
+      case Constant.Short(v) => this += v
+      case Constant.Int(v) => this += v
+      case Constant.Long(v) => this += v += "L"
+      case Constant.Float(v) => this += v
+      case Constant.Double(v) => this += v
+      case Constant.Char(v) => this += '\'' += v.toString += '\'' // TODO escape char
+      case Constant.String(v) => this += '"' += v.toString += '"' // TODO escape string
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = {
@@ -473,38 +464,37 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         case TypeTree.TypeSelect(qual, name) =>
           printTree(qual)
-          sb.append(".").append(name)
+          this += "." += name
 
         case TypeTree.Singleton(_) =>
           ???
 
         case TypeTree.Refined(tpt, refinements) =>
           printTypeTree(tpt)
-          sb.append(" {")
+          this += " {"
           indented {
-            sb.append(lineBreak)
+            this += lineBreak
             printTrees(refinements, "; ")
           }
-          sb.append(lineBreak)
-          sb.append("}")
+          this += lineBreak += "}"
 
         case TypeTree.Applied(tpt, args) =>
           printTypeTree(tpt)
-          sb.append("[")
+          this += "["
           printTypeTrees(args, ", ")
-          sb.append("]")
+          this += "]"
 
         case TypeTree.Annotated(tpt, annots) =>
           ???
 
         case TypeTree.And(left, right) =>
           printTypeTree(left)
-          sb.append(" & ")
+          this += " & "
           printTypeTree(right)
 
         case TypeTree.Or(left, right) =>
           printTypeTree(left)
-          sb.append(" | ")
+          this += " | "
           printTypeTree(right)
 
         case TypeTree.ByName(_) =>
@@ -529,10 +519,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             case Type.ThisType(Type.SymRef(PackageDef(pack, _), NoPrefix())) if pack == "<root>" || pack == "<empty>" =>
             case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
               printType(prefix)
-              sb.append("#")
+              this += "#"
             case prefix@Type() =>
               printType(prefix)
-              sb.append(".")
+              this += "."
             case prefix@NoPrefix() =>
           }
           printDefinitionName(sym)
@@ -542,16 +532,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             case prefix@Type() =>
               printType(prefix)
               if (name != "package")
-                sb.append(".").append(name)
+                this += "." += name
             case NoPrefix() =>
-              sb.append(name)
+              this += name
           }
 
         case Type.TypeRef(name, prefix) =>
           prefix match {
             case prefix@Type() =>
               printType(prefix)
-              sb.append(".")
+              this += "."
             case NoPrefix() =>
           }
           sb.append(name.stripSuffix("$"))
@@ -565,21 +555,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         case Type.AppliedType(tp, args) =>
           printType(tp)
-          sb.append("[")
+          this += "["
           printTypesOrBounds(args, ", ")
-          sb.append("]")
+          this += "]"
 
         case Type.AnnotatedType(tp, annot) =>
           printType(tp)
 
         case Type.AndType(left, right) =>
           printType(left)
-          sb.append(" & ")
+          this += " & "
           printType(right)
 
         case Type.OrType(left, right) =>
           printType(left)
-          sb.append(" | ")
+          this += " | "
           printType(right)
 
         case Type.ByNameType(tp) =>
@@ -611,12 +601,23 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printDefinitionName(sym: Definition): Unit = sym match {
-      case ValDef(name, _, _) => sb.append(name)
-      case DefDef(name, _, _, _, _) => sb.append(name)
-      case ClassDef(name, _, _, _, _) => sb.append(name.stripSuffix("$"))
-      case TypeDef(name, _) => sb.append(name)
-      case PackageDef(name, _) => sb.append(name)
+      case ValDef(name, _, _) => this += name
+      case DefDef(name, _, _, _, _) => this += name
+      case ClassDef(name, _, _, _, _) => this += name.stripSuffix("$")
+      case TypeDef(name, _) => this += name
+      case PackageDef(name, _) => this += name
     }
+
+    def +=(x: Boolean): this.type = { sb.append(x); this }
+    def +=(x: Byte): this.type = { sb.append(x); this }
+    def +=(x: Short): this.type = { sb.append(x); this }
+    def +=(x: Int): this.type = { sb.append(x); this }
+    def +=(x: Long): this.type = { sb.append(x); this }
+    def +=(x: Float): this.type = { sb.append(x); this }
+    def +=(x: Double): this.type = { sb.append(x); this }
+    def +=(x: Char): this.type = { sb.append(x); this }
+    def +=(x: String): this.type = { sb.append(x); this }
+
   }
 
 
