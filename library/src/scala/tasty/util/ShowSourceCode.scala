@@ -49,6 +49,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           this += lineBreak += "}" += lineBreak
         }
 
+      case Import(expr, selectors) =>
+        this += "import "
+        printTree(expr)
+        this += "."
+        printImportSelectors(selectors)
+
       case cdef@ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
         val flags = cdef.flags
         if (flags.isCase) this += "case "
@@ -71,6 +77,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (parents1.nonEmpty) {
           sb.append(" extends")
           parents1.foreach {
+            case parent@Term.Apply(Term.TypeApply(Term.Select(Term.New(tpt), _, _), targs), args) =>
+              this += " "
+              printTypeTree(tpt)
+              this += "["
+              printTypeTrees(targs, ", ")
+              this += "]"
+              if (args.nonEmpty) {
+                this += "("
+                printTrees(args, ", ")
+                this += ")"
+              }
+
             case parent@Term.Apply(Term.Select(Term.New(tpt), _, _), args) =>
               this += " "
               printTypeTree(tpt)
@@ -120,8 +138,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += " = "
             printTree(tree)
           case None =>
+            this
         }
-        this
 
       case ddef@DefDef(name, targs, argss, tpt, rhs) =>
         val flags = ddef.flags
@@ -162,7 +180,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(tpt)
 
       case Term.NamedArg(name, arg) =>
-        ???
+        this += name += " = "
+        printTree(arg)
 
       case SpecialOp("throw", expr :: Nil) =>
         this += "throw "
@@ -267,11 +286,24 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this += lineBreak += "}"
 
-      case Term.Try(_, _, _) =>
-        ???
+      case Term.Try(body, cases, finallyOpt) =>
+        this += "try "
+        printTree(body)
+        if (cases.nonEmpty) {
+          this += " catch "
+          printCases(cases, lineBreak)
+        }
+        finallyOpt match {
+          case Some(t) =>
+            this += " finally "
+            printTree(t)
+          case None =>
+            this
+        }
 
-      case Term.Return(_) =>
-        ???
+      case Term.Return(expr) =>
+        this += "}"
+        printTree(expr)
 
       case Term.Repeated(elems) =>
         printTrees(elems, ", ")
@@ -294,12 +326,39 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this
     }
 
+    def printImportSelectors(selectors: List[ImportSelector]): Buffer = {
+      def printSeparated(list: List[ImportSelector]): Unit = list match {
+        case Nil =>
+        case x :: Nil => printImportSelector(x)
+        case x :: xs =>
+          printImportSelector(x)
+          this += ", "
+          printSeparated(xs)
+      }
+      this += "{"
+      printSeparated(selectors)
+      this += "}"
+    }
+
     def printCases(cases: List[CaseDef], sep: String): Buffer = {
       def printSeparated(list: List[CaseDef]): Unit = list match {
         case Nil =>
         case x :: Nil => printCase(x)
         case x :: xs =>
           printCase(x)
+          this += sep
+          printSeparated(xs)
+      }
+      printSeparated(cases)
+      this
+    }
+
+    def printPatterns(cases: List[Pattern], sep: String): Buffer = {
+      def printSeparated(list: List[Pattern]): Unit = list match {
+        case Nil =>
+        case x :: Nil => printPattern(x)
+        case x :: xs =>
+          printPattern(x)
           this += sep
           printSeparated(xs)
       }
@@ -399,7 +458,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       val CaseDef(pat, guard, body) = caseDef
       this += "case "
       printPattern(pat)
-      //    out.append(" if ")
+      guard match {
+        case Some(t) =>
+          this += " if "
+          printTree(t)
+        case None =>
+      }
       this += " =>"
       indented {
         this += lineBreak
@@ -415,17 +479,27 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => printTree(v)
         }
 
+      case Pattern.Bind(name, Pattern.Value(Pattern.Value("_"))) =>
+        this += name
+
       case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
         this += name += ": "
         printTypeTree(tpt)
 
-      case Pattern.Unapply(_, _, _) =>
-        ???
+      case Pattern.Bind(name, pattern) =>
+        this += name += "@ "
+        printPattern(pattern)
 
-      case Pattern.Alternative(_) =>
-        ???
+      case Pattern.Unapply(fun, implicits, patterns) =>
+        printTree(fun)
+        this += "("
+        printPatterns(patterns, ", ")
+        this += ")"
 
-      case Pattern.TypeTest(_) =>
+      case Pattern.Alternative(trees) =>
+        printPatterns(trees, " | ")
+
+      case Pattern.TypeTest(tpt) =>
         ???
 
     }
@@ -449,57 +523,60 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tpt@Type() => printType(tpt)
     }
 
-    def printTypeTree(tree: TypeTree): Buffer = {
-      tree match {
-        case TypeTree.Synthetic() =>
-          printType(tree.tpe)
+    def printTypeTree(tree: TypeTree): Buffer = tree match {
+      case TypeTree.Synthetic() =>
+        printType(tree.tpe)
 
-        case TypeTree.TypeIdent(name) =>
-          printType(tree.tpe)
+      case TypeTree.TypeIdent(name) =>
+        printType(tree.tpe)
 
-        case TypeTree.TypeSelect(qual, name) =>
-          printTree(qual) += "." += name
+      case TypeTree.TypeSelect(qual, name) =>
+        printTree(qual) += "." += name
 
-        case TypeTree.Singleton(_) =>
-          ???
+      case TypeTree.Singleton(ref) =>
+        printTree(ref)
 
-        case TypeTree.Refined(tpt, refinements) =>
-          printTypeTree(tpt)
-          this += " {"
-          indented {
-            this += lineBreak
-            printTrees(refinements, "; ")
-          }
-          this += lineBreak += "}"
+      case TypeTree.Refined(tpt, refinements) =>
+        printTypeTree(tpt)
+        this += " {"
+        indented {
+          this += lineBreak
+          printTrees(refinements, "; ")
+        }
+        this += lineBreak += "}"
 
-        case TypeTree.Applied(tpt, args) =>
-          printTypeTree(tpt)
-          this += "["
-          printTypeTrees(args, ", ")
-          this += "]"
+      case TypeTree.Applied(tpt, args) =>
+        printTypeTree(tpt)
+        this += "["
+        printTypeTrees(args, ", ")
+        this += "]"
 
-        case TypeTree.Annotated(tpt, annots) =>
-          ???
+      case TypeTree.Annotated(tpt, annots) =>
+        printTypeTree(tpt)
+        // TODO print annots
 
-        case TypeTree.And(left, right) =>
-          printTypeTree(left)
-          this += " & "
-          printTypeTree(right)
+      case TypeTree.And(left, right) =>
+        printTypeTree(left)
+        this += " & "
+        printTypeTree(right)
 
-        case TypeTree.Or(left, right) =>
-          printTypeTree(left)
-          this += " | "
-          printTypeTree(right)
+      case TypeTree.Or(left, right) =>
+        printTypeTree(left)
+        this += " | "
+        printTypeTree(right)
 
-        case TypeTree.ByName(_) =>
-          ???
+      case TypeTree.ByName(result) =>
+        this += "=> "
+        printTypeTree(result)
 
-      }
-      this
     }
 
     def printTypeOrBound(tpe: TypeOrBounds): Buffer = tpe match {
-      case tpe@TypeBounds(lo, hi) => ???
+      case tpe@TypeBounds(lo, hi) =>
+        this += " >: "
+        printType(lo)
+        this += " <: "
+        printType(hi)
       case tpe@Type() => printType(tpe)
     }
 
@@ -540,12 +617,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           }
           sb.append(name.stripSuffix("$"))
 
-        case Type.SuperType(_, _) =>
+        case Type.SuperType(thistpe, supertpe) =>
           ???
 
         case Type.Refinement(parent, name, info) =>
           printType(parent)
-        // TODO add refinements
+          // TODO add refinements
 
         case Type.AppliedType(tp, args) =>
           printType(tp)
@@ -569,7 +646,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case Type.ByNameType(tp) =>
           ???
 
-        case Type.ParamRef(_, _) =>
+        case Type.ParamRef(binder, idx) =>
           ???
 
         case Type.ThisType(tp) =>
@@ -581,17 +658,23 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case Type.RecursiveType(tp) =>
           ???
 
-        case Type.MethodType(_, _, _) =>
+        case Type.MethodType(paramNames, paramTypes, resTyp) =>
           ???
 
-        case Type.PolyType(_, _, _) =>
+        case Type.PolyType(paramNames, paramBounds, resTyp) =>
           ???
 
-        case Type.TypeLambda(_, _, _) =>
+        case Type.TypeLambda(paramNames, paramBounds, resTyp) =>
           ???
 
       }
       this
+    }
+
+    def printImportSelector(sel: ImportSelector): Buffer = sel match {
+      case SimpleSelector(Id(name)) => this += name
+      case OmitSelector(Id(name)) => this += name += " => _"
+      case RenameSelector(Id(name), Id(newName)) => this += name += " => " += newName
     }
 
     def printDefinitionName(sym: Definition): Unit = sym match {
