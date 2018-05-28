@@ -313,100 +313,37 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     }
 
-    def printTrees(trees: List[Tree], sep: String): Buffer = {
-      def printSeparated(list: List[Tree]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printTree(x)
-        case x :: xs =>
-          printTree(x)
-          this += sep
-          printSeparated(xs)
+    def printTrees(trees: List[Tree], sep: String): Buffer = printSeparated(trees, sep, printTree)
+    def printCases(cases: List[CaseDef], sep: String): Buffer = printSeparated(cases, sep, printCase)
+    def printPatterns(patterns: List[Pattern], sep: String): Buffer = printSeparated(patterns, sep, printPattern)
+    def printTypeTrees(typesTrees: List[TypeTree], sep: String): Buffer = printSeparated(typesTrees, sep, printTypeTree)
+    def printTypesOrBounds(types: List[TypeOrBounds], sep: String): Buffer = printSeparated(types, sep, printTypeOrBound)
+
+    def printTargsDefs(targs: List[TypeDef]): Unit = {
+      if (!targs.isEmpty) {
+        this += "["
+        printSeparated(targs, ", ", printTargDef)
+        this += "]"
       }
-      printSeparated(trees)
-      this
     }
 
     def printImportSelectors(selectors: List[ImportSelector]): Buffer = {
-      def printSeparated(list: List[ImportSelector]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printImportSelector(x)
-        case x :: xs =>
-          printImportSelector(x)
-          this += ", "
-          printSeparated(xs)
-      }
       this += "{"
-      printSeparated(selectors)
+      printSeparated(selectors, ", ", printImportSelector)
       this += "}"
     }
 
-    def printCases(cases: List[CaseDef], sep: String): Buffer = {
-      def printSeparated(list: List[CaseDef]): Unit = list match {
+    def printSeparated[U](typesTrees: List[U], sep: String, print: U => Unit): Buffer = {
+      def printSeparated(list: List[U]): Unit = list match {
         case Nil =>
-        case x :: Nil => printCase(x)
+        case x :: Nil => print(x)
         case x :: xs =>
-          printCase(x)
-          this += sep
-          printSeparated(xs)
-      }
-      printSeparated(cases)
-      this
-    }
-
-    def printPatterns(cases: List[Pattern], sep: String): Buffer = {
-      def printSeparated(list: List[Pattern]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printPattern(x)
-        case x :: xs =>
-          printPattern(x)
-          this += sep
-          printSeparated(xs)
-      }
-      printSeparated(cases)
-      this
-    }
-
-    def printTypeTrees(typesTrees: List[TypeTree], sep: String): Buffer = {
-      def printSeparated(list: List[TypeTree]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printTypeTree(x)
-        case x :: xs =>
-          printTypeTree(x)
+          print(x)
           this += sep
           printSeparated(xs)
       }
       printSeparated(typesTrees)
       this
-    }
-
-    def printTypesOrBounds(types: List[TypeOrBounds], sep: String): Buffer = {
-      def printSeparated(list: List[TypeOrBounds]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printTypeOrBound(x)
-        case x :: xs =>
-          printTypeOrBound(x)
-          this += sep
-          printSeparated(xs)
-      }
-      printSeparated(types)
-      this
-    }
-
-    def printTargsDefs(targs: List[TypeDef]): Unit = {
-      if (!targs.isEmpty) {
-        def printSeparated(list: List[TypeDef]): Unit = list match {
-          case Nil =>
-          case x :: Nil => printTargDef(x)
-          case x :: xs =>
-            printTargDef(x)
-            this += ", "
-            printSeparated(xs)
-        }
-
-        this += "["
-        printSeparated(targs)
-        this += "]"
-      }
     }
 
     def printTargDef(arg: TypeDef): Buffer = {
@@ -434,17 +371,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printArgsDefs(args: List[ValDef]): Unit = {
       this += "("
-
-      def printSeparated(list: List[ValDef]): Unit = list match {
-        case Nil =>
-        case x :: Nil => printArgDef(x)
-        case x :: xs =>
-          printArgDef(x)
-          this += ", "
-          printSeparated(xs)
-      }
-
-      printSeparated(args)
+      printSeparated(args, ", ", printArgDef)
       this += ")"
     }
 
