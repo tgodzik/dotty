@@ -15,12 +15,7 @@ object Main extends dotc.Driver {
     val outputDir = ctx.settings.outputDir.value
     if (outputDir != ".")
       Files.deleteIfExists(Paths.get(outputDir + "/decompiled.scala"))
-    new TASTYDecompiler(
-      ctx.settings.pageWidth.value,
-      ctx.settings.printLines.value,
-      ctx.settings.printTasty.value,
-      outputDir
-    )
+    new TASTYDecompiler
   }
 
   override def setup(args0: Array[String], rootCtx: Context): (List[String], Context) = {

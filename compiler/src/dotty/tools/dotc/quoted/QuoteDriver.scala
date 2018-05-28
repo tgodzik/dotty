@@ -27,7 +27,7 @@ class QuoteDriver extends Driver {
         new VirtualDirectory("(memory)", None)
     }
 
-    val driver = new ExprCompiler(outDir)
+    val driver = new QuoteCompiler(outDir)
     driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
@@ -51,13 +51,11 @@ class QuoteDriver extends Driver {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
-    val reflector = new ExprReflector {
-      def reflect(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-        assert(output.isEmpty)
-        output = Some(f(tree, ctx))
-      }
+    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
+      assert(output.isEmpty)
+      output = Some(f(tree, ctx))
     }
-    reflector.newRun(ctx).compileExpr(expr)
+    new QuoteDecompiler(registerTree).newRun(ctx).compileExpr(expr)
     output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
@@ -65,13 +63,11 @@ class QuoteDriver extends Driver {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
-    val reflector = new TypeReflector {
-      def reflect(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-        assert(output.isEmpty)
-        output = Some(f(tree.asInstanceOf[TypTree], ctx))
-      }
+    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
+      assert(output.isEmpty)
+      output = Some(f(tree.asInstanceOf[TypTree], ctx))
     }
-    reflector.newRun(ctx).compileType(tpe)
+    new QuoteDecompiler(registerTree).newRun(ctx).compileType(tpe)
     output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
