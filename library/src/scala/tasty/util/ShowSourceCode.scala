@@ -500,7 +500,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printPatterns(trees, " | ")
 
       case Pattern.TypeTest(tpt) =>
-        ???
+        this
 
     }
 
@@ -580,95 +580,92 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tpe@Type() => printType(tpe)
     }
 
-    def printType(tpe: Type): Buffer = {
-      tpe match {
-        case Type.ConstantType(const) =>
-          printConstant(const)
+    def printType(tpe: Type): Buffer = tpe match {
+      case Type.ConstantType(const) =>
+        printConstant(const)
 
-        case Type.SymRef(sym, prefix) =>
-          prefix match {
-            case Type.ThisType(Type.SymRef(PackageDef(pack, _), NoPrefix())) if pack == "<root>" || pack == "<empty>" =>
-            case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
-              printType(prefix)
-              this += "#"
-            case prefix@Type() =>
-              printType(prefix)
-              this += "."
-            case prefix@NoPrefix() =>
-          }
-          printDefinitionName(sym)
+      case Type.SymRef(sym, prefix) =>
+        prefix match {
+          case Type.ThisType(Type.SymRef(PackageDef(pack, _), NoPrefix())) if pack == "<root>" || pack == "<empty>" =>
+          case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
+            printType(prefix)
+            this += "#"
+          case prefix@Type() =>
+            printType(prefix)
+            this += "."
+          case prefix@NoPrefix() =>
+        }
+        printDefinitionName(sym)
 
-        case Type.TermRef(name, prefix) =>
-          prefix match {
-            case prefix@Type() =>
-              printType(prefix)
-              if (name != "package")
-                this += "." += name
-            case NoPrefix() =>
-              this += name
-          }
+      case Type.TermRef(name, prefix) =>
+        prefix match {
+          case prefix@Type() =>
+            printType(prefix)
+            if (name != "package")
+              this += "." += name
+            this
+          case NoPrefix() =>
+            this += name
+        }
 
-        case Type.TypeRef(name, prefix) =>
-          prefix match {
-            case prefix@Type() =>
-              printType(prefix)
-              this += "."
-            case NoPrefix() =>
-          }
-          sb.append(name.stripSuffix("$"))
+      case Type.TypeRef(name, prefix) =>
+        prefix match {
+          case prefix@Type() =>
+            printType(prefix)
+            this += "."
+          case NoPrefix() =>
+        }
+        this += name.stripSuffix("$")
 
-        case Type.SuperType(thistpe, supertpe) =>
-          ???
+      case Type.SuperType(thistpe, supertpe) =>
+        ???
 
-        case Type.Refinement(parent, name, info) =>
-          printType(parent)
-          // TODO add refinements
+      case Type.Refinement(parent, name, info) =>
+        printType(parent)
+        // TODO add refinements
 
-        case Type.AppliedType(tp, args) =>
-          printType(tp)
-          this += "["
-          printTypesOrBounds(args, ", ")
-          this += "]"
+      case Type.AppliedType(tp, args) =>
+        printType(tp)
+        this += "["
+        printTypesOrBounds(args, ", ")
+        this += "]"
 
-        case Type.AnnotatedType(tp, annot) =>
-          printType(tp)
+      case Type.AnnotatedType(tp, annot) =>
+        printType(tp)
 
-        case Type.AndType(left, right) =>
-          printType(left)
-          this += " & "
-          printType(right)
+      case Type.AndType(left, right) =>
+        printType(left)
+        this += " & "
+        printType(right)
 
-        case Type.OrType(left, right) =>
-          printType(left)
-          this += " | "
-          printType(right)
+      case Type.OrType(left, right) =>
+        printType(left)
+        this += " | "
+        printType(right)
 
-        case Type.ByNameType(tp) =>
-          ???
+      case Type.ByNameType(tp) =>
+        ???
 
-        case Type.ParamRef(binder, idx) =>
-          ???
+      case Type.ParamRef(binder, idx) =>
+        ???
 
-        case Type.ThisType(tp) =>
-          printType(tp)
+      case Type.ThisType(tp) =>
+        printType(tp)
 
-        case Type.RecursiveThis(rec) =>
-          ???
+      case Type.RecursiveThis(rec) =>
+        ???
 
-        case Type.RecursiveType(tp) =>
-          ???
+      case Type.RecursiveType(tp) =>
+        ???
 
-        case Type.MethodType(paramNames, paramTypes, resTyp) =>
-          ???
+      case Type.MethodType(paramNames, paramTypes, resType) =>
+        ???
 
-        case Type.PolyType(paramNames, paramBounds, resTyp) =>
-          ???
+      case Type.PolyType(paramNames, paramBounds, resType) =>
+        ???
 
-        case Type.TypeLambda(paramNames, paramBounds, resTyp) =>
-          ???
-
-      }
-      this
+      case Type.TypeLambda(paramNames, paramBounds, resType) =>
+        ???
     }
 
     def printImportSelector(sel: ImportSelector): Buffer = sel match {
@@ -677,7 +674,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case RenameSelector(Id(name), Id(newName)) => this += name += " => " += newName
     }
 
-    def printDefinitionName(sym: Definition): Unit = sym match {
+    def printDefinitionName(sym: Definition): Buffer = sym match {
       case ValDef(name, _, _) => this += name
       case DefDef(name, _, _, _, _) => this += name
       case ClassDef(name, _, _, _, _) => this += name.stripSuffix("$")
