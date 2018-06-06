@@ -1,5 +1,7 @@
 object Invalid {
-  // Nothing for now
+  transparent def f(x: Int) = x + 1
+  f(1): String  // error
+  f(1): {0}  // error
 }
 
 // object SimpleEqs {
