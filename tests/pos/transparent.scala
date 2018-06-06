@@ -1,11 +1,15 @@
 object SimpleEqs {
   val x = 1
   val y: {x} = x
-  val z: {y + 1} = y + 1
+  // val z: {y + 1} = y + 1
 
   type YPlusOne = {y + 1}
 }
 
+object Call {
+  transparent def foo(x: Int) = ???
+  val a: { foo(3) } = foo(1)
+}
 
 // object AvoidLocalRefs {
 //   type Id[T] = T
