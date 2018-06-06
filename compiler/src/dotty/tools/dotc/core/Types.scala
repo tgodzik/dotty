@@ -4093,7 +4093,7 @@ object Types {
 
         case tp: TypeOf =>
           // TODO: Don't clone if type is unchanged
-          def copyMapped[T <: Tree](tree: T): T = tree.clone.withTypeUnchecked(this(tree.tpe))
+          def copyMapped(tree: Tree): Tree = tree.clone.withTypeUnchecked(this(tree.tpe))
           val tree1 = tp.tree match {
             case tree: Apply =>
               cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
@@ -4103,7 +4103,7 @@ object Types {
               ???
             case tree => throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
-          derivedTypeOf(tree1, this(tp.underlyingTp))
+          derivedTypeOf(tp, tree1, this(tp.underlyingTp))
 
         case tp: WildcardType =>
           derivedWildcardType(tp, mapOver(tp.optBounds))
