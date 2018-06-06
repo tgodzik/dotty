@@ -7,8 +7,9 @@ object SimpleEqs {
 }
 
 object Call {
-  transparent def foo(x: Int) = ???
-  val a: { foo(3) } = foo(1)
+  transparent def foo(x: Int) = 123
+  foo(1): { foo(1) }
+  foo(1): Int
 }
 
 // object AvoidLocalRefs {
