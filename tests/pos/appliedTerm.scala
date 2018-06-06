@@ -1,6 +1,7 @@
 object SimpleEqs {
   val x = 1
   val y: {x} = x
+  val z: {y + 1} = y + 1
 
   type YPlusOne = {y + 1}
 }
