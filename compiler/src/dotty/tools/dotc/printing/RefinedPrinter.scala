@@ -372,7 +372,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
       case SingletonTypeTree(ref) =>
-        toTextLocal(ref) ~ "." ~ keywordStr("type")
+        "{ " ~ toTextLocal(ref) ~ " }"
       case AndTypeTree(l, r) =>
         changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
       case OrTypeTree(l, r) =>

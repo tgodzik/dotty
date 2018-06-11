@@ -605,7 +605,7 @@ object Trees {
    */
   class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
 
-  /** ref.type */
+  /** ref.type  or  { ref } */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]

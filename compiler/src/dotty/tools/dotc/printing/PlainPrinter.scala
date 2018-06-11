@@ -183,6 +183,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
+      case TypeOf(_, tree) =>
+        "{ " ~ toTextLocal(tree) ~ " }"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
