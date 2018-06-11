@@ -686,7 +686,7 @@ object PatternMatcher {
         override def apply(plan: LabelledPlan): Plan = {
           seenAtLabel(plan.sym) = seenVars
           plan.body = apply(plan.body)
-          val paramsMap = paramsOfLabel.getOrElse(plan.sym, Map())
+          val paramsMap = paramsOfLabel.getOrElse(plan.sym, Map.empty[RHS, TermSymbol])
           plan.params = paramsMap.values.toList.sortBy(_.name.toString)
           val seenVars1: SeenVars = mutable.LinkedHashMap.empty
           seenVars1 ++= seenVars
