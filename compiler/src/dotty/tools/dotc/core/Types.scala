@@ -3739,6 +3739,26 @@ object Types {
       (underlying /: annots)(AnnotatedType(_, _))
   }
 
+  // ----- TypeOf -------------------------------------------------------------------------
+
+  object TypeOf {
+    def apply(parent: Type, tree: Tree)(implicit ctx: Context): AnnotatedType = {
+      assert(isLegalTopLevelTree(tree), s"Illegal top-level tree: $tree")
+      AnnotatedType(parent, Annotation(defn.TypeOfAnnot, tree))
+    }
+
+    def unapply(tp: AnnotatedType)(implicit ctx: Context): Option[(Type, Tree)] =
+      tp match {
+        case AnnotatedType(parent, annot) if annot.symbol eq defn.TypeOfAnnot => Some((parent, annot.arguments.head))
+        case _ => None
+      }
+
+    private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
+      case _: TypeApply | _: Apply | _: If | _: Match => true
+      case _ => false
+    }
+  }
+
   // Special type objects and classes -----------------------------------------------------
 
   /** The type of an erased array */
