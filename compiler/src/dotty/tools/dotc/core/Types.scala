@@ -3929,7 +3929,7 @@ object Types {
       else None
   }
 
-  // ----- TypeOf ------
+  // ----- TypeOf -------------------------------------------------------------------------
 
   case class TypeOf(tree: Tree, underlyingTp: Type) extends UncachedProxyType with SingletonType {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree: $tree")
