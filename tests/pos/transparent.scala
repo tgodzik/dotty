@@ -13,7 +13,7 @@ object Call {
 }
 
 object ITE {
-  transparent def foo(b: Boolean) = {
+  transparent def foo1(b: Boolean) = {
     val res = if (b)
       1
     else
@@ -22,30 +22,29 @@ object ITE {
     res
   }
 
-  // Postponed until ifs are desugared to pattern matchings
-  // transparent def foo2(b: Boolean): { if (b) 1 else 2 } =
-  //   if (b) 1 else 2
+  transparent def foo2(b: Boolean): { if (b) 1 else 2 } =
+    if (b) 1 else 2
 
   // Postponed until we can beta reduce
   // foo(true):  { if(true) 1 else 2 }
   // foo(false): { if(false) 1 else 2 }
   // var b: Boolean = true
   // foo(b): { if(b) 1 else 2 }
-
-  transparent def foo2(b: Boolean): { if (b) 1 else 2 } =
-    if (b) 1 else 2
 }
 
-// object Match {
-//   transparent def foo(b: Boolean) = {
-//     val res = b match {
-//       case true => 1
-//       case false => 2
-//     }
-//     identity[{ b match { case true => 1; case false => 2 } }](res)
-//     res
-//   }
-// }
+object Match {
+  transparent def foo1(b: Boolean) = {
+    val res = b match {
+      case true => 1
+      case false => 2
+    }
+    identity[{ b match { case true => 1; case false => 2 } }](res)
+    res
+  }
+
+  transparent def foo(b: Boolean): { b match { case true => 1; case false => 2 } } =
+    b match { case true => 1; case false => 2 }
+}
 
 // object AvoidLocalRefs {
 //   type Id[T] = T
