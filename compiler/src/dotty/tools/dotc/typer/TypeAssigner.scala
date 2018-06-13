@@ -462,7 +462,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
     val underlying = thenp.tpe | elsep.tpe
     if (ctx.owner.isTransitivelyTransparent)
-      tree.withType(TypeOf.fromUntyped(underlying, tree))
+      tree.withType(TypeOf.fromUntyped(tree, underlying))
     else
       tree.withType(underlying)
   }
@@ -478,7 +478,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
     if (ctx.owner.isTransitivelyTransparent)
-      tree.withType(TypeOf.fromUntyped(underlying, tree))
+      tree.withType(TypeOf.fromUntyped(tree, underlying))
     else
       tree.withType(underlying)
   }
