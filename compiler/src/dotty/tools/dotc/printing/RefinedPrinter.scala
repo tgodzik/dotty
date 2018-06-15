@@ -539,6 +539,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 		  (keywordText("given ") provided contextual) ~
           argsText ~ " => " ~ toText(body)
         }
+      case PolyFunction(targs, body) =>
+        def targToText(arg: Tree) = toText(arg)
+        val targsText = "[" ~ Text(targs map targToText, ", ") ~ "]"
+        changePrec(GlobalPrec) {
+          targsText ~ " -> " ~ toText(body)
+        }
       case InfixOp(l, op, r) =>
         val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }

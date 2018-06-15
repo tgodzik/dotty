@@ -1311,6 +1311,33 @@ object desugar {
     }
 
     val desugared = tree match {
+      case PolyFunction(targs, body) =>
+        val Function(vargs, res) = body
+        val mods = body match {
+          case body: FunctionWithMods => body.mods
+          case _ => untpd.EmptyModifiers
+        }
+        val polyFunctionTpt = ref(defn.PolyFunctionType)
+        val applyTParams = targs.asInstanceOf[List[TypeDef]]
+        if (ctx.mode.is(Mode.Type)) {
+          // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
+          // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+
+          val applyVParams = vargs.zipWithIndex.map({case (p, n) =>
+            makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)})
+          RefinedTypeTree(polyFunctionTpt, List(
+            DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
+          ))
+        } else {
+          // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
+          // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
+
+          val applyVParams = vargs.asInstanceOf[List[ValDef]]
+            .map(varg => varg.withAddedFlags(mods.flags | Param))
+          New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
+            List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
+          ))
+        }
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
       case Quote(expr) =>

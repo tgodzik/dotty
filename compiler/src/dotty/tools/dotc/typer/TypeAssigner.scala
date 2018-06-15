@@ -54,7 +54,8 @@ trait TypeAssigner {
           required = EmptyFlagConjunction, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
-      if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
+      val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
+      if (isPolyFunctionApply || inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
         val r = RefinedType(parent, decl.name, decl.info)
         typr.println(i"add ref $parent $decl --> " + r)
         r

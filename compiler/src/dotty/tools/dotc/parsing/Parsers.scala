@@ -849,6 +849,8 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == ARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
+          else if (isIdent && in.name.toString == "->")
+            atSpan(start, in.skipToken())(PolyFunction(tparams, toplevelTyp()))
           else { accept(ARROW); typ() }
         }
         else infixType()
@@ -1215,6 +1217,11 @@ object Parsers {
         atSpan(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
+      case LBRACKET =>
+        val start = in.offset
+        val tparams = typeParamClause(ParamOwner.TypeParam)
+        assert(isIdent && in.name.toString == "->", "Expected `->`")
+        atSpan(start, in.skipToken())(PolyFunction(tparams, expr()))
       case _ =>
         if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
           val start = in.skipToken()
