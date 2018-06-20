@@ -256,7 +256,7 @@ class CompilationTests extends ParallelTesting {
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
       Jars.dottyInterfaces,
-      Array("-Ycheck-reentrant")
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
     val lib =
@@ -281,11 +281,11 @@ class CompilationTests extends ParallelTesting {
       sources(Files.list(backendJvmDir), excludedFiles = backendJvmExcluded)
 
     val dotty1 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources, opt)(dotty1Group)
-//    val dotty2 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources, opt)(dotty2Group)
+    val dotty2 = compileList("dotty", compilerSources ++ backendSources ++ backendJvmSources, opt)(dotty2Group)
 
     val tests = {
       lib.keepOutput :: dotty1.keepOutput :: {
-//        dotty2 +
+        dotty2 +
         compileShallowFilesInDir("compiler/src/dotty/tools", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/ast", opt) +
@@ -302,10 +302,10 @@ class CompilationTests extends ParallelTesting {
       }.keepOutput :: Nil
     }.map(_.checkCompile())
 
-//    assert(new java.io.File(s"out/$dotty1Group/dotty/").exists)
-//    assert(new java.io.File(s"out/$dotty2Group/dotty/").exists)
-//    assert(new java.io.File(s"out/$libGroup/src/").exists)
-//    compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
+    assert(new java.io.File(s"out/$dotty1Group/dotty/").exists)
+    assert(new java.io.File(s"out/$dotty2Group/dotty/").exists)
+    assert(new java.io.File(s"out/$libGroup/src/").exists)
+    compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
   }
