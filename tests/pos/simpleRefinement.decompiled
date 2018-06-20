@@ -1,0 +1,29 @@
+/** Decompiled from out/posTestFromTasty/pos/simpleRefinement/Bar.class */
+trait Bar() extends java.lang.Object {
+  type T
+  val x: scala.Any
+  def y: scala.Any
+  def z(): scala.Any
+}
+/** Decompiled from out/posTestFromTasty/pos/simpleRefinement/Foo.class */
+class Foo() {
+  val bar: Bar {
+    type T >: scala.Int <: scala.Int
+    val x: scala.Long
+    def y: scala.Boolean
+    def z(): scala.Char
+  } = {
+    final class $anon() extends Bar {
+      type T = scala.Int
+      val x: scala.Long = 2L
+      def y: scala.Boolean = true
+      def z(): scala.Char = 'f'
+    }
+    (new $anon(): Bar {
+      type T >: scala.Int <: scala.Int
+      val x: scala.Long
+      def y: scala.Boolean
+      def z(): scala.Char
+    })
+  }
+}
