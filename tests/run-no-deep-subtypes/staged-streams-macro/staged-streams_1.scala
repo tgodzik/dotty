@@ -5,14 +5,14 @@ import scala.quoted._
   */
 
 object StagedStreams {
+  implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+  inline def foo2(x: Int, n: Int, cont: Expr[Foo] => Expr[Unit]): Unit =  ~foo2Impl('(x), '(n), '(cont))
 
-  inline def foo2(x: Int, n: Int, cont: => Foo => Unit): Unit =  ~foo2Impl('(x), '(n), '(cont))
-
-  def foo2Impl(x: Expr[Int], n: Expr[Int], cont: Expr[Foo => Unit]): Expr[Unit] = '{ ~cont('(new Foo(~x + ~n))) }
+  def foo2Impl(x: Expr[Int], n: Expr[Int], cont: Expr[Expr[Foo] => Expr[Unit]]): Expr[Unit] = cont.run.apply('(new Foo(~x + ~n)))
 
   class Foo(x: Int) extends AnyVal {
-    inline def foo(n: Int, cont: => Foo => Unit): Unit = { println("foo"); foo2(x, n, cont) }
-    inline def bar(): Unit = { println("bar"); x}
+    inline def foo(n: Int, cont: Expr[Foo] => Expr[Unit]): Unit = { println("foo"); foo2(x, n, cont) }
+    inline def bar(): Unit = { println("bar"); x }
   }
 
 //  // TODO: remove as it exists in Quoted Lib

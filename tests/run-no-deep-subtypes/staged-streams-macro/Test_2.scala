@@ -5,7 +5,7 @@ import StagedStreams._
 object Test {
 
   def f: Unit = {
-    new Foo(3).foo(4, x => x.bar())
+    new Foo(3).foo(4, (x: Expr[Foo]) => '((~x).bar()))
   }
 
 //  val arr = Array(1, 2, 3)
