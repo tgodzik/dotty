@@ -4,14 +4,6 @@ import StagedStreams._
 
 object Test {
 
-  def f: Unit = {
-    new Foo(3).foo(4, (x: Expr[Foo]) => '((~x).bar()))
-  }
-
-//  val arr = Array(1, 2, 3)
-//  def test1() = Stream
-//    .of(arr)
-//  .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
 //  def test2() = Stream
 //    .of('{Array(1, 2, 3)})
@@ -59,12 +51,11 @@ object Test {
 //  .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })) )
 //  .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
-//  def main(args: Array[String]): Unit = {
-//    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
-//
-//    println(test1().show)
-//    println(test1().run)
-//    println
+  def main(args: Array[String]): Unit = {
+
+    val a = Array(1, 2, 3)
+    println(test1(a))
+    println
 //    println(test2().run)
 //    println
 //    println(test3().run)
@@ -82,5 +73,5 @@ object Test {
 //    println(test9().run)
 //    println
 //    println(test10().run)
-//  }
+  }
 }
