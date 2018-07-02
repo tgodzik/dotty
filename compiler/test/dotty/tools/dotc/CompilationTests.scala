@@ -199,6 +199,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("tests/run", defaultOptions) +
     compileFilesInDir("tests/run-no-optimise", defaultOptions) +
+    compileFilesInDir("tests/run-no-deep-subtypes", /*TODO use defaultOptions */defaultRunWithCompilerOptions without "-Yno-deep-subtypes") +
     compileFilesInDir("tests/run-with-compiler", defaultRunWithCompilerOptions) +
     compileFile("tests/run-with-compiler-custom-args/staged-streams_1.scala", defaultRunWithCompilerOptions without "-Yno-deep-subtypes")
   }.checkRuns()
