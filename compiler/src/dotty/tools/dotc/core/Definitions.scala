@@ -401,7 +401,6 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
@@ -1210,12 +1209,14 @@ class Definitions {
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
-  private[this] var _isInitialized = false
-  private def isInitialized = _isInitialized
+  private[this] var isInitialized = false
+
+  private[this] var mySeqType: TypeRef = _
+  def SeqType: TypeRef = mySeqType
 
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
-    if (!_isInitialized) {
+    if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
@@ -1230,8 +1231,14 @@ class Definitions {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
-      _isInitialized = true
+      // We load SeqType from the alias in the scala package object
+      //  - in 2.12: scala.collection.Seq
+      //  - in 2.13: scala.collection.immutable.Seq
+      // We force the symbol here to avoid cycles
+      val alias = ctx.base.staticRef("scala.Seq".toTypeName).requiredSymbol(_.isAliasType)
+      mySeqType = alias.info.classSymbol.typeRef
+
+      isInitialized = true
     }
   }
-
 }
