@@ -2110,7 +2110,9 @@ class Typer extends Namer
     def readaptSimplified(tree: Tree)(implicit ctx: Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
-      ctx.error(MissingEmptyArgumentList(methPart(tree).symbol), tree.pos)
+      val meth = methPart(tree).symbol
+      if (mt.paramNames.length == 0) ctx.error(MissingEmptyArgumentList(meth), tree.pos)
+      else ctx.error(em"missing arguments for $meth", tree.pos)
       tree.withType(mt.resultType)
     }
 
@@ -2320,10 +2322,12 @@ class Typer extends Namer
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
+      //  - we reference a typelevel method
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
+          !tree.symbol.is(TypeLevel) &&
           !ctx.mode.is(Mode.Pattern) &&
           !(isSyntheticApply(tree) && !isExpandableApply))
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
