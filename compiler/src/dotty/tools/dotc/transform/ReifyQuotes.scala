@@ -240,7 +240,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == 0) {
-          assert(ctx.owner.ownersIterator.exists(_.is(Macro)))
+          assert(ctx.owner.ownersIterator.exists(_.is(Inline)))
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
@@ -271,7 +271,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
-      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Macro) && !outer.isRoot)
+      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Inline) && !outer.isRoot)
         importedTags(sym.typeRef) = capturers(sym)(ref(sym))
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
@@ -488,7 +488,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
       outer.enteredSyms.foreach(registerCapturer)
 
-      if (ctx.owner.owner.is(Macro)) {
+      if (ctx.owner.owner.is(Inline)) {
         registerCapturer(defn.TastyTopLevelSplice_tastyContext)
         // Force a macro to have the context in first position
         forceCapture(defn.TastyTopLevelSplice_tastyContext)
@@ -612,7 +612,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym.is(Transparent) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
+      (sym.is(Transparent) && sym.owner.is(Transparent) && !defn.isFunctionType(sym.info)) ||
       sym == defn.TastyTopLevelSplice_tastyContext // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
