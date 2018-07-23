@@ -483,18 +483,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      def registerCapturer(sym: Symbol): Unit = capturers.put(sym, captured2)
-      def forceCapture(sym: Symbol): Unit = captured2(ref(sym))
-
-      outer.enteredSyms.foreach(registerCapturer)
-
-      if (ctx.owner.owner.is(Inline)) {
-        registerCapturer(defn.TastyTopLevelSplice_tastyContext)
-        // Force a macro to have the context in first position
-        forceCapture(defn.TastyTopLevelSplice_tastyContext)
-        // Force all parameters of the macro to be created in the definition order
-        outer.enteredSyms.reverse.foreach(forceCapture)
-      }
+      outer.enteredSyms.foreach(sym => capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
