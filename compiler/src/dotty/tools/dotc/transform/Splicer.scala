@@ -228,10 +228,10 @@ object Splicer {
     def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
-      // Assuming that top-level splices can only be in inline methods
+      // Assuming that top-level splices can only be in transparent methods
       // and splices are expanded at inline site, references to inlined values
       // will be know literal constant trees.
-      tree.symbol.is(Inline)
+      tree.symbol.is(Transparent)
     }
   }
 

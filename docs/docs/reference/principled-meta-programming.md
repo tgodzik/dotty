@@ -436,8 +436,8 @@ we currently impose the following restrictions on the use of splices.
  1. A top-level splice must appear in a transparent function (turning that function
     into a macro)
 
- 2. The splice must call a previously compiled (previous to the call of the inline definition)
-    static method passing quoted arguments, constant arguments or inline arguments.
+ 2. The splice must call a previously compiled (previous to the call of the transparent definition)
+    static method passing quoted arguments, constant arguments or transparent arguments.
 
  3. Splices inside splices (but no intervening quotes) are not allowed.
 

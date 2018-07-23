@@ -271,7 +271,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
-      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Inline) && !outer.isRoot)
+      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Transparent) && !outer.isRoot)
         importedTags(sym.typeRef) = capturers(sym)(ref(sym))
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
