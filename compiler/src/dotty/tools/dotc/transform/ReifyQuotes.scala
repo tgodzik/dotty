@@ -228,7 +228,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         !sym.is(Param) || levelOK(sym.owner)
     }
 
-    /** Issue a "splice outside quote" error unless we ar in the body of a transparent method */
+    /** Issue a "splice outside quote" error unless we are in the body of a transparent method */
     def spliceOutsideQuotes(pos: Position)(implicit ctx: Context): Unit =
       ctx.error(i"splice outside quotes", pos)
 
@@ -240,7 +240,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == 0) {
-          assert(ctx.owner.ownersIterator.exists(_.is(Inline)))
+          assert(ctx.owner.ownersIterator.exists(_.is(Transparent)))
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
@@ -584,6 +584,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                     |
                     |Expected the ~ to be at the top of the RHS:
                     |  transparent def foo(x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                    |
+                    |The contents of the splice must call a static method. Arguments must be quoted or inlined.
                   """.stripMargin, tree.rhs.pos)
                 EmptyTree
             }
@@ -625,13 +627,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  consists of a (possibly multiple & nested) block or a sole expression.
      */
     object InlineSplice {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = {
-        tree match {
-          case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
-          case Block(List(stat), Literal(Constant(()))) => unapply(stat)
-          case Block(Nil, expr) => unapply(expr)
-          case _ => None
-        }
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
+        case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
+        case Block(List(stat), Literal(Constant(()))) => unapply(stat)
+        case Block(Nil, expr) => unapply(expr)
+        case _ => None
       }
     }
   }

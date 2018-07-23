@@ -105,7 +105,7 @@ object Splicer {
     protected def interpretTastyContext()(implicit env: Env): Object =
       new TastyImpl(ctx)
 
-    protected def interpretStaticMethodCall(fn: Tree, args: List[Object])(implicit env: Env): Object = {
+    protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
       val (clazz, instance) = loadModule(fn.symbol.owner)
       val method = getMethod(clazz, fn.symbol.name, paramsSig(fn.symbol))
       stopIfRuntimeException(method.invoke(instance, args: _*))
@@ -225,7 +225,7 @@ object Splicer {
     def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
     def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
     def interpretTastyContext()(implicit env: Env): Boolean = true
-    def interpretStaticMethodCall(fn: tpd.Tree, args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
       // Assuming that top-level splices can only be in inline methods
@@ -244,7 +244,7 @@ object Splicer {
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Res
     protected def interpretLiteral(value: Any)(implicit env: Env): Res
     protected def interpretTastyContext()(implicit env: Env): Res
-    protected def interpretStaticMethodCall(fn: Tree, args: List[Res])(implicit env: Env): Res
+    protected def interpretStaticMethodCall(fn: Tree, args: => List[Res])(implicit env: Env): Res
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Res
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Res = tree match {
@@ -261,18 +261,18 @@ object Splicer {
         interpretTastyContext()
 
       case StaticMethodCall(fn, args) =>
-        val interpretedArgs = args.map(arg => interpretTree(arg))
-        interpretStaticMethodCall(fn, interpretedArgs)
+        interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
 
+      // Interpret `foo(j = x, i = y)` which it is expanded to
+      // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
       case Block(stats, expr) =>
         val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
-          case stat: ValDef => accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
+          case stat: ValDef if stat.symbol.is(Synthetic) =>
+            accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
           case stat => return unexpectedTree(stat)
         })
         interpretTree(expr)(newEnv)
-
       case NamedArg(_, arg) => interpretTree(arg)
-
       case Ident(name) if env.contains(name) => env(name)
 
       case _ => unexpectedTree(tree)
