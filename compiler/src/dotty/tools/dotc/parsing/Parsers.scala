@@ -1162,7 +1162,10 @@ object Parsers {
             if (in.token == CATCH) {
               val pos = in.offset
               in.nextToken()
-              (expr(), pos)
+              accept(LBRACE)
+              val res = (expr(), pos)
+              accept(RBRACE)
+              res
             } else (EmptyTree, -1)
 
           handler match {
