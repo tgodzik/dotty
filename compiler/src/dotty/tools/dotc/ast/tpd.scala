@@ -594,6 +594,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def Labeled(tree: Tree)(name: TermName, tpt: Tree, expr: Tree)(implicit ctx: Context): Labeled =
+      ta.assignType(untpd.cpy.Labeled(tree)(name, tpt, expr))
+
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
       ta.assignType(untpd.cpy.Return(tree)(expr, from))
 

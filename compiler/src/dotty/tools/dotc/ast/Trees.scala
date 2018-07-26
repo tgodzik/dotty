@@ -524,8 +524,14 @@ object Trees {
     type ThisTree[-T >: Untyped] = CaseDef[T]
   }
 
+  /** label[tpt]: { expr } */
+  case class Labeled[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], expr: Tree[T])
+    extends NameTree[T] with DefTree[T] {
+    type ThisTree[-T >: Untyped] = Labeled[T]
+  }
+
   /** return expr
-   *  where `from` refers to the method from which the return takes place
+   *  where `from` refers to the method or label from which the return takes place
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
@@ -886,6 +892,7 @@ object Trees {
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
     type CaseDef = Trees.CaseDef[T]
+    type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
     type Try = Trees.Try[T]
     type SeqLiteral = Trees.SeqLiteral[T]
@@ -1027,6 +1034,10 @@ object Trees {
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = tree match {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
+      }
+      def Labeled(tree: Tree)(name: TermName, tpt: Tree, expr: Tree)(implicit ctx: Context): Labeled = tree match {
+        case tree: Labeled if (name eq tree.name) && (tpt eq tree.tpt) && (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Labeled(name, tpt, expr))
       }
       def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
