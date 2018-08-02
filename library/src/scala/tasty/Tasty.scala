@@ -635,21 +635,26 @@ abstract class Tasty { tasty =>
     val ConstantType: ConstantTypeExtractor
     abstract class ConstantTypeExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[Constant]
+      def apply(constant: Constant)(implicit ctx: Context): Type
     }
 
     val SymRef: SymRefExtractor
     abstract class SymRefExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)]
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, definition: Definition)(implicit ctx: Context): Type
+
     }
 
     val TermRef: TermRefExtractor
     abstract class TermRefExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, name: String)(implicit ctx: Context): Type
     }
 
     val TypeRef: TypeRefExtractor
     abstract class TypeRefExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, name: String)(implicit ctx: Context): Type
     }
 
     val SuperType: SuperTypeExtractor
@@ -769,61 +774,73 @@ abstract class Tasty { tasty =>
     val Unit: UnitExtractor
     abstract class UnitExtractor {
       def unapply(x: Constant): Boolean
+      def apply(): Constant
     }
 
     val Null: NullExtractor
     abstract class NullExtractor {
       def unapply(x: Constant): Boolean
+      def apply(): Constant
     }
 
     val Boolean: BooleanExtractor
     abstract class BooleanExtractor {
       def unapply(x: Constant): Option[Boolean]
+      def apply(value: Boolean): Constant
     }
 
     val Byte: ByteExtractor
     abstract class ByteExtractor {
       def unapply(x: Constant): Option[Byte]
+      def apply(value: Byte): Constant
     }
 
     val Short: ShortExtractor
     abstract class ShortExtractor {
       def unapply(x: Constant): Option[Short]
+      def apply(value: Short): Constant
     }
 
     val Char: CharExtractor
     abstract class CharExtractor {
       def unapply(x: Constant): Option[Char]
+      def apply(value: Char): Constant
     }
 
     val Int: IntExtractor
     abstract class IntExtractor {
       def unapply(x: Constant): Option[Int]
+      def apply(value: Int): Constant
     }
 
     val Long: LongExtractor
     abstract class LongExtractor {
       def unapply(x: Constant): Option[Long]
+      def apply(value: Long): Constant
     }
 
     val Float: FloatExtractor
     abstract class FloatExtractor {
       def unapply(x: Constant): Option[Float]
+      def apply(value: Float): Constant
     }
 
     val Double: DoubleExtractor
     abstract class DoubleExtractor {
       def unapply(x: Constant): Option[Double]
+      def apply(value: Double): Constant
     }
 
     val String: StringExtractor
     abstract class StringExtractor {
       def unapply(x: Constant): Option[String]
+      def apply(value: String): Constant
     }
 
     val ClassTag: ClassTagExtractor
     abstract class ClassTagExtractor {
       def unapply(x: Constant): Option[Type]
+      def apply(value: Type): Constant
     }
 
     /** Extractor for scala.Symbol literals */
@@ -831,6 +848,7 @@ abstract class Tasty { tasty =>
     /** Extractor for scala.Symbol literals */
     abstract class SymbolExtractor {
       def unapply(x: Constant): Option[scala.Symbol]
+      def apply(value: scala.Symbol): Constant
     }
   }
 

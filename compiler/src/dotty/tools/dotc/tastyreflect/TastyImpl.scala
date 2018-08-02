@@ -813,6 +813,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.ConstantType(value) => Some(value)
         case _ => None
       }
+      def apply(constant: Constant)(implicit ctx: Context): Type = Types.ConstantType(constant)
     }
 
     object SymRef extends SymRefExtractor {
@@ -823,6 +824,10 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
             case _ => None
           }
         case _ => None
+      }
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, definition: Definition)(implicit ctx: Context): Type = {
+        assert(prefix.isInstanceOf[Type] || prefix == Types.NoPrefix)
+        prefix.select(definition.symbol)
       }
     }
 
@@ -835,6 +840,10 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
           }
         case _ => None
       }
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, name: String)(implicit ctx: Context): Type = {
+        assert(prefix.isInstanceOf[Type] || prefix == Types.NoPrefix)
+        prefix.select(name.toTermName)
+      }
     }
 
     object TypeRef extends TypeRefExtractor {
@@ -846,6 +855,10 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
           }
         case _ => None
       }
+      def apply(prefix: TypeOrBounds /* Type | NoPrefix */, name: String)(implicit ctx: Context): Type = {
+        assert(prefix.isInstanceOf[Type] || prefix == Types.NoPrefix)
+        prefix.select(name.toTypeName)
+      }
     }
 
     object SuperType extends SuperTypeExtractor {
@@ -853,6 +866,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
         case _ => None
       }
+      def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type = Types.SuperType(thistpe, supertpe)
     }
 
     object Refinement extends RefinementExtractor {
@@ -860,6 +874,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
         case _ => None
       }
+      def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(implicit ctx: Context): Type =
+        Types.RefinedType(parent, name.toTypeName, info)
     }
 
     object AppliedType extends AppliedTypeExtractor {
@@ -867,6 +883,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
         case _ => None
       }
+      def apply(tycon: Type, args: List[TypeOrBounds /* Type | TypeBounds */])(implicit ctx: Context): Type =
+        Types.AppliedType(tycon, args)
     }
 
     object AnnotatedType extends AnnotatedTypeExtractor {
@@ -874,6 +892,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
         case _ => None
       }
+      def apply(underlying: Type, annot: Term)(implicit ctx: Context): Type =
+        Types.AnnotatedType(underlying, Annotations.Annotation(annot))
     }
 
     object AndType extends AndTypeExtractor {
@@ -881,6 +901,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
       }
+      def apply(left: Type, right: Type)(implicit ctx: Context): Type = Types.AndType(left, right)
     }
 
     object OrType extends OrTypeExtractor {
@@ -888,6 +909,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
       }
+      def apply(left: Type, right: Type)(implicit ctx: Context): Type = Types.OrType(left, right)
     }
 
     object ByNameType extends ByNameTypeExtractor {
@@ -895,6 +917,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Types.ExprType(resType) => Some(resType.stripTypeVar)
         case _ => None
       }
+      def apply(resType: Type)(implicit ctx: Context): Type = Types.ExprType(resType)
     }
 
     object ParamRef extends ParamRefExtractor {
@@ -905,7 +928,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
             idx))
         case Types.TermParamRef(binder, idx) => Some((binder, idx))
         case _ => None
-      }
+      }s
     }
 
     object ThisType extends ThisTypeExtractor {
@@ -998,6 +1021,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant => x.tag == Constants.UnitTag
         case _ => false
       }
+      def apply(): Constants.Constant = Constants.Constant(())
     }
 
     object Null extends NullExtractor {
@@ -1005,6 +1029,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant => x.tag == Constants.NullTag
         case _ => false
       }
+      def apply(): Constants.Constant = Constants.Constant(null)
     }
 
     object Boolean extends BooleanExtractor {
@@ -1012,6 +1037,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.BooleanTag => Some(x.booleanValue)
         case _ => None
       }
+      def apply(value: Boolean): Constants.Constant = Constants.Constant(value)
     }
 
     object Byte extends ByteExtractor {
@@ -1019,6 +1045,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.ByteTag => Some(x.byteValue)
         case _ => None
       }
+      def apply(value: Byte): Constants.Constant = Constants.Constant(value)
     }
 
     object Short extends ShortExtractor {
@@ -1026,6 +1053,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.ShortTag => Some(x.shortValue)
         case _ => None
       }
+      def apply(value: Short): Constants.Constant = Constants.Constant(value)
     }
 
     object Char extends CharExtractor {
@@ -1033,6 +1061,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.CharTag => Some(x.charValue)
         case _ => None
       }
+      def apply(value: Char): Constants.Constant = Constants.Constant(value)
     }
 
     object Int extends IntExtractor {
@@ -1040,6 +1069,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.IntTag => Some(x.intValue)
         case _ => None
       }
+      def apply(value: Int): Constants.Constant = Constants.Constant(value)
     }
 
     object Long extends LongExtractor {
@@ -1047,6 +1077,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.LongTag => Some(x.longValue)
         case _ => None
       }
+      def apply(value: Long): Constants.Constant = Constants.Constant(value)
     }
 
     object Float extends FloatExtractor {
@@ -1054,6 +1085,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.FloatTag => Some(x.floatValue)
         case _ => None
       }
+      def apply(value: Float): Constants.Constant = Constants.Constant(value)
     }
 
     object Double extends DoubleExtractor {
@@ -1061,6 +1093,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.DoubleTag => Some(x.doubleValue)
         case _ => None
       }
+      def apply(value: Double): Constants.Constant = Constants.Constant(value)
     }
 
     object String extends StringExtractor {
@@ -1068,6 +1101,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.StringTag => Some(x.stringValue)
         case _ => None
       }
+      def apply(value: String): Constants.Constant = Constants.Constant(value)
     }
 
     object ClassTag extends ClassTagExtractor {
@@ -1075,6 +1109,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.ClazzTag => Some(x.typeValue)
         case _ => None
       }
+      def apply(value: Type): Constants.Constant = Constants.Constant(value)
     }
 
     object Symbol extends SymbolExtractor {
@@ -1082,6 +1117,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case x: Constants.Constant if x.tag == Constants.ScalaSymbolTag => Some(x.scalaSymbolValue)
         case _ => None
       }
+      def apply(value: scala.Symbol): Constants.Constant = Constants.Constant(value)
     }
   }
 
