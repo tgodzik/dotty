@@ -20,6 +20,7 @@ import config.Printers.{typr, constr}
 import annotation.tailrec
 import reporting._
 import collection.mutable
+import transform.SymUtils._
 import config.Config
 
 import scala.annotation.internal.sharable
@@ -191,8 +192,10 @@ object Inferencing {
    *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
    */
   def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
+    def refinementIsInvariantCls(cls: Symbol): Boolean =
+      cls.is(Final) || cls.is(Case) || cls.is(Sealed) && cls.children.forall(refinementIsInvariantCls)
     def refinementIsInvariant(tp: Type): Boolean = tp match {
-      case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
+      case tp: ClassInfo => refinementIsInvariantCls(tp.cls)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
       case tp: AndType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
       case tp: OrType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
