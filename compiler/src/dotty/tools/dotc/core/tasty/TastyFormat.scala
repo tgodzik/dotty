@@ -90,6 +90,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
+                  LABELED        Length bind_Bind tpt_Term expr_Term
                   RETURN         Length meth_ASTRef expr_Term?
                   REPEATED       Length elem_Type elem_Term*
                   SELECTouter    Length levels_Nat qual_Term underlying_Type
@@ -390,46 +391,47 @@ object TastyFormat {
   final val IF = 141
   final val LAMBDA = 142
   final val MATCH = 143
-  final val RETURN = 144
-  final val TRY = 145
-  final val INLINED = 146
-  final val SELECTouter = 147
-  final val REPEATED = 148
-  final val BIND = 149
-  final val ALTERNATIVE = 150
-  final val UNAPPLY = 151
-  final val ANNOTATEDtype = 152
-  final val ANNOTATEDtpt = 153
-  final val CASEDEF = 154
-  final val TEMPLATE = 155
-  final val SUPER = 156
-  final val SUPERtype = 157
-  final val REFINEDtype = 158
-  final val REFINEDtpt = 159
-  final val APPLIEDtype = 160
-  final val APPLIEDtpt = 161
-  final val TYPEBOUNDS = 162
-  final val TYPEBOUNDStpt = 163
-  final val ANDtype = 164
-  final val ANDtpt = 165
-  final val ORtype = 166
-  final val ORtpt = 167
-  final val POLYtype = 168
-  final val TYPELAMBDAtype = 169
-  final val LAMBDAtpt = 170
-  final val PARAMtype = 171
-  final val ANNOTATION = 172
-  final val TERMREFin = 173
-  final val TYPEREFin = 174
-  final val OBJECTDEF = 175
+  final val LABELED = 144
+  final val RETURN = 145
+  final val TRY = 146
+  final val INLINED = 147
+  final val SELECTouter = 148
+  final val REPEATED = 149
+  final val BIND = 150
+  final val ALTERNATIVE = 151
+  final val UNAPPLY = 152
+  final val ANNOTATEDtype = 153
+  final val ANNOTATEDtpt = 154
+  final val CASEDEF = 155
+  final val TEMPLATE = 156
+  final val SUPER = 157
+  final val SUPERtype = 158
+  final val REFINEDtype = 159
+  final val REFINEDtpt = 160
+  final val APPLIEDtype = 161
+  final val APPLIEDtpt = 162
+  final val TYPEBOUNDS = 163
+  final val TYPEBOUNDStpt = 164
+  final val ANDtype = 165
+  final val ANDtpt = 166
+  final val ORtype = 167
+  final val ORtpt = 168
+  final val POLYtype = 169
+  final val TYPELAMBDAtype = 170
+  final val LAMBDAtpt = 171
+  final val PARAMtype = 172
+  final val ANNOTATION = 173
+  final val TERMREFin = 174
+  final val TYPEREFin = 175
+  final val OBJECTDEF = 176
 
-  // In binary: 101100EI
+  // In binary: 101101EI
   // I = implicit method type
   // E = erased method type
-  final val METHODtype = 176
-  final val IMPLICITMETHODtype = 177
-  final val ERASEDMETHODtype = 178
-  final val ERASEDIMPLICITMETHODtype = 179
+  final val METHODtype = 180
+  final val IMPLICITMETHODtype = 181
+  final val ERASEDMETHODtype = 182
+  final val ERASEDIMPLICITMETHODtype = 183
 
   final val UNTYPEDSPLICE = 199
 
@@ -600,6 +602,7 @@ object TastyFormat {
     case IF => "IF"
     case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
+    case LABELED => "LABELED"
     case RETURN => "RETURN"
     case INLINED => "INLINED"
     case SELECTouter => "SELECTouter"

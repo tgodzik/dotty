@@ -319,6 +319,7 @@ object NameKinds {
   val PatMatOName             = new UniqueNameKind("o")  // FIXME: explain what this is
   val PatMatCaseName          = new UniqueNameKind("case")
   val PatMatMatchFailName     = new UniqueNameKind("matchFail")
+  val PatMatResultName        = new UniqueNameKind("matchResult")
   val PatMatSelectorName      = new UniqueNameKind("selector")
 
   val LocalOptInlineLocalObj  = new UniqueNameKind("ilo")

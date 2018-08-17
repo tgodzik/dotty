@@ -253,14 +253,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         val rhs = transformTree(tree.rhs, start)(localContext)
         goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
       case tree: Labeled =>
-        // TODO is mapLabeled necessary here?
         implicit val ctx = prepLabeled(tree, start)(outerCtx)
-        def mapLabeled(implicit ctx: Context) = {
-          val tpt = transformTree(tree.tpt, start)
-          val expr = transformTree(tree.expr, start)
-          cpy.Labeled(tree)(tree.name, tpt, expr)
-        }
-        goLabeled(mapLabeled(localContext), start)
+        val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
+        val tpt = transformTree(tree.tpt, start)
+        val expr = transformTree(tree.expr, start)
+        goLabeled(cpy.Labeled(tree)(bind, tpt, expr), start)
       case tree: Bind =>
         implicit val ctx = prepBind(tree, start)(outerCtx)
         val body = transformTree(tree.body, start)

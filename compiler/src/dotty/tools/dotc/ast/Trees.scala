@@ -525,9 +525,10 @@ object Trees {
   }
 
   /** label[tpt]: { expr } */
-  case class Labeled[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], expr: Tree[T])
+  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], tpt: Tree[T], expr: Tree[T])
     extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] = Labeled[T]
+    def name: Name = bind.name
   }
 
   /** return expr
@@ -1035,9 +1036,9 @@ object Trees {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
       }
-      def Labeled(tree: Tree)(name: TermName, tpt: Tree, expr: Tree)(implicit ctx: Context): Labeled = tree match {
-        case tree: Labeled if (name eq tree.name) && (tpt eq tree.tpt) && (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Labeled(name, tpt, expr))
+      def Labeled(tree: Tree)(bind: Bind, tpt: Tree, expr: Tree)(implicit ctx: Context): Labeled = tree match {
+        case tree: Labeled if (bind eq tree.bind) && (tpt eq tree.tpt) && (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Labeled(bind, tpt, expr))
       }
       def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree

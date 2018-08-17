@@ -12,7 +12,7 @@ import SymUtils._
 import Flags._, Constants._
 import Decorators._
 import patmat.Space
-import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName}
+import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName, PatMatResultName}
 import config.Printers.patmatch
 import reporting.diagnostic.messages._
 
@@ -76,11 +76,13 @@ object PatternMatcher {
 
     // ------- Bindings for variables and labels ---------------------
 
+    private val resultLabel =
+      ctx.newSymbol(ctx.owner, PatMatResultName.fresh(), Synthetic | Label, resultType)
+
     /** A map from variable symbols to their defining trees
      *  and from labels to their defining plans
      */
     private val initializer = newMutableSymbolMap[Tree]
-    private val labelled = newMutableSymbolMap[Plan]
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
@@ -95,11 +97,10 @@ object PatternMatcher {
     }
 
     /** The plan `let l = labelled in body(l)` where `l` is a fresh label */
-    private def labelAbstract(labeld: Plan)(body: (=> Plan) => Plan): Plan = {
-      val label = ctx.newSymbol(ctx.owner, PatMatCaseName.fresh(), Synthetic | Label | Method,
-        MethodType(Nil, resultType))
-      labelled(label) = labeld
-      LabelledPlan(label, body(CallPlan(label, Nil)), Nil)
+    private def labeledAbstract(next: Plan)(expr: (=> Plan) => Plan): Plan = {
+      val label = ctx.newSymbol(ctx.owner, PatMatCaseName.fresh(), Synthetic | Label,
+        defn.UnitType)
+      LabeledPlan(label, expr(ReturnPlan(label)), next)
     }
 
     /** Test whether a type refers to a pattern-generated variable */
@@ -139,10 +140,9 @@ object PatternMatcher {
     }
 
     case class LetPlan(sym: TermSymbol, var body: Plan) extends Plan
-    case class LabelledPlan(sym: TermSymbol, var body: Plan, var params: List[TermSymbol]) extends Plan
-    case class CodePlan(var tree: Tree) extends Plan
-    case class CallPlan(label: TermSymbol,
-                        var args: List[(/*formal*/TermSymbol, /*actual*/TermSymbol)]) extends Plan
+    case class LabeledPlan(sym: TermSymbol, var expr: Plan, var next: Plan) extends Plan
+    case class ReturnPlan(label: TermSymbol) extends Plan
+    case class ResultPlan(var tree: Tree) extends Plan
 
     object TestPlan {
       def apply(test: Test, sym: Symbol, pos: Position, ons: Plan, onf: Plan): TestPlan =
@@ -344,9 +344,9 @@ object PatternMatcher {
             patternPlan(scrutinee, body, LetPlan(bound, onSuccess), onFailure)
           }
         case Alternative(alts) =>
-          labelAbstract(onSuccess) { ons =>
+          labeledAbstract(onSuccess) { ons =>
             (alts :\ onFailure) { (alt, onf) =>
-              labelAbstract(onf) { onf1 =>
+              labeledAbstract(onf) { onf1 =>
                 patternPlan(scrutinee, alt, ons, onf1)
               }
             }
@@ -361,8 +361,8 @@ object PatternMatcher {
     }
 
     private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef, onFailure: Plan): Plan =
-      labelAbstract(onFailure) { onf =>
-        var onSuccess: Plan = CodePlan(cdef.body)
+      labeledAbstract(onFailure) { onf =>
+        var onSuccess: Plan = ResultPlan(cdef.body)
         if (!cdef.guard.isEmpty)
           onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.pos, onSuccess, onf)
         patternPlan(scrutinee, cdef.pat, onSuccess, onf)
@@ -370,7 +370,7 @@ object PatternMatcher {
 
     private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>
-        val matchError: Plan = CodePlan(Throw(New(defn.MatchErrorType, ref(scrutinee) :: Nil)))
+        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorType, ref(scrutinee) :: Nil)))
         (tree.cases :\ matchError)(caseDefPlan(scrutinee, _, _))
       }
 
@@ -393,18 +393,18 @@ object PatternMatcher {
         initializer(plan.sym) = apply(initializer(plan.sym))
         plan
       }
-      def apply(plan: LabelledPlan): Plan = {
-        plan.body = apply(plan.body)
-        labelled(plan.sym) = apply(labelled(plan.sym))
+      def apply(plan: LabeledPlan): Plan = {
+        plan.expr = apply(plan.expr)
+        plan.next = apply(plan.next)
         plan
       }
-      def apply(plan: CallPlan): Plan = plan
+      def apply(plan: ReturnPlan): Plan = plan
       def apply(plan: Plan): Plan = plan match {
         case plan: TestPlan => apply(plan)
         case plan: LetPlan => apply(plan)
-        case plan: LabelledPlan => apply(plan)
-        case plan: CallPlan => apply(plan)
-        case plan: CodePlan => plan
+        case plan: LabeledPlan => apply(plan)
+        case plan: ReturnPlan => apply(plan)
+        case plan: ResultPlan => plan
       }
     }
 
@@ -417,12 +417,12 @@ object PatternMatcher {
     /** Reference counts for all labels */
     private def labelRefCount(plan: Plan): collection.Map[Symbol, Int] = {
       object refCounter extends RefCounter {
-        override def apply(plan: LabelledPlan): Plan = {
-          apply(plan.body)
-          if (count(plan.sym) != 0) apply(labelled(plan.sym))
+        override def apply(plan: LabeledPlan): Plan = {
+          apply(plan.expr)
+          apply(plan.next)
           plan
         }
-        override def apply(plan: CallPlan): Plan = {
+        override def apply(plan: ReturnPlan): Plan = {
           count(plan.label) += 1
           plan
         }
@@ -449,61 +449,14 @@ object PatternMatcher {
             apply(initializer(plan.sym))
           plan
         }
-        override def apply(plan: LabelledPlan): Plan = {
-          apply(labelled(plan.sym))
-          apply(plan.body)
-          plan
-        }
-        override def apply(plan: CallPlan): Plan = {
-          for ((formal, actual) <- plan.args)
-            if (count(formal) != 0) count(actual) += 1
+        override def apply(plan: ReturnPlan): Plan = {
+          /*for ((formal, actual) <- plan.args)
+            if (count(formal) != 0) count(actual) += 1*/
           plan
         }
       }
       refCounter(plan)
       refCounter.count
-    }
-
-    /** Rewrite everywhere
-     *
-     *     if C then (let L = B in E1) else E2
-     * -->
-     *     let L = B in if C then E1 else E2
-     *
-     *     if C then E1 else (let L = B in E2)
-     * -->
-     *     let L = B in if C then E1 else E2
-     *
-     *     let L1 = (let L2 = B2 in B1) in E
-     * -->
-     *     let L2 = B2 in let L1 = B1 in E
-    */
-    object hoistLabels extends PlanTransform {
-      override def apply(plan: TestPlan): Plan =
-        plan.onSuccess match {
-          case lp @ LabelledPlan(sym, body, _) =>
-            plan.onSuccess = body
-            lp.body = plan
-            apply(lp)
-          case _ =>
-            plan.onFailure match {
-              case lp @ LabelledPlan(sym, body, _) =>
-                plan.onFailure = body
-                lp.body = plan
-                apply(lp)
-              case _ =>
-                super.apply(plan)
-            }
-        }
-      override def apply(plan: LabelledPlan): Plan =
-        labelled(plan.sym) match {
-          case plan1: LabelledPlan =>
-            labelled(plan.sym) = plan1.body
-            plan1.body = plan
-            apply(plan1)
-          case _ =>
-            super.apply(plan)
-        }
     }
 
     /** Eliminate tests that are redundant (known to be true or false).
@@ -518,6 +471,7 @@ object PatternMatcher {
      *  We use some tricks to identify a let pointing to an unapply and the
      *  NonEmptyTest that follows it as a single `UnappTest` test.
      */
+    /*
     def elimRedundantTests(plan: Plan): Plan = {
       type SeenTests = Map[TestPlan, Boolean] // Map from tests to their outcomes
 
@@ -607,10 +561,12 @@ object PatternMatcher {
       }
       new ElimRedundant(Map())(plan)
     }
+    */
 
     /** Inline labelled blocks that are referenced only once.
      *  Drop all labels that are not referenced anymore after this.
      */
+    /*
     private def inlineLabelled(plan: Plan) = {
       val refCount = labelRefCount(plan)
       def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(sym) <= 1
@@ -624,10 +580,12 @@ object PatternMatcher {
       }
       (new Inliner)(plan)
     }
+    */
 
     /** Merge variables that have the same right hand side.
      *  Propagate common variable bindings as parameters into case labels.
      */
+    /*
     private def mergeVars(plan: Plan): Plan = {
       class RHS(val tree: Tree) {
         override def equals(that: Any) = that match {
@@ -711,10 +669,12 @@ object PatternMatcher {
       }
       (new Merge(Map()))(plan)
     }
+    */
 
     /** Inline let-bound trees that are referenced only once.
      *  Drop all variables that are not referenced anymore after this.
      */
+    /*
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
       val LetPlan(topSym, _) = plan
@@ -758,6 +718,7 @@ object PatternMatcher {
       }
       Inliner(plan)
     }
+    */
 
     // ----- Generating trees from plans ---------------
 
@@ -861,7 +822,7 @@ object PatternMatcher {
     /** Translate plan to tree */
     private def emit(plan: Plan): Tree = {
       if (selfCheck) {
-        assert(plan.isInstanceOf[CallPlan] || !emitted.contains(plan.id), plan.id)
+        assert(plan.isInstanceOf[ReturnPlan] || !emitted.contains(plan.id), plan.id)
         emitted += plan.id
       }
       plan match {
@@ -910,14 +871,13 @@ object PatternMatcher {
           }
         case LetPlan(sym, body) =>
           seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
-        case LabelledPlan(label, body, params) =>
-          label.info = MethodType.fromSymbols(params, resultType)
-          val labelDef = DefDef(label, Nil, params :: Nil, resultType, emit(labelled(label)))
-          seq(labelDef :: Nil, emit(body))
-        case CodePlan(tree) =>
-          tree
-        case CallPlan(label, args) =>
-          ref(label).appliedToArgs(args.map { case (_, actual) => ref(actual) })
+        case LabeledPlan(label, expr, next) =>
+          val labeledBlock = Labeled(label, emit(expr))
+          seq(labeledBlock :: Nil, emit(next))
+        case ReturnPlan(label) =>
+          Return(Literal(Constant(())), ref(label))
+        case ResultPlan(tree) =>
+          Return(tree, ref(resultLabel))
       }
     }
 
@@ -945,18 +905,15 @@ object PatternMatcher {
               sb.append(i"Let($sym = ${initializer(sym)}}, ${body.id})")
               sb.append(s", refcount = ${vrefCount(sym)}")
               showPlan(body)
-            case LabelledPlan(label, body, params) =>
-              val labeld = labelled(label)
-              def showParam(param: Symbol) =
-                i"$param: ${param.info}, refCount = ${vrefCount(param)}"
-              sb.append(i"Labelled($label(${params.map(showParam)}%, %) = ${labeld.id}, ${body.id})")
+            case LabeledPlan(label, expr, next) =>
+              sb.append(i"Labeled($label: { ${expr.id} }; ${next.id})")
               sb.append(s", refcount = ${lrefCount(label)}")
-              showPlan(body)
-              showPlan(labeld)
-            case CodePlan(tree) =>
+              showPlan(expr)
+              showPlan(next)
+            case ReturnPlan(label) =>
+              sb.append(s"Return($label)")
+            case ResultPlan(tree) =>
               sb.append(tree.show)
-            case CallPlan(label, params) =>
-              sb.append(s"Call($label(${params.map(_._2)}%, %)")
           }
         }
       showPlan(plan)
@@ -992,11 +949,13 @@ object PatternMatcher {
     }
 
     val optimizations: List[(String, Plan => Plan)] = List(
+      /*
       "hoistLabels" -> hoistLabels,
       "elimRedundantTests" -> elimRedundantTests,
       "inlineLabelled" -> inlineLabelled,
       "mergeVars" -> mergeVars,
       "inlineVars" -> inlineVars
+      */
     )
 
     /** Translate pattern match to sequence of tests. */
