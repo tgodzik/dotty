@@ -1073,9 +1073,8 @@ class TreeUnpickler(reader: TastyReader,
               Match(readTerm(), readCases(end))
             case LABELED =>
               val bind = readTerm().asInstanceOf[Bind]
-              val tpt = readTpt()
               val expr = readTerm()
-              Labeled(bind, tpt, expr)
+              Labeled(bind, expr)
             case RETURN =>
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)

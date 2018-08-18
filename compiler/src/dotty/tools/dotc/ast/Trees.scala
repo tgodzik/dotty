@@ -525,7 +525,7 @@ object Trees {
   }
 
   /** label[tpt]: { expr } */
-  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], tpt: Tree[T], expr: Tree[T])
+  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])
     extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] = Labeled[T]
     def name: Name = bind.name
@@ -1036,9 +1036,9 @@ object Trees {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
       }
-      def Labeled(tree: Tree)(bind: Bind, tpt: Tree, expr: Tree)(implicit ctx: Context): Labeled = tree match {
-        case tree: Labeled if (bind eq tree.bind) && (tpt eq tree.tpt) && (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Labeled(bind, tpt, expr))
+      def Labeled(tree: Tree)(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled = tree match {
+        case tree: Labeled if (bind eq tree.bind) && (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Labeled(bind, expr))
       }
       def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
@@ -1214,6 +1214,8 @@ object Trees {
             cpy.Match(tree)(transform(selector), transformSub(cases))
           case CaseDef(pat, guard, body) =>
             cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
+          case Labeled(bind, expr) =>
+            cpy.Labeled(tree)(transformSub(bind), transform(expr))
           case Return(expr, from) =>
             cpy.Return(tree)(transform(expr), transformSub(from))
           case Try(block, cases, finalizer) =>
@@ -1346,6 +1348,8 @@ object Trees {
             this(this(x, selector), cases)
           case CaseDef(pat, guard, body) =>
             this(this(this(x, pat), guard), body)
+          case Labeled(bind, expr) =>
+            this(this(x, bind), expr)
           case Return(expr, from) =>
             this(this(x, expr), from)
           case Try(block, handler, finalizer) =>

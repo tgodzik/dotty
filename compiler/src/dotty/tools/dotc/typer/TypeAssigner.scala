@@ -467,7 +467,7 @@ trait TypeAssigner {
     tree.withType(ctx.typeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
-    tree.withType(tree.tpt.tpe)
+    tree.withType(tree.bind.symbol.info)
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)

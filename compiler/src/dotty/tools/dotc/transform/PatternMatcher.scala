@@ -968,8 +968,8 @@ object PatternMatcher {
           patmatch.println(s"After $title: ${show(plan)}")
         }
       val result = emit(plan)
-      checkSwitch(tree, result)
-      result
+      //checkSwitch(tree, result)
+      Labeled(resultLabel, result)
     }
   }
 }

@@ -426,9 +426,9 @@ class TreePickler(pickler: TastyPickler) {
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
-        case Labeled(bind, tpt, expr) =>
+        case Labeled(bind, expr) =>
           writeByte(LABELED)
-          withLength { pickleTree(bind); pickleTree(tpt); pickleTree(expr) }
+          withLength { pickleTree(bind); pickleTree(expr) }
         case Return(expr, from) =>
           writeByte(RETURN)
           withLength { pickleSymRef(from.symbol); pickleTreeUnlessEmpty(expr) }

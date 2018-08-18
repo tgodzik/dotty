@@ -255,9 +255,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Labeled =>
         implicit val ctx = prepLabeled(tree, start)(outerCtx)
         val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
-        val tpt = transformTree(tree.tpt, start)
         val expr = transformTree(tree.expr, start)
-        goLabeled(cpy.Labeled(tree)(bind, tpt, expr), start)
+        goLabeled(cpy.Labeled(tree)(bind, expr), start)
       case tree: Bind =>
         implicit val ctx = prepBind(tree, start)(outerCtx)
         val body = transformTree(tree.body, start)
