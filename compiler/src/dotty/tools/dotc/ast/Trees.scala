@@ -526,7 +526,7 @@ object Trees {
 
   /** label[tpt]: { expr } */
   case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])
-    extends NameTree[T] with DefTree[T] {
+    extends NameTree[T] {
     type ThisTree[-T >: Untyped] = Labeled[T]
     def name: Name = bind.name
   }
