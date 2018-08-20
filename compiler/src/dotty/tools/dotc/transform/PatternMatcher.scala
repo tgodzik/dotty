@@ -103,6 +103,13 @@ object PatternMatcher {
       LabeledPlan(label, expr(ReturnPlan(label)), next)
     }
 
+    /** The plan `let l = labelled in body(l)` where `l` is a fresh label */
+    private def labeledAbstract2(next: Plan)(expr: TermSymbol => Plan): Plan = {
+      val label = ctx.newSymbol(ctx.owner, PatMatCaseName.fresh(), Synthetic | Label,
+        defn.UnitType)
+      LabeledPlan(label, expr(label), next)
+    }
+
     /** Test whether a type refers to a pattern-generated variable */
     private val refersToInternal = new TypeAccumulator[Boolean] {
       def apply(x: Boolean, tp: Type) =
@@ -141,7 +148,7 @@ object PatternMatcher {
 
     case class LetPlan(sym: TermSymbol, var body: Plan) extends Plan
     case class LabeledPlan(sym: TermSymbol, var expr: Plan, var next: Plan) extends Plan
-    case class ReturnPlan(label: TermSymbol) extends Plan
+    case class ReturnPlan(var label: TermSymbol) extends Plan
     case class ResultPlan(var tree: Tree) extends Plan
 
     object TestPlan {
@@ -457,6 +464,111 @@ object PatternMatcher {
       }
       refCounter(plan)
       refCounter.count
+    }
+
+    /** Merge identical tests from consecutive cases.
+     *
+     *  When we have the following shape:
+     *
+     *  caseM: {
+     *    if (testA) plan1 else plan2
+     *  }
+     *  caseN: {
+     *    if (testA) plan3 else plan4
+     *  }
+     *  nextPlan
+     *
+     *  transform it to
+     *
+     *  caseN: {
+     *    if (testA) {
+     *      case M: {
+     *        plan1
+     *      }
+     *      plan3
+     *    } else {
+     *      case M2: {
+     *        plan2[caseM2/caseM]
+     *      }
+     *      plan4
+     *    }
+     *  }
+     *  nextPlan
+     *
+     *  where plan2[caseM2/caseM] means substituting caseM2 for caseM in plan2.
+     *
+     *  We use some tricks to identify a let pointing to an unapply and the
+     *  NonEmptyTest that follows it as a single `UnappTest` test.
+     */
+    def mergeTests(plan: Plan): Plan = {
+      def isUnapply(sym: Symbol) = sym.name == nme.unapply || sym.name == nme.unapplySeq
+
+      /** A locally used test value that represents combos of
+       *
+       *   let x = X.unapply(...) in if !x.isEmpty then ... else ...
+       */
+      case object UnappTest extends Test
+
+      /** If `plan` is the NonEmptyTest part of an unapply, the corresponding UnappTest
+       *  otherwise the original plan
+       */
+      def normalize(plan: TestPlan): TestPlan = plan.scrutinee match {
+        case id: Ident
+        if plan.test == NonEmptyTest &&
+           isPatmatGenerated(id.symbol) &&
+           isUnapply(initializer(id.symbol).symbol) =>
+          TestPlan(UnappTest, initializer(id.symbol), plan.pos, plan.onSuccess, plan.onFailure)
+        case _ =>
+          plan
+      }
+
+      /** Extractor for Let/NonEmptyTest combos that represent unapplies */
+      object UnappTestPlan {
+        def unapply(plan: Plan): Option[TestPlan] = plan match {
+          case LetPlan(sym, body: TestPlan) =>
+            val RHS = initializer(sym)
+            normalize(body) match {
+              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Some(normPlan)
+              case _ => None
+            }
+          case _ => None
+        }
+      }
+
+      class SubstituteLabel(from: TermSymbol, to: TermSymbol) extends PlanTransform {
+        override def apply(plan: ReturnPlan): Plan = {
+          if (plan.label == from)
+            plan.label = to
+          plan
+        }
+      }
+
+      class MergeTests extends PlanTransform {
+        override def apply(plan: LabeledPlan): Plan = {
+          plan.next = apply(plan.next)
+          plan match {
+            case LabeledPlan(label1, testPlan1: TestPlan, LabeledPlan(label2, testPlan2: TestPlan, nextNext)) =>
+              val normTestPlan1 = normalize(testPlan1)
+              val normTestPlan2 = normalize(testPlan2)
+              if (normTestPlan1 == normTestPlan2) {
+                val onFailure = labeledAbstract2(testPlan2.onFailure) { label12 =>
+                  new SubstituteLabel(label1, label12)(testPlan1.onFailure)
+                }
+                val onSuccess = LabeledPlan(label1, testPlan1.onSuccess, testPlan2.onSuccess)
+                testPlan1.onSuccess = apply(onSuccess)
+                testPlan1.onFailure = apply(onFailure)
+                LabeledPlan(label2, testPlan1, nextNext)
+              } else {
+                plan.expr = apply(plan.expr)
+                plan
+              }
+            case _ =>
+              plan.expr = apply(plan.expr)
+              plan
+          }
+        }
+      }
+      new MergeTests()(plan)
     }
 
     /** Eliminate tests that are redundant (known to be true or false).
@@ -949,6 +1061,7 @@ object PatternMatcher {
     }
 
     val optimizations: List[(String, Plan => Plan)] = List(
+      //"mergeTests" -> mergeTests
       /*
       "hoistLabels" -> hoistLabels,
       "elimRedundantTests" -> elimRedundantTests,
@@ -961,11 +1074,13 @@ object PatternMatcher {
     /** Translate pattern match to sequence of tests. */
     def translateMatch(tree: Match): Tree = {
       var plan = matchPlan(tree)
-      patmatch.println(i"Plan for $tree: ${show(plan)}")
+      //patmatch.println(i"Plan for $tree: ${show(plan)}")
+      System.err.println(i"Plan for $tree: ${show(plan)}")
       if (!ctx.settings.YnoPatmatOpt.value)
         for ((title, optimization) <- optimizations) {
           plan = optimization(plan)
-          patmatch.println(s"After $title: ${show(plan)}")
+          //patmatch.println(s"After $title: ${show(plan)}")
+          System.err.println(s"After $title: ${show(plan)}")
         }
       val result = emit(plan)
       //checkSwitch(tree, result)
