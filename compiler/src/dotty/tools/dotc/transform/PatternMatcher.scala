@@ -96,18 +96,18 @@ object PatternMatcher {
       LetPlan(vble, body(vble))
     }
 
-    /** The plan `let l = labelled in body(l)` where `l` is a fresh label */
-    private def labeledAbstract(next: Plan)(expr: (=> Plan) => Plan): Plan = {
+    /** The plan `l: { expr(l) }` where `l` is a fresh label */
+    private def labeledAbstract(expr: (=> Plan) => Plan): Plan = {
       val label = ctx.newSymbol(ctx.owner, PatMatCaseName.fresh(), Synthetic | Label,
         defn.UnitType)
-      LabeledPlan(label, expr(ReturnPlan(label)), next)
+      LabeledPlan(label, expr(ReturnPlan(label)))
     }
 
-    /** The plan `let l = labelled in body(l)` where `l` is a fresh label */
-    private def labeledAbstract2(next: Plan)(expr: TermSymbol => Plan): Plan = {
+    /** The plan `l: { expr(l) }` where `l` is a fresh label */
+    private def labeledAbstract2(expr: TermSymbol => Plan): Plan = {
       val label = ctx.newSymbol(ctx.owner, PatMatCaseName.fresh(), Synthetic | Label,
         defn.UnitType)
-      LabeledPlan(label, expr(label), next)
+      LabeledPlan(label, expr(label))
     }
 
     /** Test whether a type refers to a pattern-generated variable */
@@ -138,7 +138,7 @@ object PatternMatcher {
     sealed abstract class Plan { val id = nxId; nxId += 1 }
 
     case class TestPlan(test: Test, var scrutinee: Tree, pos: Position,
-                        var onSuccess: Plan, var onFailure: Plan) extends Plan {
+                        var onSuccess: Plan) extends Plan {
       override def equals(that: Any) = that match {
         case that: TestPlan => this.scrutinee === that.scrutinee && this.test == that.test
         case _ => false
@@ -147,13 +147,14 @@ object PatternMatcher {
     }
 
     case class LetPlan(sym: TermSymbol, var body: Plan) extends Plan
-    case class LabeledPlan(sym: TermSymbol, var expr: Plan, var next: Plan) extends Plan
+    case class LabeledPlan(sym: TermSymbol, var expr: Plan) extends Plan
     case class ReturnPlan(var label: TermSymbol) extends Plan
+    case class SeqPlan(var head: Plan, var tail: Plan) extends Plan
     case class ResultPlan(var tree: Tree) extends Plan
 
     object TestPlan {
-      def apply(test: Test, sym: Symbol, pos: Position, ons: Plan, onf: Plan): TestPlan =
-        TestPlan(test, ref(sym), pos, ons, onf)
+      def apply(test: Test, sym: Symbol, pos: Position, ons: Plan): TestPlan =
+        TestPlan(test, ref(sym), pos, ons)
     }
 
     /** The different kinds of tests */
@@ -218,7 +219,7 @@ object PatternMatcher {
     }
 
     /** Plan for matching `scrutinee` symbol against `tree` pattern */
-    private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan, onFailure: Plan): Plan = {
+    private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan): Plan = {
 
       /** Plan for matching `selectors` against argument patterns `args` */
       def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
@@ -247,7 +248,7 @@ object PatternMatcher {
           args match {
             case arg :: args1 =>
               val sym :: syms1 = syms
-              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1), onFailure)
+              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
             case Nil =>
               assert(syms.isEmpty)
               onSuccess
@@ -262,7 +263,7 @@ object PatternMatcher {
         val selectors = args.indices.toList.map(idx =>
           ref(seqSym).select(nme.apply).appliedTo(Literal(Constant(idx))))
         TestPlan(LengthTest(args.length, exact), seqSym, seqSym.pos,
-          matchArgsPlan(selectors, args, onSuccess), onFailure)
+          matchArgsPlan(selectors, args, onSuccess))
       }
 
       /** Plan for matching the sequence in `getResult` against sequence elements
@@ -272,13 +273,13 @@ object PatternMatcher {
         case Some(VarArgPattern(arg)) =>
           val matchRemaining =
             if (args.length == 1)
-              patternPlan(getResult, arg, onSuccess, onFailure)
+              patternPlan(getResult, arg, onSuccess)
             else {
               val dropped = ref(getResult)
                 .select(defn.Seq_drop.matchingMember(getResult.info))
                 .appliedTo(Literal(Constant(args.length - 1)))
               letAbstract(dropped) { droppedResult =>
-                patternPlan(droppedResult, arg, onSuccess, onFailure)
+                patternPlan(droppedResult, arg, onSuccess)
               }
             }
           matchElemsPlan(getResult, args.init, exact = false, matchRemaining)
@@ -297,7 +298,7 @@ object PatternMatcher {
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
         else if (unapp.tpe.widenSingleton.isRef(defn.BooleanClass))
-          TestPlan(GuardTest, unapp, unapp.pos, onSuccess, onFailure)
+          TestPlan(GuardTest, unapp, unapp.pos, onSuccess)
         else {
           letAbstract(unapp) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
@@ -320,7 +321,7 @@ object PatternMatcher {
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }
-              TestPlan(NonEmptyTest, unappResult, unapp.pos, argsPlan, onFailure)
+              TestPlan(NonEmptyTest, unappResult, unapp.pos, argsPlan)
             }
           }
         }
@@ -332,54 +333,58 @@ object PatternMatcher {
           TestPlan(TypeTest(tpt), scrutinee, tree.pos,
             letAbstract(ref(scrutinee).asInstance(tpt.tpe)) { casted =>
               nonNull += casted
-              patternPlan(casted, pat, onSuccess, onFailure)
-            },
-            onFailure)
+              patternPlan(casted, pat, onSuccess)
+            })
         case UnApply(extractor, implicits, args) =>
           val mt @ MethodType(_) = extractor.tpe.widen
           var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
           if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
           val unappPlan = unapplyPlan(unapp, args)
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
-          else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan, onFailure)
+          else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan)
         case Bind(name, body) =>
-          if (name == nme.WILDCARD) patternPlan(scrutinee, body, onSuccess, onFailure)
+          if (name == nme.WILDCARD) patternPlan(scrutinee, body, onSuccess)
           else {
             // The type of `name` may refer to val in `body`, therefore should come after `body`
             val bound = tree.symbol.asTerm
             initializer(bound) = ref(scrutinee)
-            patternPlan(scrutinee, body, LetPlan(bound, onSuccess), onFailure)
+            patternPlan(scrutinee, body, LetPlan(bound, onSuccess))
           }
         case Alternative(alts) =>
-          labeledAbstract(onSuccess) { ons =>
-            (alts :\ onFailure) { (alt, onf) =>
-              labeledAbstract(onf) { onf1 =>
-                patternPlan(scrutinee, alt, ons, onf1)
-              }
-            }
+          labeledAbstract { onf =>
+            SeqPlan(
+              labeledAbstract { ons =>
+                alts.foldRight(onf) { (alt, next) =>
+                  SeqPlan(patternPlan(scrutinee, alt, ons), next)
+                }
+              },
+              onSuccess
+            )
           }
         case WildcardPattern() =>
           onSuccess
         case SeqLiteral(pats, _) =>
           matchElemsPlan(scrutinee, pats, exact = true, onSuccess)
         case _ =>
-          TestPlan(EqualTest(tree), scrutinee, tree.pos, onSuccess, onFailure)
+          TestPlan(EqualTest(tree), scrutinee, tree.pos, onSuccess)
       }
     }
 
-    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef, onFailure: Plan): Plan =
-      labeledAbstract(onFailure) { onf =>
-        var onSuccess: Plan = ResultPlan(cdef.body)
-        if (!cdef.guard.isEmpty)
-          onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.pos, onSuccess, onf)
-        patternPlan(scrutinee, cdef.pat, onSuccess, onf)
-      }
+    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan = {
+      var onSuccess: Plan = ResultPlan(cdef.body)
+      if (!cdef.guard.isEmpty)
+        onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.pos, onSuccess)
+      patternPlan(scrutinee, cdef.pat, onSuccess)
+    }
 
-    private def matchPlan(tree: Match): Plan =
+    private def matchPlan(tree: Match): Plan = {
       letAbstract(tree.selector) { scrutinee =>
         val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorType, ref(scrutinee) :: Nil)))
-        (tree.cases :\ matchError)(caseDefPlan(scrutinee, _, _))
+        tree.cases.foldRight(matchError) { (cdef, next) =>
+          SeqPlan(caseDefPlan(scrutinee, cdef), next)
+        }
       }
+    }
 
     // ----- Optimizing plans ---------------
 
@@ -392,7 +397,6 @@ object PatternMatcher {
       def apply(plan: TestPlan): Plan = {
         plan.scrutinee = apply(plan.scrutinee)
         plan.onSuccess = apply(plan.onSuccess)
-        plan.onFailure = apply(plan.onFailure)
         plan
       }
       def apply(plan: LetPlan): Plan = {
@@ -402,15 +406,20 @@ object PatternMatcher {
       }
       def apply(plan: LabeledPlan): Plan = {
         plan.expr = apply(plan.expr)
-        plan.next = apply(plan.next)
         plan
       }
       def apply(plan: ReturnPlan): Plan = plan
+      def apply(plan: SeqPlan): Plan = {
+        plan.head = apply(plan.head)
+        plan.tail = apply(plan.tail)
+        plan
+      }
       def apply(plan: Plan): Plan = plan match {
         case plan: TestPlan => apply(plan)
         case plan: LetPlan => apply(plan)
         case plan: LabeledPlan => apply(plan)
         case plan: ReturnPlan => apply(plan)
+        case plan: SeqPlan => apply(plan)
         case plan: ResultPlan => plan
       }
     }
@@ -426,7 +435,6 @@ object PatternMatcher {
       object refCounter extends RefCounter {
         override def apply(plan: LabeledPlan): Plan = {
           apply(plan.expr)
-          apply(plan.next)
           plan
         }
         override def apply(plan: ReturnPlan): Plan = {
@@ -500,6 +508,7 @@ object PatternMatcher {
      *  We use some tricks to identify a let pointing to an unapply and the
      *  NonEmptyTest that follows it as a single `UnappTest` test.
      */
+    /*
     def mergeTests(plan: Plan): Plan = {
       def isUnapply(sym: Symbol) = sym.name == nme.unapply || sym.name == nme.unapplySeq
 
@@ -570,6 +579,7 @@ object PatternMatcher {
       }
       new MergeTests()(plan)
     }
+    */
 
     /** Eliminate tests that are redundant (known to be true or false).
      *  Two parts:
@@ -894,6 +904,7 @@ object PatternMatcher {
      *  a switch, including a last default case, by starting with this
      *  plan and following onSuccess plans.
      */
+    /*
     private def collectSwitchCases(plan: TestPlan): List[Plan] = {
       def isSwitchableType(tpe: Type): Boolean =
         (tpe isRef defn.IntClass) ||
@@ -919,14 +930,17 @@ object PatternMatcher {
       if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
       else Nil
     }
+    */
 
     /** Emit cases of a switch */
+    /*
     private def emitSwitchCases(cases: List[Plan]): List[CaseDef] = (cases: @unchecked) match {
       case (default: Plan) :: Nil =>
         CaseDef(Underscore(defn.IntType), EmptyTree, emit(default)) :: Nil
       case TestPlan(EqualTest(tree), _, _, ons, _) :: cases1 =>
         CaseDef(tree, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
     }
+    */
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
     private val emitted = mutable.Set[Int]()
@@ -939,10 +953,10 @@ object PatternMatcher {
       }
       plan match {
         case plan: TestPlan =>
-          val switchCases = collectSwitchCases(plan)
+          /*val switchCases = collectSwitchCases(plan)
           if (switchCases.lengthCompare(MinSwitchCases) >= 0) // at least 3 cases + default
             Match(plan.scrutinee, emitSwitchCases(switchCases))
-          else {
+          else*/ {
             /** Merge nested `if`s that have the same `else` branch into a single `if`.
              *  This optimization targets calls to label defs for case failure jumps to next case.
              *
@@ -966,7 +980,7 @@ object PatternMatcher {
             def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
               val plan = plans.head
               plan.onSuccess match {
-                case plan2: TestPlan if plan.onFailure == plan2.onFailure =>
+                case plan2: TestPlan =>
                   emitWithMashedConditions(plan2 :: plans)
                 case _ =>
                   def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withPos(plan.pos)
@@ -975,19 +989,19 @@ object PatternMatcher {
                       if (acc.isEmpty) emitCondWithPos(otherPlan)
                       else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
                     }
-                  If(conditions, emit(plan.onSuccess), emit(plan.onFailure))
+                  If(conditions, emit(plan.onSuccess), unitLiteral)
               }
-
             }
             emitWithMashedConditions(plan :: Nil)
           }
         case LetPlan(sym, body) =>
           seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
-        case LabeledPlan(label, expr, next) =>
-          val labeledBlock = Labeled(label, emit(expr))
-          seq(labeledBlock :: Nil, emit(next))
+        case LabeledPlan(label, expr) =>
+          Labeled(label, emit(expr))
         case ReturnPlan(label) =>
           Return(Literal(Constant(())), ref(label))
+        case SeqPlan(head, tail) =>
+          seq(emit(head) :: Nil, emit(tail))
         case ResultPlan(tree) =>
           Return(tree, ref(resultLabel))
       }
@@ -1009,21 +1023,23 @@ object PatternMatcher {
           seen += plan.id
           sb append s"\n${plan.id}: "
           plan match {
-            case TestPlan(test, scrutinee, _, ons, onf) =>
-              sb.append(i"$scrutinee ? ${showTest(test)}(${ons.id}, ${onf.id})")
+            case TestPlan(test, scrutinee, _, ons) =>
+              sb.append(i"$scrutinee ? ${showTest(test)}(${ons.id})")
               showPlan(ons)
-              showPlan(onf)
             case LetPlan(sym, body) =>
               sb.append(i"Let($sym = ${initializer(sym)}}, ${body.id})")
               sb.append(s", refcount = ${vrefCount(sym)}")
               showPlan(body)
-            case LabeledPlan(label, expr, next) =>
-              sb.append(i"Labeled($label: { ${expr.id} }; ${next.id})")
+            case LabeledPlan(label, expr) =>
+              sb.append(i"Labeled($label: { ${expr.id} })")
               sb.append(s", refcount = ${lrefCount(label)}")
               showPlan(expr)
-              showPlan(next)
             case ReturnPlan(label) =>
               sb.append(s"Return($label)")
+            case SeqPlan(head, tail) =>
+              sb.append(s"${head.id}; ${tail.id}")
+              showPlan(head)
+              showPlan(tail)
             case ResultPlan(tree) =>
               sb.append(tree.show)
           }
@@ -1075,12 +1091,12 @@ object PatternMatcher {
     def translateMatch(tree: Match): Tree = {
       var plan = matchPlan(tree)
       //patmatch.println(i"Plan for $tree: ${show(plan)}")
-      System.err.println(i"Plan for $tree: ${show(plan)}")
+      //System.err.println(i"Plan for $tree: ${show(plan)}")
       if (!ctx.settings.YnoPatmatOpt.value)
         for ((title, optimization) <- optimizations) {
           plan = optimization(plan)
           //patmatch.println(s"After $title: ${show(plan)}")
-          System.err.println(s"After $title: ${show(plan)}")
+          //System.err.println(s"After $title: ${show(plan)}")
         }
       val result = emit(plan)
       //checkSwitch(tree, result)
