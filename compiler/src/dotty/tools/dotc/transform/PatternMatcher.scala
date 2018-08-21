@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import scala.annotation.tailrec
 import core._
 import MegaPhase._
 import collection.mutable
@@ -757,19 +758,24 @@ object PatternMatcher {
       }
     }
 
+    @tailrec
+    private def canFallThrough(plan: Plan): Boolean = plan match {
+      case _:ReturnPlan | _:ResultPlan => false
+      case _:TestPlan | _:LabeledPlan => true
+      case LetPlan(_, body) => canFallThrough(body)
+      case SeqPlan(_, tail) => canFallThrough(tail)
+    }
+
     /** Collect longest list of plans that represent possible cases of
      *  a switch, including a last default case, by starting with this
      *  plan and following onSuccess plans.
      */
-    /*
-    private def collectSwitchCases(plan: TestPlan): List[Plan] = {
+    private def collectSwitchCases(scrutinee: Tree, plan: SeqPlan): List[Plan] = {
       def isSwitchableType(tpe: Type): Boolean =
         (tpe isRef defn.IntClass) ||
         (tpe isRef defn.ByteClass) ||
         (tpe isRef defn.ShortClass) ||
         (tpe isRef defn.CharClass)
-
-      val scrutinee = plan.scrutinee
 
       def isIntConst(tree: Tree) = tree match {
         case Literal(const) => const.isIntRange
@@ -777,9 +783,9 @@ object PatternMatcher {
       }
 
       def recur(plan: Plan): List[Plan] = plan match {
-        case TestPlan(EqualTest(tree), scrut, _, _, onf)
-        if scrut === scrutinee && isIntConst(tree) =>
-          plan :: recur(onf)
+        case SeqPlan(testPlan @ TestPlan(EqualTest(tree), scrut, _, ons), tail)
+        if scrut === scrutinee && isIntConst(tree) && !canFallThrough(ons) =>
+          testPlan :: recur(tail)
         case _ =>
           plan :: Nil
       }
@@ -787,17 +793,14 @@ object PatternMatcher {
       if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
       else Nil
     }
-    */
 
     /** Emit cases of a switch */
-    /*
     private def emitSwitchCases(cases: List[Plan]): List[CaseDef] = (cases: @unchecked) match {
       case (default: Plan) :: Nil =>
         CaseDef(Underscore(defn.IntType), EmptyTree, emit(default)) :: Nil
-      case TestPlan(EqualTest(tree), _, _, ons, _) :: cases1 =>
+      case TestPlan(EqualTest(tree), _, _, ons) :: cases1 =>
         CaseDef(tree, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
     }
-    */
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
     private val emitted = mutable.Set[Int]()
@@ -810,55 +813,61 @@ object PatternMatcher {
       }
       plan match {
         case plan: TestPlan =>
-          /*val switchCases = collectSwitchCases(plan)
-          if (switchCases.lengthCompare(MinSwitchCases) >= 0) // at least 3 cases + default
-            Match(plan.scrutinee, emitSwitchCases(switchCases))
-          else*/ {
-            /** Merge nested `if`s that have the same `else` branch into a single `if`.
-             *  This optimization targets calls to label defs for case failure jumps to next case.
-             *
-             *  Plan for
-             *  ```
-             *  val x1: Int = ...
-             *  val x2: Int = ...
-             *  if (x1 == y1) {
-             *    if (x2 == y2) someCode
-             *    else label$1()
-             *  } else label$1()
-             *  ```
-             *  is emitted as
-             *  ```
-             *  val x1: Int = ...
-             *  val x2: Int = ...
-             *  if (x1 == y1 && x2 == y2) someCode
-             *  else label$1()
-             *  ```
-             */
-            def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
-              val plan = plans.head
-              plan.onSuccess match {
-                case plan2: TestPlan =>
-                  emitWithMashedConditions(plan2 :: plans)
-                case _ =>
-                  def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withPos(plan.pos)
-                  val conditions =
-                    plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
-                      if (acc.isEmpty) emitCondWithPos(otherPlan)
-                      else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
-                    }
-                  If(conditions, emit(plan.onSuccess), unitLiteral)
-              }
+          /** Merge nested `if`s that have the same `else` branch into a single `if`.
+           *  This optimization targets calls to label defs for case failure jumps to next case.
+           *
+           *  Plan for
+           *  ```
+           *  val x1: Int = ...
+           *  val x2: Int = ...
+           *  if (x1 == y1) {
+           *    if (x2 == y2) someCode
+           *    else label$1()
+           *  } else label$1()
+           *  ```
+           *  is emitted as
+           *  ```
+           *  val x1: Int = ...
+           *  val x2: Int = ...
+           *  if (x1 == y1 && x2 == y2) someCode
+           *  else label$1()
+           *  ```
+           */
+          def emitWithMashedConditions(plans: List[TestPlan]): Tree = {
+            val plan = plans.head
+            plan.onSuccess match {
+              case plan2: TestPlan =>
+                emitWithMashedConditions(plan2 :: plans)
+              case _ =>
+                def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withPos(plan.pos)
+                val conditions =
+                  plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
+                    if (acc.isEmpty) emitCondWithPos(otherPlan)
+                    else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
+                  }
+                If(conditions, emit(plan.onSuccess), unitLiteral)
             }
-            emitWithMashedConditions(plan :: Nil)
           }
+          emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
           seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>
           Return(Literal(Constant(())), ref(label))
-        case SeqPlan(head, tail) =>
-          seq(emit(head) :: Nil, emit(tail))
+        case plan: SeqPlan =>
+          def default = seq(emit(plan.head) :: Nil, emit(plan.tail))
+          plan.head match {
+            case testPlan: TestPlan =>
+              val scrutinee = testPlan.scrutinee
+              val switchCases = collectSwitchCases(scrutinee, plan)
+              if (switchCases.lengthCompare(MinSwitchCases) >= 0) // at least 3 cases + default
+                Match(scrutinee, emitSwitchCases(switchCases))
+              else
+                default
+            case _ =>
+              default
+          }
         case ResultPlan(tree) =>
           Return(tree, ref(resultLabel))
       }
@@ -954,7 +963,7 @@ object PatternMatcher {
           //System.err.println(s"After $title: ${show(plan)}")
         }
       val result = emit(plan)
-      //checkSwitch(tree, result)
+      checkSwitch(tree, result)
       Labeled(resultLabel, result)
     }
   }
