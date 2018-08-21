@@ -474,112 +474,83 @@ object PatternMatcher {
       refCounter.count
     }
 
-    /** Merge identical tests from consecutive cases.
+    /** Merge identical consecutive tests.
      *
      *  When we have the following shape:
      *
-     *  caseM: {
-     *    if (testA) plan1 else plan2
-     *  }
-     *  caseN: {
-     *    if (testA) plan3 else plan4
-     *  }
-     *  nextPlan
+     *  if (testA) plan1
+     *  if (testA) plan2
+     *  nextPlan?
      *
      *  transform it to
      *
-     *  caseN: {
-     *    if (testA) {
-     *      case M: {
-     *        plan1
-     *      }
-     *      plan3
-     *    } else {
-     *      case M2: {
-     *        plan2[caseM2/caseM]
-     *      }
-     *      plan4
-     *    }
+     *  if (testA) {
+     *    plan1
+     *    plan2
      *  }
-     *  nextPlan
+     *  nextPlan?
      *
-     *  where plan2[caseM2/caseM] means substituting caseM2 for caseM in plan2.
+     *  Similarly, when we have equivalent let bindings:
      *
-     *  We use some tricks to identify a let pointing to an unapply and the
-     *  NonEmptyTest that follows it as a single `UnappTest` test.
+     *  let x1 = rhs1 in plan1
+     *  let x2 = rhs2 in plan2
+     *  nextPlan?
+     *
+     *  and rhs1 and rhs2 are equivalent, transform it to
+     *
+     *  let x1 = rhs1 in {
+     *    plan1
+     *    plan2[x1/x2]
+     *  }
+     *
+     *  where plan2[x1/x2] means substituting x1 for x2 in plan2.
      */
-    /*
     def mergeTests(plan: Plan): Plan = {
-      def isUnapply(sym: Symbol) = sym.name == nme.unapply || sym.name == nme.unapplySeq
-
-      /** A locally used test value that represents combos of
-       *
-       *   let x = X.unapply(...) in if !x.isEmpty then ... else ...
-       */
-      case object UnappTest extends Test
-
-      /** If `plan` is the NonEmptyTest part of an unapply, the corresponding UnappTest
-       *  otherwise the original plan
-       */
-      def normalize(plan: TestPlan): TestPlan = plan.scrutinee match {
-        case id: Ident
-        if plan.test == NonEmptyTest &&
-           isPatmatGenerated(id.symbol) &&
-           isUnapply(initializer(id.symbol).symbol) =>
-          TestPlan(UnappTest, initializer(id.symbol), plan.pos, plan.onSuccess, plan.onFailure)
-        case _ =>
-          plan
-      }
-
-      /** Extractor for Let/NonEmptyTest combos that represent unapplies */
-      object UnappTestPlan {
-        def unapply(plan: Plan): Option[TestPlan] = plan match {
-          case LetPlan(sym, body: TestPlan) =>
-            val RHS = initializer(sym)
-            normalize(body) match {
-              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Some(normPlan)
-              case _ => None
-            }
-          case _ => None
-        }
-      }
-
-      class SubstituteLabel(from: TermSymbol, to: TermSymbol) extends PlanTransform {
-        override def apply(plan: ReturnPlan): Plan = {
-          if (plan.label == from)
-            plan.label = to
-          plan
+      class SubstituteIdent(from: TermSymbol, to: TermSymbol) extends PlanTransform {
+        override val treeMap = new TreeMap {
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+            case tree: Ident if tree.symbol == from => ref(to)
+            case _ => super.transform(tree)
+          }
         }
       }
 
       class MergeTests extends PlanTransform {
-        override def apply(plan: LabeledPlan): Plan = {
-          plan.next = apply(plan.next)
-          plan match {
-            case LabeledPlan(label1, testPlan1: TestPlan, LabeledPlan(label2, testPlan2: TestPlan, nextNext)) =>
-              val normTestPlan1 = normalize(testPlan1)
-              val normTestPlan2 = normalize(testPlan2)
-              if (normTestPlan1 == normTestPlan2) {
-                val onFailure = labeledAbstract2(testPlan2.onFailure) { label12 =>
-                  new SubstituteLabel(label1, label12)(testPlan1.onFailure)
-                }
-                val onSuccess = LabeledPlan(label1, testPlan1.onSuccess, testPlan2.onSuccess)
-                testPlan1.onSuccess = apply(onSuccess)
-                testPlan1.onFailure = apply(onFailure)
-                LabeledPlan(label2, testPlan1, nextNext)
-              } else {
-                plan.expr = apply(plan.expr)
-                plan
+        override def apply(plan: SeqPlan): Plan = {
+          def tryMerge(plan1: Plan, plan2: Plan): Option[Plan] = {
+            (plan1, plan2) match {
+              case (plan1: TestPlan, plan2: TestPlan) if plan1 == plan2 =>
+                plan1.onSuccess = SeqPlan(plan1.onSuccess, plan2.onSuccess)
+                Some(plan1)
+
+              case (plan1: LetPlan, plan2: LetPlan) if isPatmatGenerated(plan2.sym) && initializer(plan1.sym) === initializer(plan2.sym) =>
+                val newPlan2Body = new SubstituteIdent(plan2.sym, plan1.sym)(plan2.body)
+                plan1.body = SeqPlan(plan1.body, newPlan2Body)
+                Some(plan1)
+
+              case _ =>
+                None
+            }
+          }
+
+          plan.head = apply(plan.head)
+          plan.tail = apply(plan.tail)
+          plan.tail match {
+            case SeqPlan(tailHead, tailTail) =>
+              tryMerge(plan.head, tailHead) match {
+                case Some(merged) => SeqPlan(apply(merged), tailTail)
+                case none => plan
               }
-            case _ =>
-              plan.expr = apply(plan.expr)
-              plan
+            case tail =>
+              tryMerge(plan.head, tail) match {
+                case Some(merged) => apply(merged)
+                case none => plan
+              }
           }
         }
       }
       new MergeTests()(plan)
     }
-    */
 
     /** Eliminate tests that are redundant (known to be true or false).
      *  Two parts:
@@ -1077,7 +1048,7 @@ object PatternMatcher {
     }
 
     val optimizations: List[(String, Plan => Plan)] = List(
-      //"mergeTests" -> mergeTests
+      "mergeTests" -> mergeTests
       /*
       "hoistLabels" -> hoistLabels,
       "elimRedundantTests" -> elimRedundantTests,
