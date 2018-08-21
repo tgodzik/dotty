@@ -518,15 +518,36 @@ object PatternMatcher {
       class MergeTests extends PlanTransform {
         override def apply(plan: SeqPlan): Plan = {
           def tryMerge(plan1: Plan, plan2: Plan): Option[Plan] = {
-            (plan1, plan2) match {
-              case (plan1: TestPlan, plan2: TestPlan) if plan1 == plan2 =>
-                plan1.onSuccess = SeqPlan(plan1.onSuccess, plan2.onSuccess)
-                Some(plan1)
+            def skipNonPatmatGenedLets(plan: Plan): Plan = plan match {
+              case LetPlan(sym, body) if !isPatmatGenerated(sym) =>
+                skipNonPatmatGenedLets(body)
+              case _ =>
+                plan
+            }
 
-              case (plan1: LetPlan, plan2: LetPlan) if isPatmatGenerated(plan2.sym) && initializer(plan1.sym) === initializer(plan2.sym) =>
-                val newPlan2Body = new SubstituteIdent(plan2.sym, plan1.sym)(plan2.body)
-                plan1.body = SeqPlan(plan1.body, newPlan2Body)
-                Some(plan1)
+            def transferNonPatmatGenedLets(originalPlan: Plan, newPlan: Plan): Plan = originalPlan match {
+              case originalPlan: LetPlan if !isPatmatGenerated(originalPlan.sym) =>
+                originalPlan.body = transferNonPatmatGenedLets(originalPlan.body, newPlan)
+                originalPlan
+              case _ =>
+                newPlan
+            }
+
+            (skipNonPatmatGenedLets(plan1), skipNonPatmatGenedLets(plan2)) match {
+              case (testPlan1: TestPlan, testPlan2: TestPlan) if testPlan1 == testPlan2 =>
+                /* Because testPlan2 is the same as testPlan1, it cannot possibly refer to
+                 * the symbols defined by any of the skipped lets.
+                 */
+                testPlan1.onSuccess = SeqPlan(testPlan1.onSuccess,
+                  transferNonPatmatGenedLets(plan2, testPlan2.onSuccess))
+                Some(plan1) // that's the original plan1, on purpose
+
+              case (letPlan1: LetPlan, letPlan2: LetPlan) if initializer(letPlan1.sym) === initializer(letPlan2.sym) =>
+                // By construction, letPlan1.sym and letPlan2.sym are patmat-generated
+                val newPlan2Body = new SubstituteIdent(letPlan2.sym, letPlan1.sym)(letPlan2.body)
+                letPlan1.body = SeqPlan(letPlan1.body,
+                  transferNonPatmatGenedLets(plan2, newPlan2Body))
+                Some(plan1) // that's the original plan1, on purpose
 
               case _ =>
                 None
