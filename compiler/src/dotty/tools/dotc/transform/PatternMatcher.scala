@@ -573,129 +573,6 @@ object PatternMatcher {
       new MergeTests()(plan)
     }
 
-    /** Eliminate tests that are redundant (known to be true or false).
-     *  Two parts:
-     *
-     *   - If we know at some point that a test is true or false skip it and continue
-     *     diretcly with the test's onSuccess or onFailure continuation.
-     *   - If a label of a call points to a test that is known to be true or false
-     *     at the point of call, let the label point instead to the test's onSuccess
-     *     or onFailure continuation.
-     *
-     *  We use some tricks to identify a let pointing to an unapply and the
-     *  NonEmptyTest that follows it as a single `UnappTest` test.
-     */
-    /*
-    def elimRedundantTests(plan: Plan): Plan = {
-      type SeenTests = Map[TestPlan, Boolean] // Map from tests to their outcomes
-
-      def isUnapply(sym: Symbol) = sym.name == nme.unapply || sym.name == nme.unapplySeq
-
-      /** A locally used test value that represents combos of
-       *
-       *   let x = X.unapply(...) in if !x.isEmpty then ... else ...
-       */
-      case object UnappTest extends Test
-
-      /** If `plan` is the NonEmptyTest part of an unapply, the corresponding UnappTest
-       *  otherwise the original plan
-       */
-      def normalize(plan: TestPlan): TestPlan = plan.scrutinee match {
-        case id: Ident
-        if plan.test == NonEmptyTest &&
-           isPatmatGenerated(id.symbol) &&
-           isUnapply(initializer(id.symbol).symbol) =>
-          TestPlan(UnappTest, initializer(id.symbol), plan.pos, plan.onSuccess, plan.onFailure)
-        case _ =>
-          plan
-      }
-
-      /** Extractor for Let/NonEmptyTest combos that represent unapplies */
-      object UnappTestPlan {
-        def unapply(plan: Plan): Option[TestPlan] = plan match {
-          case LetPlan(sym, body: TestPlan) =>
-            val RHS = initializer(sym)
-            normalize(body) match {
-              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Some(normPlan)
-              case _ => None
-            }
-          case _ => None
-        }
-      }
-
-      def intersect(tests1: SeenTests, tests2: SeenTests) =
-        tests1.filter { case(test, outcome) => tests2.get(test) == Some(outcome) }
-
-      /** The tests with known outcomes valid at entry to label */
-      val seenAtLabel = newMutableSymbolMap[SeenTests]
-
-      class ElimRedundant(seenTests: SeenTests) extends PlanTransform {
-        override def apply(plan: TestPlan): Plan = {
-          val normPlan = normalize(plan)
-          seenTests.get(normPlan) match {
-            case Some(outcome) =>
-              apply(if (outcome) plan.onSuccess else plan.onFailure)
-            case None =>
-              plan.onSuccess = new ElimRedundant(seenTests + (normPlan -> true))(plan.onSuccess)
-              plan.onFailure = new ElimRedundant(seenTests + (normPlan -> false))(plan.onFailure)
-              plan
-          }
-        }
-        override def apply(plan: LabelledPlan): Plan = {
-          plan.body = apply(plan.body)
-          for (seenTests1 <- seenAtLabel.get(plan.sym))
-            labelled(plan.sym) = new ElimRedundant(seenTests1)(labelled(plan.sym))
-          plan
-        }
-        override def apply(plan: CallPlan): Plan = {
-          val label = plan.label
-          def redirect(target: Plan): Plan = {
-            def forward(tst: TestPlan) = seenTests.get(tst) match {
-              case Some(true) => redirect(tst.onSuccess)
-              case Some(false) => redirect(tst.onFailure)
-              case none => target
-            }
-            target match {
-              case tst: TestPlan => forward(tst)
-              case UnappTestPlan(tst) => forward(tst)
-              case _ => target
-            }
-          }
-          redirect(labelled(label)) match {
-            case target: CallPlan =>
-              apply(target)
-            case _ =>
-              seenAtLabel(label) = seenAtLabel.get(label) match {
-                case Some(seenTests1) => intersect(seenTests1, seenTests)
-                case none => seenTests
-              }
-              plan
-          }
-        }
-      }
-      new ElimRedundant(Map())(plan)
-    }
-    */
-
-    /** Inline labelled blocks that are referenced only once.
-     *  Drop all labels that are not referenced anymore after this.
-     */
-    /*
-    private def inlineLabelled(plan: Plan) = {
-      val refCount = labelRefCount(plan)
-      def toDrop(sym: Symbol) = labelled.contains(sym) && refCount(sym) <= 1
-      class Inliner extends PlanTransform {
-        override def apply(plan: LabelledPlan): Plan =
-          if (toDrop(plan.sym)) apply(plan.body) else super.apply(plan)
-        override def apply(plan: CallPlan): Plan = {
-          if (refCount(plan.label) == 1) apply(labelled(plan.label))
-          else plan
-        }
-      }
-      (new Inliner)(plan)
-    }
-    */
-
     /** Merge variables that have the same right hand side.
      *  Propagate common variable bindings as parameters into case labels.
      */
@@ -788,7 +665,6 @@ object PatternMatcher {
     /** Inline let-bound trees that are referenced only once.
      *  Drop all variables that are not referenced anymore after this.
      */
-    /*
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
       val LetPlan(topSym, _) = plan
@@ -819,20 +695,9 @@ object PatternMatcher {
             plan
           }
         }
-        override def apply(plan: LabelledPlan): Plan = {
-          plan.params = plan.params.filter(refCount(_) != 0)
-          super.apply(plan)
-        }
-        override def apply(plan: CallPlan): Plan = {
-          plan.args = plan.args
-            .filter(formalActual => refCount(formalActual._1) != 0)
-            .sortBy(_._1.name.toString)
-          plan
-        }
       }
       Inliner(plan)
     }
-    */
 
     // ----- Generating trees from plans ---------------
 
@@ -1069,11 +934,9 @@ object PatternMatcher {
     }
 
     val optimizations: List[(String, Plan => Plan)] = List(
-      "mergeTests" -> mergeTests
+      "mergeTests" -> mergeTests,
+      "inlineVars" -> inlineVars
       /*
-      "hoistLabels" -> hoistLabels,
-      "elimRedundantTests" -> elimRedundantTests,
-      "inlineLabelled" -> inlineLabelled,
       "mergeVars" -> mergeVars,
       "inlineVars" -> inlineVars
       */
