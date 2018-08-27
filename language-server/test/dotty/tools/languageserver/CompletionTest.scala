@@ -19,4 +19,11 @@ class CompletionTest {
       code"object Main { import Foo._; val bar: Bar = new Bar; bar.b${m1} }"
     ) .completion(m1, Set(("baz", CompletionItemKind.Method, "=> Int")))
   }
+
+  @Test def completionClassName: Unit = {
+    withSources(
+      code"""class MyClass""",
+      code"""class Bar { val foo = new MyCla${m1} }"""
+    ) .completion(m1, Set(("MyClass", CompletionItemKind.Class, "Object{...}")))
+  }
 }

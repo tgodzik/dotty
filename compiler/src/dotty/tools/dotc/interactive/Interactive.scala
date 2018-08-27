@@ -115,6 +115,11 @@ object Interactive {
            ref.name.toString.take(pos.pos.point - ref.pos.point),
            ref.name.isTermName,
            ref.name.isTypeName)
+      case _ :: (nw: New) :: _ =>
+        // When given an incomplete type name, the tpt becomes `Object`
+        // We need to inspect the source file to recover the prefix
+        val prefix = pos.lineContent.substring(nw.pos.start, nw.pos.end)
+        (nw.pos.end, prefix, false, true)
       case _ =>
         (0, "", false, false)
     }
