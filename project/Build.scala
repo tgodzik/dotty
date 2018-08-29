@@ -23,6 +23,8 @@ import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
+import org.eclipse.xtend.core.XtendInjectorSingleton
+import org.eclipse.xtend.core.compiler.batch.XtendBatchCompiler
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
@@ -847,11 +849,32 @@ object Build {
       // plugin and the language server
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../sbt-dotty/src/dotty/tools/sbtplugin/config",
 
+      sourceGenerators in Compile += Def.task {
+        val compiler = XtendInjectorSingleton.INJECTOR.getInstance(classOf[XtendBatchCompiler])
+        // val compiler = new org.eclipse.xtend.core.compiler.batch.XtendBatchCompiler
+
+        val classpath = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
+        compiler.setClassPath(classpath)
+
+        val sourceDir = (baseDirectory.value / "src" / "dotty" / "tools" / "buildprotocol")
+        compiler.setSourcePath(sourceDir.getCanonicalPath)
+
+        val outDir = (sourceManaged in Compile).value
+        compiler.setOutputPath(outDir.getCanonicalPath)
+
+        val log = streams.value.log
+        if (!compiler.compile())
+          log.error(s"Compilation of Xtend files in $sourceDir failed.")
+
+        (outDir ** "*.java").get
+      },
+
       // fork so that the shutdown hook in Main is run when we ctrl+c a run
       // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
       fork in run := true,
       fork in Test := true,
       libraryDependencies ++= Seq(
+        "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.0.0",
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0.M1",
         Dependencies.`jackson-databind`
       ),
