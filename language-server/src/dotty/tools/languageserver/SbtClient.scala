@@ -53,8 +53,13 @@ object SbtClient {
 
     server.initialize(params)
 
-    val execParams = new SbtExecParams("compile")
-    server.sbtExec(execParams)
+    // val execParams = new SbtExecParams("compile")
+    // // server.sbtExec(execParams)
+    val testParams = new SbtExecParams("inputPARAM")
+    val r = server.dottyTest(testParams)
+    println("r: " + r.get)
+    // socket.close()
+    // System.exit(0)
   }
 }
 

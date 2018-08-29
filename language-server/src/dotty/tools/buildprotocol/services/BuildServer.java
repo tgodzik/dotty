@@ -15,4 +15,7 @@ import dotty.tools.buildprotocol.*;
 public interface BuildServer extends LanguageServer {
   @JsonNotification("sbt/exec")
   void sbtExec(SbtExecParams params);
+
+  @JsonRequest("dotty/test")
+  CompletableFuture<SbtExecParams> dottyTest(SbtExecParams params);
 }
