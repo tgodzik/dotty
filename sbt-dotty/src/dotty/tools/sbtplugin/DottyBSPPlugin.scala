@@ -8,6 +8,7 @@ import sbt.internal.langserver._
 import sbt.internal.langserver.codec.JsonProtocol._
 import sbt.internal.protocol._
 import sbt.internal.server._
+import sbt.complete.DefaultParsers._
 
 import DottyPlugin.autoImport._
 
@@ -15,34 +16,39 @@ import sbt.dottyplugin.Restricted
 
 object DottyBSPPlugin extends AutoPlugin {
   object autoImport {
-    private[dotty] val bspTest = taskKey[Int]("Run the tests")
+    private[dotty] val bspTest = inputKey[Unit]("Run the tests")
   }
   import autoImport._
 
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  // override def projectSettings: Seq[Setting[_]] = Seq(
-  // )
-
-  override def buildSettings: Seq[Setting[_]] = Seq(
+  override def globalSettings: Seq[Setting[_]] = Seq(
     bspTest := {
+      val Seq(name, id) = spaceDelimited("<arg>").parsed
+      println("name: " + name)
+      println("id: " + id)
+
       val params = SbtExecParams("foo")
-      Restricted.notifyEvent("dotty/testResponse", params)
-      42
+
+      println("channels: " + Restricted.exchange.channels)
+      Restricted.exchange.channels.collectFirst {
+        case c: NetworkChannel if c.name == name =>
+          c
+      }.foreach { c =>
+        println("c: " + c)
+        Restricted.jsonRpcRespond(c, params, Some(id))
+      }
     },
 
-    serverHandlers in Global += ServerHandler({ callback =>
+    serverHandlers += ServerHandler({ callback =>
       import callback._
       import sjsonnew.BasicJsonProtocol._
        ServerIntent(
         {
           case r: JsonRpcRequestMessage if r.method == "dotty/test" =>
             val params = SbtExecParams("foo")
-            // Restricted.notifyEvent("dotty/testResponse", params)
-            appendExec(Exec("bspTest", None, Some(CommandSource(name))))
-            // jsonRpcNotify("lunar/oleh", "")
-            ()
+            appendExec(Exec(s"Global/bspTest $name ${r.id}", None, Some(CommandSource(name))))
         },
         PartialFunction.empty
       )
