@@ -10,6 +10,8 @@ import sbt.internal.protocol._
 import sbt.internal.server._
 import sbt.complete.DefaultParsers._
 
+import dotty.tools.sbtplugin.codec.JsonProtocol._
+
 import DottyPlugin.autoImport._
 
 import sbt.dottyplugin.Restricted
@@ -29,7 +31,7 @@ object DottyBSPPlugin extends AutoPlugin {
       println("name: " + name)
       println("id: " + id)
 
-      val params = SbtExecParams("foo")
+      val params = TestResult("foo")
 
       println("channels: " + Restricted.exchange.channels)
       Restricted.exchange.channels.collectFirst {

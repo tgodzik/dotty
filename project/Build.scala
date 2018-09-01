@@ -15,6 +15,10 @@ import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 
+import sbt.contraband.ContrabandPlugin
+import sbt.contraband.ContrabandPlugin.autoImport._
+import sbt.contraband.JsonCodecPlugin
+
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
@@ -141,6 +145,8 @@ object Build {
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
+    offline := true,
+
     onLoad := (onLoad in Global).value andThen { state =>
       def exists(submodule: String) = {
         val path = Paths.get(submodule)
@@ -958,6 +964,7 @@ object Build {
   // https://github.com/lampepfl/dotty-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     enablePlugins(SbtPlugin).
+    enablePlugins(ContrabandPlugin, JsonCodecPlugin).
     settings(commonSettings).
     settings(
       name := sbtDottyName,
@@ -967,8 +974,16 @@ object Build {
         Dependencies.`jackson-databind`,
         Dependencies.`compiler-interface`
       ),
+
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
+
+      // The contraband sources are in contraband-src
+      contrabandSource in (Compile, generateContrabands) := (baseDirectory.value / "contraband-src"),
+      // ...and the Scala files generated from it are in contraband-generated
+      sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "contraband-generated",
+      managedSourceDirectories in Compile += baseDirectory.value / "contraband-generated",
+
       sbtTestDirectory := baseDirectory.value / "sbt-test",
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,

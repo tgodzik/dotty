@@ -13,3 +13,15 @@ class SbtExecParams {
     this.commandLine = commandLine
   }
 }
+
+@JsonRpcData
+class TestResult {
+  String res
+
+  new() {
+  }
+
+  new (String res) {
+    this.res = res
+  }
+}

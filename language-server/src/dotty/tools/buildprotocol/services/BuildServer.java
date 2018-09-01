@@ -17,5 +17,5 @@ public interface BuildServer extends LanguageServer {
   void sbtExec(SbtExecParams params);
 
   @JsonRequest("dotty/test")
-  CompletableFuture<SbtExecParams> dottyTest(SbtExecParams params);
+  CompletableFuture<TestResult> dottyTest(SbtExecParams params);
 }

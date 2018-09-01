@@ -2,7 +2,10 @@
 // so that we can use the current in-development version of the plugin
 // in our build instead of a released version.
 
-unmanagedSourceDirectories in Compile += baseDirectory.value / "../sbt-dotty/src"
+unmanagedSourceDirectories in Compile ++= Seq(
+  baseDirectory.value / "../sbt-dotty/src",
+  baseDirectory.value / "../sbt-dotty/contraband-generated"
+)
 
 // Keep in sync with `sbt-dotty` config in Build.scala
 libraryDependencies ++= Seq(
