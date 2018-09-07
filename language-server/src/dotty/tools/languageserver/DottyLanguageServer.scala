@@ -51,9 +51,12 @@ class DottyLanguageServer extends LanguageServer
   import lsp4j.jsonrpc.messages.{Either => JEither}
   import lsp4j._
 
+  import buildprotocol._
+  import buildprotocol.services._
+
 
   private[this] var rootUri: String = _
-  private[this] var client: LanguageClient = _
+  /*private[this]*/ var client: LanguageClient = _
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
@@ -85,6 +88,15 @@ class DottyLanguageServer extends LanguageServer
     }
     myDrivers
   }
+
+  private[this] var myBuildClient: SbtClient = _
+  def buildClient: SbtClient = thisServer.synchronized {
+    if (myBuildClient == null) {
+      myBuildClient = SbtClient(this)
+    }
+    myBuildClient
+  }
+
 
   /** Restart all presentation compiler drivers, copying open files over */
   private def restart() = thisServer.synchronized {
@@ -171,6 +183,12 @@ class DottyLanguageServer extends LanguageServer
         sys.exit(1)
       }
 
+    CompletableFuture.supplyAsync(() => buildClient)
+      .exceptionally { (ex: Throwable) =>
+        ex.printStackTrace
+        sys.exit(1)
+      }
+
     new InitializeResult(c)
   }
 
@@ -221,6 +239,47 @@ class DottyLanguageServer extends LanguageServer
   override def didSave(params: DidSaveTextDocumentParams): Unit =
     /*thisServer.synchronized*/ {}
 
+
+  override def executeCommand(params: ExecuteCommandParams) = computeAsync { cancelToken =>
+    val command = params.getCommand
+    val args = params.getArguments.asScala.map(_.toString)
+
+    import Commands._
+
+    command match {
+      case BSP_LIST_TESTS =>
+        if (false && !args.isEmpty) {
+          println(s"Unexpected arguments for command $command: $args")
+          null
+        }
+        else {
+          // val params = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
+          val params = new ListTestsParams(List(new BuildTargetIdentifier("funsets/test")).asJava)
+          val aa = buildClient.server.listTests(params).get
+          println("###aa: " + aa)
+          aa
+        }
+      case BSP_RUN_TESTS =>
+        if (args.isEmpty) {
+          println(s"Missing argument for $command")
+          null
+        }
+        else {
+          println("RUN args: " + args)
+          // FIXME: use structured data instead (decode it with gson)
+          val args1 = args.asInstanceOf[Seq[String]].toArray
+          val target = args1(0)
+          val ids = args1.tail.toList.map(testName => new TestIdentifier(new BuildTargetIdentifier(target), testName))
+          val params1 = new RunTestsParams(ids.asJava)
+          val zz = buildClient.server.runTests(params1).get
+          println("###zz: " + zz)
+          zz
+        }
+      case _ =>
+        println(s"Unrecognized command $command with arguments $args")
+        null
+    }
+  }
 
   // FIXME: share code with messages.NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>

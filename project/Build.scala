@@ -202,7 +202,7 @@ object Build {
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
     // enable verbose exception messages for JUnit
-    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-n")
   )
 
   // Settings used for projects compiled only with Scala 2
@@ -216,6 +216,21 @@ object Build {
     version := dottyNonBootstrappedVersion,
     scalaVersion := scalacVersion
   )
+
+  def bgRunTask1(
+      config: Configuration,
+      mainClass: String,
+      arguments: String*
+  )/*: Initialize[Task[Unit]]*/ = {
+    import sbt.internal.util.Attributed.data
+
+    Def.task {
+      val cp = (fullClasspath in config).value
+      val r = (runner in (config, run)).value
+      val s = streams.value
+      r.asInstanceOf[ForkRun].fork(mainClass, data(cp), arguments, s.log)//.get
+    }
+  }
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonSettings ++ Seq(
@@ -900,7 +915,10 @@ object Build {
 
         val allArgs = "-client_command" +: clientCommand
 
-        runTask(Runtime, mainClass, allArgs: _*)
+        bgRunTask1(
+          Runtime,
+          mainClass,
+          allArgs: _*)
       }.dependsOn(compile in (`vscode-dotty`, Compile)).evaluated
     ).
     settings(

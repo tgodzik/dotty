@@ -103,10 +103,10 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   /** Run `task` in state `state` */
-  private def runTask[T](task: Task[T], state: State): T = {
+  private[dotty] def runTask[T](task: Task[T], state: State): (State, T) = {
     val extracted = Project.extract(state)
     val structure = extracted.structure
-    val (_, result) =
+    val (state1, result) =
       EvaluateTask.withStreams(structure, state) { streams =>
         EvaluateTask.runTask(task, state, streams, structure.index.triggers,
           EvaluateTask.extractedTaskConfig(extracted, structure, state))(
@@ -115,7 +115,7 @@ object DottyIDEPlugin extends AutoPlugin {
       }
     result match {
       case Value(v) =>
-        v
+        (state1, v)
       case Inc(i) =>
         throw i
     }
@@ -123,7 +123,7 @@ object DottyIDEPlugin extends AutoPlugin {
 
   /** Run task `key` in all configurations in all projects in `projRefs`, using state `state`,
    *  configurations where `excludeFromIDE` is `true` are skipped. */
-  private def runInAllIDEConfigurations[T](key: TaskKey[T], projRefs: Seq[ProjectRef], state: State): Seq[T] = {
+  private[dotty] def runInAllIDEConfigurations[T](key: TaskKey[T], projRefs: Seq[ProjectRef], state: State): Seq[T] = {
     val structure = Project.structure(state)
     val settings = structure.data
     val joinedTask = projRefs.flatMap { projRef =>
@@ -138,7 +138,7 @@ object DottyIDEPlugin extends AutoPlugin {
       }
     }.join
 
-    runTask(joinedTask, state)
+    runTask(joinedTask, state)._2
   }
 
   /** Prepare command to be passed to ProcessBuilder */

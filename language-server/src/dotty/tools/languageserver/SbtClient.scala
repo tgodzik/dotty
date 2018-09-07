@@ -27,7 +27,7 @@ import scala.io.Codec
 import config.SbtPortFile
 
 object SbtClient {
-  def main(args: Array[String]): Unit = {
+  def apply(languageServer: DottyLanguageServer): SbtClient = {
     val configFile = new File("/home/smarter/opt/dotty/project/target/active.json")
 
     val config = (new ObjectMapper).readValue(configFile, classOf[SbtPortFile])
@@ -38,7 +38,7 @@ object SbtClient {
       case _ => sys.error(s"Unsupported uri: $uri")
     }
 
-    val client = new SbtClient
+    val client = new SbtClient(languageServer)
 
     val writer = new PrintWriter(new File("/home/smarter/opt/dotty/sbt-server.log"))
     // val writer = new PrintWriter(System.err, true)
@@ -50,26 +50,31 @@ object SbtClient {
     client.server = server
 
     val params = new InitializeParams
-
     server.initialize(params)
+
+    client
+  }
+
+  def main2(args: Array[String]): Unit = {
+    val client = SbtClient(null)
 
     // val execParams = new SbtExecParams("compile")
     // // server.sbtExec(execParams)
-    val testParams = new SbtExecParams("inputPARAM")
-    val r = server.dottyTest(testParams)
+    val testParams = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
+    val r = client.server.listTests(testParams)
     println("r: " + r.get)
     // socket.close()
     // System.exit(0)
   }
 }
 
-class SbtClient extends LanguageClient { thisClient =>
+class SbtClient(val languageServer: DottyLanguageServer) extends LanguageClient { thisClient =>
 
   import lsp4j.jsonrpc.{CancelChecker, CompletableFutures}
   import lsp4j.jsonrpc.messages.{Either => JEither}
   // import lsp4j._
 
-  private var server: LanguageServer = _
+  var server: BuildServer = _
 
   private[this] var rootUri: String = _
 
@@ -90,11 +95,19 @@ class SbtClient extends LanguageClient { thisClient =>
       }
     }
 
-  override def logMessage(params: MessageParams): Unit = {}
-  override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {}
-  override def showMessage(params: MessageParams): Unit = {}
+  override def logMessage(params: MessageParams): Unit = {
+    languageServer.client.logMessage(params)
+  }
+  override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {
+    languageServer.client.publishDiagnostics(params)
+  }
+  override def showMessage(params: MessageParams): Unit = {
+    languageServer.client.showMessage(params)
+  }
   override def showMessageRequest(params: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = null
-  override def telemetryEvent(event: Any): Unit = {}
+  override def telemetryEvent(event: Any): Unit = {
+    languageServer.client.telemetryEvent(event)
+  }
 
   // override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
   //   rootUri = params.getRootUri

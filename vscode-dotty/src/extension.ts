@@ -5,12 +5,20 @@ import * as path from 'path';
 
 import * as cpp from 'child-process-promise';
 
-import { ExtensionContext } from 'vscode';
+import { commands, ExtensionContext } from 'vscode';
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient';
+import { ExecuteCommandParams, ExecuteCommandRequest, LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient';
+
+import { Commands } from './commands'
+
+import { TestProvider } from './testTreeView'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
+
+function executeDottyLanguageServerCommand(command: string, ...params: any[]) {
+  return vscode.commands.executeCommand(Commands.EXECUTE_WORKSPACE_COMMAND, command, ...params)
+}
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
@@ -139,7 +147,7 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
     sbtProc.on('close', (code: number) => {
       if (code != 0) {
         const msg = "Configuring the IDE failed."
-        outputChannel.append(msg)
+        outputChannel.appendLine(msg)
         throw new Error(msg)
       }
     })
@@ -159,9 +167,43 @@ function run(serverOptions: ServerOptions) {
     }
   }
 
-  outputChannel.dispose()
+  // outputChannel.dispose()
 
   const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
+
+  commands.registerCommand(Commands.BSP_LIST_TESTS, (...params) => {
+    const args: ExecuteCommandParams = {
+			command: Commands.BSP_LIST_TESTS,
+			arguments: params
+		};
+
+    const x = client.sendRequest(ExecuteCommandRequest.type, args)
+      // .then(res => {
+      //   console.log(res)
+      //   res
+      // })
+    // outputChannel.appendLine(`x: ${x}`)
+    return x
+  });
+
+  commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
+    const args: ExecuteCommandParams = {
+			command: Commands.BSP_RUN_TESTS,
+			arguments: params
+		};
+
+    const x = client.sendRequest(ExecuteCommandRequest.type, args)
+      // .then(res => {
+      //   console.log(res)
+      //   res
+      // })
+    // outputChannel.appendLine(`x: ${x}`)
+    return x
+  });
+
+  const rootPath = vscode.workspace.rootPath as string;
+	const testProvider = new TestProvider(rootPath, outputChannel);
+  vscode.window.registerTreeDataProvider('dottyTests', testProvider);
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation

@@ -44,6 +44,14 @@
         "editor.tabSize": 2,
         "editor.insertSpaces": true
       }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "dottyTests",
+          "name": "Tests"
+        }
+      ]
     }
   },
   "scripts": {
