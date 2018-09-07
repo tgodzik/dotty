@@ -72,10 +72,7 @@ object DottyBSPPlugin extends AutoPlugin {
       }
     }.join
 
-    println("GONNA RUN")
-    val x = DottyIDEPlugin.runTask(joinedTask, state)
-    println("WAS RUN: " + x)
-    x
+    DottyIDEPlugin.runTask(joinedTask, state)
   }
 
   // def targetsOf(targetIds: Seq[String], state: State): Seq[Target] = {
@@ -132,10 +129,13 @@ object DottyBSPPlugin extends AutoPlugin {
       println("buildTarget: " + buildTarget)
       println("testArgs: " + testArgs)
       // val (state1, _) = runTaskInTargets(testOnly.toTask(s" $testArgs"), Seq(buildTarget), origState)
-      val (state1, _) = runInputTaskInTargets(testOnly, s" $testArgs", Seq(buildTarget), state0)
+      val state1 = try {
+        runInputTaskInTargets(testOnly, s" $testArgs", Seq(buildTarget), state0)._1
+      } catch {
+        case i: Incomplete => // The tests failed
+          state0
+      }
 
-      println("channels: " + Restricted.exchange.channels)
-      println("channelsN: " + Restricted.exchange.channels.collect({ case c: NetworkChannel => c }).map(_.name))
       Restricted.exchange.channels.collectFirst {
         case c: NetworkChannel if c.name == channelName =>
           c
