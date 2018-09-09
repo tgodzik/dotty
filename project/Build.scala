@@ -862,6 +862,13 @@ object Build {
       */
     )
 
+  lazy val funsets = project.in(file("funsets")).
+    dependsOn(dottyLibrary(Bootstrapped)).
+    settings(commonBootstrappedSettings).
+    settings(
+      fork in Test := true
+    )
+
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
     settings(commonBootstrappedSettings).

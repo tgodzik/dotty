@@ -22,5 +22,7 @@ val `dist-bootstrapped` = Build.`dist-bootstrapped`
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 
+val funsets = Build.funsets
+
 inThisBuild(Build.thisBuildSettings)
 inScope(Global)(Build.globalSettings)
