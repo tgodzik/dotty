@@ -202,7 +202,7 @@ object Build {
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
     // enable verbose exception messages for JUnit
-    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-n")
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")//, "-n")
   )
 
   // Settings used for projects compiled only with Scala 2

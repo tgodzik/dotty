@@ -13,6 +13,9 @@ import { Commands } from './commands'
 
 import { TestProvider } from './testTreeView'
 
+import { ListTestsRequest, RunTestsRequest } from './extensions/protocol'
+import { TestIdentifier } from './extensions/types'
+
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
@@ -171,28 +174,13 @@ function run(serverOptions: ServerOptions) {
 
   const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
 
-  commands.registerCommand(Commands.BSP_LIST_TESTS, (...params) => {
-    const args: ExecuteCommandParams = {
-			command: Commands.BSP_LIST_TESTS,
-			arguments: params
-		};
-
-    const x = client.sendRequest(ExecuteCommandRequest.type, args)
-      // .then(res => {
-      //   console.log(res)
-      //   res
-      // })
-    // outputChannel.appendLine(`x: ${x}`)
-    return x
-  });
-
   commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
-    const args: ExecuteCommandParams = {
-			command: Commands.BSP_RUN_TESTS,
-			arguments: params
-		};
+    const id: TestIdentifier = {
+      target: { name: params[0] as string },
+      name: params[1] as string
+    }
 
-    const x = client.sendRequest(ExecuteCommandRequest.type, args)
+    const x = client.sendRequest(RunTestsRequest.type, { tests: [id] })
       // .then(res => {
       //   console.log(res)
       //   res
@@ -202,7 +190,7 @@ function run(serverOptions: ServerOptions) {
   });
 
   const rootPath = vscode.workspace.rootPath as string;
-	const testProvider = new TestProvider(rootPath, outputChannel);
+	const testProvider = new TestProvider(client, rootPath, outputChannel);
   vscode.window.registerTreeDataProvider('dottyTests', testProvider);
 
   // Push the disposable to the context's subscriptions so that the

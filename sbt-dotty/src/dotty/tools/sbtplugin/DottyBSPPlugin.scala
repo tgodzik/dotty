@@ -18,6 +18,9 @@ import DottyPlugin.autoImport._
 
 import sbt.dottyplugin.Restricted
 
+import org.apache.logging.log4j.core.appender.AbstractAppender
+import org.apache.logging.log4j.core.LogEvent
+
 object DottyBSPPlugin extends AutoPlugin {
   object autoImport {
     val buildTargetIdentifier = settingKey[String]("A unique identifier for this target")
@@ -31,9 +34,117 @@ object DottyBSPPlugin extends AutoPlugin {
   val buildTargetIdentifierSetting =
     buildTargetIdentifier := s"${thisProject.value.id}/${configuration.value}"
 
+  val testRunStarted = "Test run started"
+  val testRunFinishedPrefix = "Test run finished"
+  val testStarted = raw"Test (.*) started".r
+  val testIgnored = raw"Test (.*) ignored".r
+  val testFailed = raw"Test (.*) failed: (.*), took .*sec".r
+
+  def stripAnsiColors(m: String): String = m.replaceAll("\u001B\\[[;\\d]*m", "")
+
+  // FIXME: Should be replaced by sbt testListeners, but right now not good enough:
+  // ~ no event when a test start
+  // - with junit-interface, no event when a test stop
+  def logger(target: String) = {
+    val appender = new AbstractAppender(s"DottyBSPPlugin-$target", null, Restricted.dummyLayout, true)  {
+      var runningTest: Option[String] = None
+
+      def append(x: LogEvent): Unit = {
+
+        def broadcastTestStatus(target: String, test: String, kind: TestStatusKind,
+          details: Option[String] = None): Unit = {
+          val status = 
+            TestStatus(
+              TestIdentifier(BuildTargetIdentifier(target), test),
+              kind, details
+            )
+          println(s"sending testStatus $status")
+          Restricted.exchange.channels.collect {
+            case c: NetworkChannel  =>
+              c
+          }.foreach { c =>
+            println(s"sending testStatus $status to $c")
+            Restricted.jsonRpcNotify(c, "dotty/testStatus", status)
+          }
+        }
+
+        def runningTestFinished(kind: TestStatusKind, details: Option[String] = None) = {
+          runningTest foreach { prevTest =>
+            broadcastTestStatus(target, prevTest, kind, details)
+          }
+          runningTest = None
+        }
+
+        x.getMessage match {
+          case e: org.apache.logging.log4j.message.ObjectMessage =>
+            e.getParameter match {
+              case se: sbt.internal.util.StringEvent =>
+                val msg = stripAnsiColors(se.message)
+
+                if (msg == testRunStarted)
+                  runningTest = None
+                else if (msg.startsWith(testRunFinishedPrefix)) {
+                  runningTestFinished(TestStatusKind.Success)
+                }
+                else {
+                  msg match {
+                    case testStarted(startedTest) =>
+                      runningTestFinished(TestStatusKind.Success)
+                      runningTest = Some(startedTest)
+                      broadcastTestStatus(target, startedTest, TestStatusKind.Running)
+                    case testIgnored(ignoredTest) =>
+                      runningTestFinished(TestStatusKind.Success)
+                      broadcastTestStatus(target, ignoredTest, TestStatusKind.Ignored)
+                    case testFailed(failedTest, details) =>
+                      if (runningTest != Some(failedTest)) {
+                        // println(s"!!! $runningTest != $failedTest")
+                        assert(false, s"!!! $runningTest != $failedTest")
+                      }
+                      runningTestFinished(TestStatusKind.Failure, details = Some(details))
+                    case _ =>
+                      println("#MSG: " + msg)
+                  }
+                }
+                // Test funsets.FunSetSuite.union contains all elements of each set finished, took 0.001 sec
+
+
+              case _ =>
+            }
+        //   case _ =>
+        // }
+        }
+      }
+    }
+    appender.start
+    appender
+  }
+
   override def projectSettings: Seq[Setting[_]] = {
     inConfig(Compile)(Seq(buildTargetIdentifierSetting)) ++
-    inConfig(Test)(Seq(buildTargetIdentifierSetting))
+    inConfig(Test)(Seq(
+      buildTargetIdentifierSetting,
+      // We use JUnit native support for listeners instead of sbt testListeners
+      // because the latter is not good enough currently (e.g. it only reports
+      // the status of a test once all tests in a class have finished).
+      // testOptions += Tests.Argument(TestFrameworks.JUnit, "--run-listener=dotty.tools.sbtplugin.oJUnitListener")
+    )) ++
+    Seq(
+      // testListeners += new BspTestsListener(streams.value.log),
+      extraLoggers := {
+        val currentFunction = extraLoggers.value
+        val target = (buildTargetIdentifier in Test).value
+
+        if (isDotty.value) {
+          (key: ScopedKey[_]) => {
+            // println("key: " + key)
+            // println("scope: " + key.scope)
+            logger(target) +: currentFunction(key)
+          }
+        } else {
+          currentFunction
+        }
+      }
+    )
   }
 
   type TargetId = String

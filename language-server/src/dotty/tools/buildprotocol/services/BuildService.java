@@ -12,7 +12,7 @@ import org.eclipse.lsp4j.services.LanguageServer;
 
 import dotty.tools.buildprotocol.*;
 
-public interface BuildServer extends LanguageServer {
+public interface BuildService {
   @JsonNotification("sbt/exec")
   void sbtExec(SbtExecParams params);
 

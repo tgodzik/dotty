@@ -12,4 +12,6 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with dotty.tools.sbtplugin.codec.ListTestsResultsFormats
   with dotty.tools.sbtplugin.codec.RunTestsParamsFormats
   with dotty.tools.sbtplugin.codec.RunTestsResultFormats
+  with dotty.tools.sbtplugin.codec.TestStatusKindFormats
+  with dotty.tools.sbtplugin.codec.TestStatusFormats
 object JsonProtocol extends JsonProtocol

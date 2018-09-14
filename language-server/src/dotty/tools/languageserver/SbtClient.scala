@@ -26,6 +26,8 @@ import scala.io.Codec
 
 import config.SbtPortFile
 
+trait SbtServer extends LanguageServer with BuildService
+
 object SbtClient {
   def apply(languageServer: DottyLanguageServer): SbtClient = {
     val configFile = new File("/home/smarter/opt/dotty/project/target/active.json")
@@ -43,7 +45,7 @@ object SbtClient {
     val writer = new PrintWriter(new File("/home/smarter/opt/dotty/sbt-server.log"))
     // val writer = new PrintWriter(System.err, true)
 
-    val launcher = Launcher.createLauncher(client, classOf[BuildServer],
+    val launcher = Launcher.createLauncher(client, classOf[SbtServer],
       socket.getInputStream, socket.getOutputStream, /*validate =*/ false,  writer)
     launcher.startListening()
     val server = launcher.getRemoteProxy
@@ -74,7 +76,7 @@ class SbtClient(val languageServer: DottyLanguageServer) extends LanguageClient 
   import lsp4j.jsonrpc.messages.{Either => JEither}
   // import lsp4j._
 
-  var server: BuildServer = _
+  var server: SbtServer = _
 
   private[this] var rootUri: String = _
 
@@ -96,7 +98,7 @@ class SbtClient(val languageServer: DottyLanguageServer) extends LanguageClient 
     }
 
   override def logMessage(params: MessageParams): Unit = {
-    languageServer.client.logMessage(params)
+    // languageServer.client.logMessage(params)
   }
   override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {
     languageServer.client.publishDiagnostics(params)

@@ -31,6 +31,7 @@ import config.Printers.interactiv
 import languageserver.config.ProjectConfig
 
 import lsp4j.services._
+import buildprotocol.services._
 
 /** An implementation of the Language Server Protocol for Dotty.
  *
@@ -41,7 +42,7 @@ import lsp4j.services._
  *  - This implementation is based on the LSP4J library: https://github.com/eclipse/lsp4j
  */
 class DottyLanguageServer extends LanguageServer
-    with LanguageClientAware with TextDocumentService with WorkspaceService { thisServer =>
+    with LanguageClientAware with TextDocumentService with WorkspaceService with BuildService { thisServer =>
   import ast.tpd._
 
   import DottyLanguageServer._
@@ -50,9 +51,7 @@ class DottyLanguageServer extends LanguageServer
   import lsp4j.jsonrpc.{CancelChecker, CompletableFutures}
   import lsp4j.jsonrpc.messages.{Either => JEither}
   import lsp4j._
-
   import buildprotocol._
-  import buildprotocol.services._
 
 
   private[this] var rootUri: String = _
@@ -96,7 +95,18 @@ class DottyLanguageServer extends LanguageServer
     }
     myBuildClient
   }
+  override def sbtExec(params: SbtExecParams) =
+    buildClient.server.sbtExec(params)
+  override def listTests(params: ListTestsParams) = {
+    val params1 =
+      if (params.targets.isEmpty) {
+        
+      }
 
+    buildClient.server.listTests(params)
+  }
+  override def runTests(params: RunTestsParams) =
+    buildClient.server.runTests(params)
 
   /** Restart all presentation compiler drivers, copying open files over */
   private def restart() = thisServer.synchronized {
@@ -240,46 +250,46 @@ class DottyLanguageServer extends LanguageServer
     /*thisServer.synchronized*/ {}
 
 
-  override def executeCommand(params: ExecuteCommandParams) = computeAsync { cancelToken =>
-    val command = params.getCommand
-    val args = params.getArguments.asScala.map(_.toString)
+  // override def executeCommand(params: ExecuteCommandParams) = computeAsync { cancelToken =>
+  //   val command = params.getCommand
+  //   val args = params.getArguments.asScala.map(_.toString)
 
-    import Commands._
+  //   import Commands._
 
-    command match {
-      case BSP_LIST_TESTS =>
-        if (false && !args.isEmpty) {
-          println(s"Unexpected arguments for command $command: $args")
-          null
-        }
-        else {
-          // val params = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
-          val params = new ListTestsParams(List(new BuildTargetIdentifier("funsets/test")).asJava)
-          val aa = buildClient.server.listTests(params).get
-          println("###aa: " + aa)
-          aa
-        }
-      case BSP_RUN_TESTS =>
-        if (args.isEmpty) {
-          println(s"Missing argument for $command")
-          null
-        }
-        else {
-          println("RUN args: " + args)
-          // FIXME: use structured data instead (decode it with gson)
-          val args1 = args.asInstanceOf[Seq[String]].toArray
-          val target = args1(0)
-          val ids = args1.tail.toList.map(testName => new TestIdentifier(new BuildTargetIdentifier(target), testName))
-          val params1 = new RunTestsParams(ids.asJava)
-          val zz = buildClient.server.runTests(params1).get
-          println("###zz: " + zz)
-          zz
-        }
-      case _ =>
-        println(s"Unrecognized command $command with arguments $args")
-        null
-    }
-  }
+  //   command match {
+  //     case BSP_LIST_TESTS =>
+  //       if (false && !args.isEmpty) {
+  //         println(s"Unexpected arguments for command $command: $args")
+  //         null
+  //       }
+  //       else {
+  //         // val params = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
+  //         val params = new ListTestsParams(List(new BuildTargetIdentifier("funsets/test")).asJava)
+  //         val aa = buildClient.server.listTests(params).get
+  //         println("###aa: " + aa)
+  //         aa
+  //       }
+  //     case BSP_RUN_TESTS =>
+  //       if (args.isEmpty) {
+  //         println(s"Missing argument for $command")
+  //         null
+  //       }
+  //       else {
+  //         println("RUN args: " + args)
+  //         // FIXME: use structured data instead (decode it with gson)
+  //         val args1 = args.asInstanceOf[Seq[String]].toArray
+  //         val target = args1(0)
+  //         val ids = args1.tail.toList.map(testName => new TestIdentifier(new BuildTargetIdentifier(target), testName))
+  //         val params1 = new RunTestsParams(ids.asJava)
+  //         val zz = buildClient.server.runTests(params1).get
+  //         println("###zz: " + zz)
+  //         zz
+  //       }
+  //     case _ =>
+  //       println(s"Unrecognized command $command with arguments $args")
+  //       null
+  //   }
+  // }
 
   // FIXME: share code with messages.NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>

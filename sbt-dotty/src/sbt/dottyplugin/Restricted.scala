@@ -19,6 +19,11 @@ object Restricted {
   def jsonRpcRespond[A: JsonFormat](lsp: LanguageServerProtocol, event: A, execId: Option[String]): Unit =
     lsp.jsonRpcRespond(event, execId)
 
+  def jsonRpcNotify[A: JsonFormat](lsp: LanguageServerProtocol, method: String, params: A): Unit =
+    lsp.jsonRpcNotify(method, params)
+
+  val dummyLayout = sbt.util.LogExchange.dummyLayout
+
   // def notifyEvent[A: JsonFormat](method: String, params: A): Unit =
   //   StandardMain.exchange.notifyEvent(method, params)
 }

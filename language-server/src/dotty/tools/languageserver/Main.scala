@@ -66,8 +66,8 @@ object Main {
 
     println("Starting server")
     // For debugging JSON messages:
-    // val launcher = LSPLauncher.createServerLauncher(server, in, out, false, new java.io.PrintWriter(System.err, true))
-    val launcher = LSPLauncher.createServerLauncher(server, in, out)
+    val launcher = LSPLauncher.createServerLauncher(server, in, out, false, new java.io.PrintWriter(System.err, true))
+    // val launcher = LSPLauncher.createServerLauncher(server, in, out)
     val client = launcher.getRemoteProxy()
     server.connect(client)
     launcher.startListening()
