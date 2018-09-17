@@ -30,7 +30,7 @@ trait SbtServer extends LanguageServer with BuildService
 
 object SbtClient {
   def apply(languageServer: DottyLanguageServer): SbtClient = {
-    val configFile = new File("/home/smarter/opt/dotty/project/target/active.json")
+    val configFile = new File(new URI(languageServer.rootUri + "/project/target/active.json"))
 
     val config = (new ObjectMapper).readValue(configFile, classOf[SbtPortFile])
     val uri = config.uri
@@ -42,7 +42,7 @@ object SbtClient {
 
     val client = new SbtClient(languageServer)
 
-    val writer = new PrintWriter(new File("/home/smarter/opt/dotty/sbt-server.log"))
+    val writer = new PrintWriter(new File("sbt-server.log"))
     // val writer = new PrintWriter(System.err, true)
 
     val launcher = Launcher.createLauncher(client, classOf[SbtServer],

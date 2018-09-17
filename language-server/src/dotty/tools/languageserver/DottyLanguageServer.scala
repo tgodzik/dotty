@@ -54,7 +54,9 @@ class DottyLanguageServer extends LanguageServer
   import buildprotocol._
 
 
-  private[this] var rootUri: String = _
+  private[this] var myRootUri: String = _
+  def rootUri: String = myRootUri
+
   /*private[this]*/ var client: BuildClient = _
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
@@ -195,8 +197,8 @@ class DottyLanguageServer extends LanguageServer
     }
 
   override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
-    rootUri = params.getRootUri
-    assert(rootUri != null)
+    myRootUri = params.getRootUri
+    assert(myRootUri != null)
 
     val c = new ServerCapabilities
     c.setTextDocumentSync(TextDocumentSyncKind.Full)

@@ -66,9 +66,7 @@ object Main {
     val server = new DottyLanguageServer
 
     println("Starting server")
-    // For debugging JSON messages:
-    // val writer = new java.io.PrintWriter(System.err, true)
-    val writer = new PrintWriter(new java.io.File("/home/smarter/opt/dotty/dotty-server.log"))
+    val writer = new PrintWriter(new java.io.File("dotty-server.log"))
     val launcher = Launcher.createLauncher(server, classOf[BuildClient],
       in, out, /*validate =*/ false, writer)
     // val launcher = Launcher.createLauncher(server, classOf[BuildClient], in, out)
