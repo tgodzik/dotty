@@ -33,9 +33,11 @@ type TestIdentifierHandle = string
 //   - for now: compile everything
 // - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
 // - Figure out how to start sbt (probably just run sbt from DLS)
-// - Strip ansi in sbt logMessage, then color with syntax extension
 // - integrate worksheet mode, see gitter discussion
 // - Test on Windows
+
+// * sbt-plugin
+// - success/failure of test class using BSPListener#testEvent
 
 // * Dotty
 // - Scaladoc/Javadoc URL when asking for doc
@@ -50,6 +52,7 @@ type TestIdentifierHandle = string
 
 // Later stuff:
 // - Figure out how to keep alive sbt (and the dls itself too)
+// - color sbt messages with syntax extension
 
 export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandle> {
   readonly testRunningIcon = {
@@ -191,7 +194,8 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
         }
       )
     } else {
-      let status = this.statusMap.get(element)
+      const name = TestIdentifier.name(test)
+      const status = this.statusMap.get(element)
       console.log(`status`)
       console.log(status)
       let iconPath: string | { dark: string, light: string } | undefined = undefined
@@ -200,15 +204,15 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
         switch (status.kind) {
           case TestStatusKind.Running:
             iconPath = this.testRunningIcon
-            tooltip = `Running ${test.name}...`
+            tooltip = `Running ${name}...`
             break
           case TestStatusKind.Success:
             iconPath = this.testSuccessIcon
-            tooltip = `Test suceeded: ${test.name}`
+            tooltip = `Test suceeded: ${name}`
             break
           case TestStatusKind.Failure:
             iconPath = this.testFailureIcon
-            tooltip = `Test failed: ${test.name}\n\n${status.details}`
+            tooltip = `Test failed: ${name}\n\n${status.details}`
             break
           default:
         }

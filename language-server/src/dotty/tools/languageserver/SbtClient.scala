@@ -97,8 +97,15 @@ class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { t
       }
     }
 
+  def stripAnsiColors(m: String): String = m.replaceAll("\u001B\\[[;\\d]*m", "")
+
   override def logMessage(params: MessageParams): Unit = {
-    // languageServer.client.logMessage(params)
+    // No way to prevent sbt from sending us ANSI code currently
+    val msg = stripAnsiColors(params.getMessage)
+    // Filter out some useless messages sbt likes to send
+    if (msg != "Processing" && msg != "Done") {
+      languageServer.client.logMessage(new MessageParams(params.getType, msg))
+    }
   }
 
   override def testStatus(status: TestStatus): Unit = {
