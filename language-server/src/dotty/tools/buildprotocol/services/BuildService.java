@@ -16,6 +16,9 @@ public interface BuildService {
   @JsonNotification("sbt/exec")
   void sbtExec(SbtExecParams params);
 
+  @JsonRequest("dotty/compileBuilds")
+  CompletableFuture<CompileBuildsResult> compileBuilds(CompileBuildsParams params);
+
   @JsonRequest("dotty/listTests")
   CompletableFuture<ListTestsResult> listTests(ListTestsParams params);
 

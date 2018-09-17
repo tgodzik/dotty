@@ -220,8 +220,30 @@ object DottyBSPPlugin extends AutoPlugin {
   //   }
   // }
 
+  def compileBuilds =
+    Command.args("compileBuilds", "<channelName> <requestId> <builds>*") { (state0, args) =>
+      val channelName +: requestId +: builds = args
+
+      val (state1, success) = try {
+        (runTaskInBuilds(compile, builds, state0)._1, true)
+      } catch {
+        case i: Incomplete => // At least one compilation failed
+          (state0, false)
+      }
+
+      Restricted.exchange.channels.collectFirst {
+        case c: NetworkChannel if c.name == channelName =>
+          c
+      }.foreach { c =>
+        println("c: " + c)
+        Restricted.jsonRpcRespond(c, CompileBuildsResult(success), Some(requestId))
+      }
+
+      state1
+    }
+
   def listTests =
-    Command.args("listTests", "<channelName> <requestId> <tests>*") { (state0, args) =>
+    Command.args("listTests", "<channelName> <requestId> <builds>*") { (state0, args) =>
       val channelName +: requestId +: builds = args
 
       println("##builds: " + builds)
@@ -305,17 +327,20 @@ object DottyBSPPlugin extends AutoPlugin {
     //     Restricted.jsonRpcRespond(c, params, Some(id))
     //   }
     // },
-    commands ++= Seq(listTests, runTests),
+    commands ++= Seq(compileBuilds, listTests, runTests),
 
     serverHandlers += ServerHandler({ callback =>
       import callback._
       import sjsonnew.BasicJsonProtocol._
        ServerIntent(
         {
+          case r: JsonRpcRequestMessage if r.method == "dotty/compileBuilds" =>
+            val params = Converter.fromJson[CompileBuildsParams](json(r)).get
+            val builds = params.builds.map(_.name).mkString(" ")
+            appendExec(Exec(s"compileBuilds $name ${r.id} $builds", None, Some(CommandSource(name))))
+
           case r: JsonRpcRequestMessage if r.method == "dotty/listTests" =>
-            val j = json(r)
-            println("j: " + j)
-            val params = Converter.fromJson[ListTestsParams](j).get
+            val params = Converter.fromJson[ListTestsParams](json(r)).get
             val builds = params.parents.map(_.build.name).mkString(" ")
             appendExec(Exec(s"listTests $name ${r.id} $builds", None, Some(CommandSource(name))))
 

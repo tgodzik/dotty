@@ -13,11 +13,12 @@ export namespace BuildIdentifier {
   }
 }
 
-export interface ListBuildsParams {
+export interface CompileBuildsParams {
+  builds: BuildIdentifier[]
 }
 
-export interface ListBuildsResult {
-  builds: BuildIdentifier[]
+export interface CompileBuildsResult {
+  compilationSucceeded: boolean
 }
 
 export interface TestIdentifier {

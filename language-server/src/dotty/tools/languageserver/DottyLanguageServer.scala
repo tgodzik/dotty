@@ -95,30 +95,44 @@ class DottyLanguageServer extends LanguageServer
     }
     myBuildClient
   }
+
+  def buildIdentifiers: List[BuildIdentifier] =
+    drivers.keys
+      .map(config => new BuildIdentifier(config.id, config.hasTests)).toList
+
+  def testIdentifiers: List[TestIdentifier] =
+    buildIdentifiers
+      .filter(_.getHasTests)
+      .map(build => new TestIdentifier(build, Nil.asJava, /*hasChildrenTests =*/ build.getHasTests))
+
   override def sbtExec(params: SbtExecParams) =
     buildClient.server.sbtExec(params)
-  override def listTests(params: ListTestsParams) = {
-    if (params.getParents.isEmpty || params.getParents.contains(TestIdentifier.root)) {
-      computeAsync { cancelToken =>
-        // Instead of querying sbt for all builds, return the subset of builds that
-        // use Dotty.
-        new ListTestsResult(
-          // XX remove funsets filter
-          drivers.keys.filter(_.hasTests).filter(_.id == "funsets/test").map(config =>
-            new TestIdentifier(
-              new BuildIdentifier(config.id, /*hasTests =*/ true),
-              Nil.asJava,
-              /*hasChildrenTests =*/ true
-            )
-          ).toList.asJava
-        )
-      }
-    }
+
+  override def compileBuilds(params: CompileBuildsParams) = {
+    val params1 =
+      if (params.getBuilds.isEmpty || params.getBuilds.contains(BuildIdentifier.root))
+        new CompileBuildsParams(buildIdentifiers.asJava)
+      else
+        params
+
+    buildClient.server.compileBuilds(params1)
+  }
+
+  override def listTests(params: ListTestsParams) =
+    if (params.getParents.isEmpty || params.getParents.contains(TestIdentifier.root))
+      CompletableFuture.completedFuture(new ListTestsResult(testIdentifiers.asJava))
     else
       buildClient.server.listTests(params)
+
+  override def runTests(params: RunTestsParams) = {
+    val params1 =
+      if (params.getTests.isEmpty || params.getTests.contains(TestIdentifier.root))
+        new RunTestsParams(testIdentifiers.asJava)
+      else
+        params
+
+    buildClient.server.runTests(params1)
   }
-  override def runTests(params: RunTestsParams) =
-    buildClient.server.runTests(params)
 
   /** Restart all presentation compiler drivers, copying open files over */
   private def restart() = thisServer.synchronized {

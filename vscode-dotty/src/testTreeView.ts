@@ -20,6 +20,10 @@ type TestIdentifierHandle = string
 //   - When running, show spinning wheel if possible and "Running..." in tooltip
 //   - When finished, show green check mark or red cross mark, and actual error in tooltip
 //     - Check what happens with exceptions
+// - Implement compile-on-save:
+//   - save all files first
+//   - configurable with a setting
+//   - for now: compile everything
 
 // * IDE
 // - Don't discard the DLC output
@@ -27,10 +31,6 @@ type TestIdentifierHandle = string
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
 //   - ... and get the problem tab to be shown when saving
 //     - vscode.commands.executeCommand("workbench.action.problems.focus")
-// - Implement compile-on-save:
-//   - save all files first
-//   - configurable with a setting
-//   - for now: compile everything
 // - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
 // - Figure out how to start sbt (probably just run sbt from DLS)
 // - integrate worksheet mode, see gitter discussion

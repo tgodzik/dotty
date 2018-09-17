@@ -34,13 +34,7 @@ class BuildIdentifier {
 }
 
 @JsonRpcData
-class ListBuildsParams {
-  new() {
-  }
-}
-
-@JsonRpcData
-class ListBuildsResult {
+class CompileBuildsParams {
   @NonNull List<BuildIdentifier> builds
 
   new() {
@@ -48,6 +42,18 @@ class ListBuildsResult {
 
   new(@NonNull List<BuildIdentifier> builds) {
     this.builds = builds
+  }
+}
+
+@JsonRpcData
+class CompileBuildsResult {
+  @NonNull Boolean compilationSucceeded
+
+  new() {
+  }
+
+  new(@NonNull Boolean compilationSucceeded) {
+    this.compilationSucceeded = compilationSucceeded
   }
 }
 

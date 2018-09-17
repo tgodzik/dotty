@@ -39,11 +39,35 @@
     }
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "dotty.compileOnSave",
+        "title": "Save All and Compile",
+        "category": "Scala"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Dotty configuration",
+      "properties": {
+        "dotty.compileOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Save and compile every file in the workspace on save"
+        }
+      }
+    },
     "configurationDefaults": {
       "[scala]": {
         "editor.tabSize": 2,
         "editor.insertSpaces": true
       }
+    },
+    "keybindings": {
+      "command": "dotty.compileOnSave",
+      "key": "ctrl+s",
+      "mac": "cmd+s",
+      "when": "compileOnSaveEnabled"
     },
     "views": {
       "explorer": [

@@ -8,11 +8,12 @@ type BuildIdentifier {
   hasTests: Boolean!
 }
 
-type ListBuildsParams {
+type CompileBuildsParams {
+  builds: [dotty.tools.sbtplugin.BuildIdentifier]!
 }
 
-type ListBuildsResult {
-  builds: [dotty.tools.sbtplugin.BuildIdentifier]!
+type CompileBuildsResult {
+  compilationSucceeded: Boolean!
 }
 
 type TestIdentifier {
@@ -34,7 +35,6 @@ type RunTestsParams {
 }
 
 type RunTestsResult {
- 
 }
 
 type TestStatus {

@@ -6,8 +6,8 @@
 package dotty.tools.sbtplugin.codec
 trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with dotty.tools.sbtplugin.codec.BuildIdentifierFormats
-  with dotty.tools.sbtplugin.codec.ListBuildsParamsFormats
-  with dotty.tools.sbtplugin.codec.ListBuildsResultFormats
+  with dotty.tools.sbtplugin.codec.CompileBuildsParamsFormats
+  with dotty.tools.sbtplugin.codec.CompileBuildsResultFormats
   with dotty.tools.sbtplugin.codec.TestIdentifierFormats
   with dotty.tools.sbtplugin.codec.ListTestsParamsFormats
   with dotty.tools.sbtplugin.codec.ListTestsResultFormats

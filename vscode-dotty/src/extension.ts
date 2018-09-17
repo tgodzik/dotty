@@ -13,11 +13,17 @@ import { Commands } from './commands'
 
 import { TestProvider } from './testTreeView'
 
-import { TestStatusNotification, ListTestsRequest, RunTestsRequest } from './extensions/protocol'
-import { TestIdentifier } from './extensions/types'
+import { CompileBuildsRequest, TestStatusNotification, ListTestsRequest, RunTestsRequest } from './extensions/protocol'
+import { CompileBuildsResult, TestIdentifier } from './extensions/types'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
+
+export function saveAllAndCompile(client: LanguageClient): Thenable<CompileBuildsResult> {
+  vscode.workspace.saveAll(/*includeUntitled = */false)
+
+  return client.sendRequest(CompileBuildsRequest.type, { builds: [] })
+}
 
 function executeDottyLanguageServerCommand(command: string, ...params: any[]) {
   return vscode.commands.executeCommand(Commands.EXECUTE_WORKSPACE_COMMAND, command, ...params)
@@ -121,7 +127,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
       coursierProc.on('close', (code: number) => {
         if (code != 0) {
           let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
-          outputChannel.append(msg)
+          outputChannel.appendLine(msg)
           throw new Error(msg)
         }
       })
@@ -176,12 +182,22 @@ function run(serverOptions: ServerOptions) {
 
   client.onReady().then(() => {
     commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
+      vscode.workspace.saveAll(/*includeUntitled = */false)
       return client.sendRequest(RunTestsRequest.type, { tests: params })
       // .then(res => {
       //   console.log(res)
       //   res
       // })
       // outputChannel.appendLine(`x: ${x}`)
+    });
+
+    const compileOnSave = vscode.workspace.getConfiguration("dotty").get("compileOnSave")
+    // If the dotty.compileOnSave setting is set to true, then enable shorcuts
+    // in package.json configured with "when": "compileOnSaveEnabled"
+    commands.executeCommand("setContext", "compileOnSaveEnabled", compileOnSave)
+
+    commands.registerCommand(Commands.COMPILE_ON_SAVE, () => {
+      return saveAllAndCompile(client)
     });
 
     const rootPath = vscode.workspace.rootPath as string;
@@ -199,7 +215,7 @@ function run(serverOptions: ServerOptions) {
     client.onNotification(TestStatusNotification.type, status => {
       testProvider.updateTestStatus(status)
     })
-    
+
     vscode.window.registerTreeDataProvider('dottyTests', testProvider);
   })
 
