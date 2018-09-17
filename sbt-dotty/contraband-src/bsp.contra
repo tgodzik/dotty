@@ -1,0 +1,51 @@
+package dotty.tools.sbtplugin
+@target(Scala)
+@codecPackage("dotty.tools.sbtplugin.codec")
+@fullCodec("JsonProtocol")
+
+type BuildIdentifier {
+	name: String!
+  hasTests: Boolean!
+}
+
+type ListBuildsParams {
+}
+
+type ListBuildsResult {
+  builds: [dotty.tools.sbtplugin.BuildIdentifier]!
+}
+
+type TestIdentifier {
+  build: dotty.tools.sbtplugin.BuildIdentifier!
+	path: [String]!
+  hasChildrenTests: Boolean!
+}
+
+type ListTestsParams {
+  parents: [dotty.tools.sbtplugin.TestIdentifier]!
+}
+
+type ListTestsResult {
+  tests: [dotty.tools.sbtplugin.TestIdentifier]!
+}
+
+type RunTestsParams {
+  tests: [dotty.tools.sbtplugin.TestIdentifier]!
+}
+
+type RunTestsResult {
+ 
+}
+
+type TestStatus {
+  id: dotty.tools.sbtplugin.TestIdentifier!
+  kind: dotty.tools.sbtplugin.TestStatusKind!
+  details: String!
+}
+
+enum TestStatusKind {
+  Ignored
+  Running
+  Success
+  Failure
+}

@@ -1,6 +1,7 @@
 package dotty.tools.buildprotocol
 
 import java.util.List
+import java.util.ArrayList
 import org.eclipse.lsp4j.generator.JsonRpcData
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull
 
@@ -17,68 +18,83 @@ class SbtExecParams {
 }
 
 @JsonRpcData
-class BuildTargetIdentifier {
+class BuildIdentifier {
+  @NonNull public static BuildIdentifier root = new BuildIdentifier("", true)
+
 	@NonNull String name
+	@NonNull Boolean hasTests
 
   new() {
   }
 
-  new(@NonNull String name) {
+  new(@NonNull String name, @NonNull Boolean hasTests) {
     this.name = name
+    this.hasTests = hasTests
+  }
+}
+
+@JsonRpcData
+class ListBuildsParams {
+  new() {
+  }
+}
+
+@JsonRpcData
+class ListBuildsResult {
+  @NonNull List<BuildIdentifier> builds
+
+  new() {
+  }
+
+  new(@NonNull List<BuildIdentifier> builds) {
+    this.builds = builds
   }
 }
 
 @JsonRpcData
 class TestIdentifier {
-  @NonNull BuildTargetIdentifier target
-	@NonNull String name
+  @NonNull public static TestIdentifier root =
+    new TestIdentifier(BuildIdentifier.root, new ArrayList(), true)
+
+  @NonNull BuildIdentifier build
+	@NonNull List<String> path
+	@NonNull Boolean hasChildrenTests
 
   new() {
   }
 
-  new(@NonNull BuildTargetIdentifier target, @NonNull String name) {
-    this.target = target
-    this.name = name
+  new(@NonNull BuildIdentifier build, @NonNull List<String> path,
+      @NonNull Boolean hasChildrenTests) {
+    this.build = build
+    this.path = path
+    this.hasChildrenTests = hasChildrenTests
   }
 }
 
 @JsonRpcData
 class ListTestsParams {
-  @NonNull List<BuildTargetIdentifier> targets
+  @NonNull List<TestIdentifier> parents
 
   new() {
   }
 
-  new(@NonNull List<BuildTargetIdentifier> targets) {
-    this.targets = targets
+  new(@NonNull List<TestIdentifier> parents) {
+    this.parents = parents
   }
 }
 
 @JsonRpcData
-class ListTestsItem {
-  @NonNull TestIdentifier id
-  @NonNull List<ListTestsItem> subTests
+class ListTestsResult {
+  @NonNull List<TestIdentifier> tests
 
   new() {
   }
 
-  new(@NonNull TestIdentifier id, @NonNull List<ListTestsItem> subTests) {
-    this.id = id
-    this.subTests = subTests
+  new(@NonNull List<TestIdentifier> tests) {
+    this.tests = tests
   }
 }
 
-@JsonRpcData
-class ListTestsResults {
-  @NonNull List<ListTestsItem> items
-
-  new() {
-  }
-
-  new(@NonNull List<ListTestsItem> items) {
-    this.items = items
-  }
-}
 @JsonRpcData
 class RunTestsParams {
   @NonNull List<TestIdentifier> tests
@@ -92,7 +108,24 @@ class RunTestsParams {
 }
 
 @JsonRpcData
-class RunTestsResults {
+class RunTestsResult {
   new() {
   }
 }
+
+@JsonRpcData
+class TestStatus {
+  @NonNull TestIdentifier id
+  @NonNull TestStatusKind kind
+  @NonNull String details
+
+  new() {
+  }
+
+  new(@NonNull TestIdentifier id, @NonNull TestStatusKind kind, @NonNull String details) {
+    this.id = id
+    this.kind = kind
+    this.details = details
+  }
+}
+

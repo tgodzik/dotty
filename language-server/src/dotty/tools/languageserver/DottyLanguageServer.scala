@@ -42,7 +42,7 @@ import buildprotocol.services._
  *  - This implementation is based on the LSP4J library: https://github.com/eclipse/lsp4j
  */
 class DottyLanguageServer extends LanguageServer
-    with LanguageClientAware with TextDocumentService with WorkspaceService with BuildService { thisServer =>
+    with TextDocumentService with WorkspaceService with BuildService { thisServer =>
   import ast.tpd._
 
   import DottyLanguageServer._
@@ -55,7 +55,7 @@ class DottyLanguageServer extends LanguageServer
 
 
   private[this] var rootUri: String = _
-  /*private[this]*/ var client: LanguageClient = _
+  /*private[this]*/ var client: BuildClient = _
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
@@ -98,12 +98,23 @@ class DottyLanguageServer extends LanguageServer
   override def sbtExec(params: SbtExecParams) =
     buildClient.server.sbtExec(params)
   override def listTests(params: ListTestsParams) = {
-    val params1 =
-      if (params.targets.isEmpty) {
-        
+    if (params.getParents.isEmpty || params.getParents.contains(TestIdentifier.root)) {
+      computeAsync { cancelToken =>
+        // Instead of querying sbt for all builds, return the subset of builds that
+        // use Dotty.
+        new ListTestsResult(
+          drivers.keys.filter(_.hasTests).map(config =>
+            new TestIdentifier(
+              new BuildIdentifier(config.id, /*hasTests =*/ true),
+              Nil.asJava,
+              /*hasChildrenTests =*/ true
+            )
+          ).toList.asJava
+        )
       }
-
-    buildClient.server.listTests(params)
+    }
+    else
+      buildClient.server.listTests(params)
   }
   override def runTests(params: RunTestsParams) =
     buildClient.server.runTests(params)
@@ -140,7 +151,7 @@ class DottyLanguageServer extends LanguageServer
     }
   }
 
-  override def connect(client: LanguageClient): Unit = {
+  def connect(client: BuildClient): Unit = {
     this.client = client
   }
 

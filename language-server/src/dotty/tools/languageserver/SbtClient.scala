@@ -57,20 +57,20 @@ object SbtClient {
     client
   }
 
-  def main2(args: Array[String]): Unit = {
-    val client = SbtClient(null)
+  // def main2(args: Array[String]): Unit = {
+  //   val client = SbtClient(null)
 
-    // val execParams = new SbtExecParams("compile")
-    // // server.sbtExec(execParams)
-    val testParams = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
-    val r = client.server.listTests(testParams)
-    println("r: " + r.get)
-    // socket.close()
-    // System.exit(0)
-  }
+  //   // val execParams = new SbtExecParams("compile")
+  //   // // server.sbtExec(execParams)
+  //   val testParams = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
+  //   val r = client.server.listTests(testParams)
+  //   println("r: " + r.get)
+  //   // socket.close()
+  //   // System.exit(0)
+  // }
 }
 
-class SbtClient(val languageServer: DottyLanguageServer) extends LanguageClient { thisClient =>
+class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { thisClient =>
 
   import lsp4j.jsonrpc.{CancelChecker, CompletableFutures}
   import lsp4j.jsonrpc.messages.{Either => JEither}
@@ -100,6 +100,11 @@ class SbtClient(val languageServer: DottyLanguageServer) extends LanguageClient 
   override def logMessage(params: MessageParams): Unit = {
     // languageServer.client.logMessage(params)
   }
+
+  override def testStatus(status: TestStatus): Unit = {
+    languageServer.client.testStatus(status)
+  }
+
   override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {
     languageServer.client.publishDiagnostics(params)
   }

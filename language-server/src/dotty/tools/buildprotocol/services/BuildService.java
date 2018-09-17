@@ -17,8 +17,8 @@ public interface BuildService {
   void sbtExec(SbtExecParams params);
 
   @JsonRequest("dotty/listTests")
-  CompletableFuture<ListTestsResults> listTests(ListTestsParams params);
+  CompletableFuture<ListTestsResult> listTests(ListTestsParams params);
 
   @JsonRequest("dotty/runTests")
-  CompletableFuture<RunTestsResults> runTests(RunTestsParams params);
+  CompletableFuture<RunTestsResult> runTests(RunTestsParams params);
 }

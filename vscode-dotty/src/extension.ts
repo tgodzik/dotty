@@ -13,7 +13,7 @@ import { Commands } from './commands'
 
 import { TestProvider } from './testTreeView'
 
-import { ListTestsRequest, RunTestsRequest } from './extensions/protocol'
+import { TestStatusNotification, ListTestsRequest, RunTestsRequest } from './extensions/protocol'
 import { TestIdentifier } from './extensions/types'
 
 let extensionContext: ExtensionContext
@@ -174,24 +174,30 @@ function run(serverOptions: ServerOptions) {
 
   const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
 
-  commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
-    const id: TestIdentifier = {
-      target: { name: params[0] as string },
-      name: params[1] as string
-    }
-
-    const x = client.sendRequest(RunTestsRequest.type, { tests: [id] })
+  client.onReady().then(() => {
+    commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
+      return client.sendRequest(RunTestsRequest.type, { tests: params })
       // .then(res => {
       //   console.log(res)
       //   res
       // })
-    // outputChannel.appendLine(`x: ${x}`)
-    return x
-  });
+      // outputChannel.appendLine(`x: ${x}`)
+    });
 
-  const rootPath = vscode.workspace.rootPath as string;
-	const testProvider = new TestProvider(client, rootPath, outputChannel);
-  vscode.window.registerTreeDataProvider('dottyTests', testProvider);
+    const rootPath = vscode.workspace.rootPath as string;
+	  const testProvider = new TestProvider(client, rootPath, outputChannel);
+    const testView = vscode.window.createTreeView("dottyTests", {
+      treeDataProvider: testProvider
+    })
+
+    client.onNotification(TestStatusNotification.type, status => {
+      testProvider.updateTestStatus(status)
+
+      testView.reveal(status.id, { focus: false, select: false })
+    })
+    
+    vscode.window.registerTreeDataProvider('dottyTests', testProvider);
+  })
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation

@@ -9,7 +9,8 @@ import java.nio.channels._
 
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services._
-import org.eclipse.lsp4j.launch._
+import org.eclipse.lsp4j.jsonrpc._
+import buildprotocol.services._
 
 /** Run the Dotty Language Server.
  *
@@ -66,8 +67,11 @@ object Main {
 
     println("Starting server")
     // For debugging JSON messages:
-    val launcher = LSPLauncher.createServerLauncher(server, in, out, false, new java.io.PrintWriter(System.err, true))
-    // val launcher = LSPLauncher.createServerLauncher(server, in, out)
+    // val writer = new java.io.PrintWriter(System.err, true)
+    val writer = new PrintWriter(new java.io.File("/home/smarter/opt/dotty/dotty-server.log"))
+    val launcher = Launcher.createLauncher(server, classOf[BuildClient],
+      in, out, /*validate =*/ false, writer)
+    // val launcher = Launcher.createLauncher(server, classOf[BuildClient], in, out)
     val client = launcher.getRemoteProxy()
     server.connect(client)
     launcher.startListening()

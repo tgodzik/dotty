@@ -214,6 +214,7 @@ object DottyIDEPlugin extends AutoPlugin {
       val _ = (compile in config).value
 
       val id = s"${thisProject.value.id}/${config.name}"
+      val hasTests = config == Test
       val compilerVersion = (scalaVersion in config).value
       val compilerArguments = (scalacOptions in config).value
       val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
@@ -222,6 +223,7 @@ object DottyIDEPlugin extends AutoPlugin {
 
       Some(new ProjectConfig(
         id,
+        hasTests,
         compilerVersion,
         compilerArguments.toArray,
         sourceDirectories.toArray,
