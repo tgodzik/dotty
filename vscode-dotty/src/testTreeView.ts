@@ -12,6 +12,45 @@ import { TestIdentifier, TestStatus, ListTestsParams } from './extensions/types'
 // Javascript does not use value equality.
 type TestIdentifierFullName = string
 
+// * Done
+// - Expand "All tests" and test classes
+
+// * IDE
+// - Expanding test class should start test run
+//   - Hopefully ok because children are cached
+// - Actually use status:
+//   - When running, show spinning wheel if possible and "Running..." in tooltip
+//   - When finished, show green check mark or red cross mark, and actual error in tooltip
+//     - Check what happens with exceptions
+// - Don't discard the DLC output
+// - Figure out if we can get the output tab to be shown when running tests
+//     - vscode.commands.executeCommand("...") ? switchOutput probably
+//   - ... and get the problem tab to be shown when saving
+//     - vscode.commands.executeCommand("workbench.action.problems.focus")
+// - Implement compile-on-save:
+//   - save all files first
+//   - configurable with a setting
+//   - for now: compile everything
+// - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
+// - Figure out how to start sbt (probably just run sbt from DLS)
+// - Strip ansi in sbt logMessage, then color with syntax extension
+// - integrate worksheet mode, see gitter discussion
+// - Test on Windows
+
+// * Dotty
+// - Scaladoc/Javadoc URL when asking for doc
+
+// * Mooc
+// - Merge compile and test project
+// - Documentation:
+//   - Take JDK/sbt page from progfun, cleanup
+//   - Write intro to IDE and sbt at the same time
+//     - Find recording software
+//   - Write intro to worksheet
+
+// Later stuff:
+// - Figure out how to keep alive sbt (and the dls itself too)
+
 export class TestProvider implements vscode.TreeDataProvider<TestIdentifier> {
   // <TestIdentifier>
   // map[TestIdentifier, TestStatus] // add unknown status
@@ -64,15 +103,17 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifier> {
 	}
 
 	getTreeItem(element: TestIdentifier): vscode.TreeItem {
-    // console.log(`getTreeItem`)
-    // console.log(element)
-    //   console.log("AAAA")
+    const state = element.hasChildrenTests ?
+      (element.path.length === 0 ? // By default, expand the root and its children
+       vscode.TreeItemCollapsibleState.Expanded :
+       vscode.TreeItemCollapsibleState.Collapsed) :
+      vscode.TreeItemCollapsibleState.None
 
     if (TestIdentifier.isRoot(element)) {
       return new TestNode(
         "All tests",
         ".",
-        vscode.TreeItemCollapsibleState.Collapsed,
+        state,
         {
           command: Commands.BSP_RUN_TESTS,
           title: '',
@@ -89,8 +130,7 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifier> {
       const x = new TestNode(
         TestIdentifier.name(element),
         TestIdentifier.fullName(element),
-        element.hasChildrenTests ?
-          vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+        state,
         {
           command: Commands.BSP_RUN_TESTS,
           title: '',
