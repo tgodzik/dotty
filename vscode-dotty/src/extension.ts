@@ -190,10 +190,14 @@ function run(serverOptions: ServerOptions) {
       treeDataProvider: testProvider
     })
 
+    testProvider.onDidChangeTreeData(element => {
+      if (element !== undefined) {
+        testView.reveal(element, { focus: false, select: false })
+      }
+    })
+
     client.onNotification(TestStatusNotification.type, status => {
       testProvider.updateTestStatus(status)
-
-      testView.reveal(status.id, { focus: false, select: false })
     })
     
     vscode.window.registerTreeDataProvider('dottyTests', testProvider);
