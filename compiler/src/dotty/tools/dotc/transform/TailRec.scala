@@ -5,13 +5,14 @@ import ast.Trees._
 import ast.{TreeTypeMap, tpd}
 import core._
 import Flags._
+import Constants.Constant
 import Contexts.Context
 import Decorators._
 import Symbols._
 import StdNames.nme
 import Types._
 import config.Printers.tailrec
-import NameKinds.TailLabelName
+import NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import MegaPhase.MiniPhase
 import reporting.diagnostic.messages.TailrecNotApplicable
 
@@ -19,7 +20,8 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  * A Tail Rec Transformer
  * @author     Erik Stenman, Iulian Dragos,
  *             ported and heavily modified for dotty by Dmitry Petrashko
- *             moved after erasure by Sébastien Doeraene
+ *             moved after erasure and adapted to emit `Labeled` blocks
+ *             by Sébastien Doeraene
  * @version    1.1
  *
  *             What it does:
@@ -34,10 +36,29 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *             contain such calls are not transformed).
  *             </p>
  *             <p>
- *             Self-recursive calls in tail-position are replaced by jumps to a
- *             label at the beginning of the method. As the JVM provides no way to
- *             jump from a method to another one, non-recursive calls in
- *             tail-position are not optimized.
+ *             When a method contains at least one tail-recursive call, its rhs
+ *             is wrapped in the following structure:
+ *             </p>
+ *             <pre>
+ *             var localForParam1: T1 = param1
+ *             ...
+ *             while (true) {
+ *               tailResult[ResultType]: {
+ *                 return {
+ *                   // original rhs
+ *                 }
+ *               }
+ *             }
+ *             </pre>
+ *             <p>
+ *             Self-recursive calls in tail-position are then replaced by (a)
+ *             reassigning the local `var`s substituting formal parameters and
+ *             (b) a `return` from the `tailResult` labeled block, which has the
+ *             net effect of looping back to the beginning of the method.
+ *             </p>
+ *             <p>
+ *             As the JVM provides no way to jump from a method to another one,
+ *             non-recursive calls in tail-position are not optimized.
  *             </p>
  *             <p>
  *             A method call is self-recursive if it calls the current method and
@@ -48,14 +69,8 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *             </p>
  *             <p>
  *             This phase has been moved after erasure to allow the use of vars
- *             for the parameters combined with a `WhileDo` (upcoming change).
- *             This is also beneficial to support polymorphic tail-recursive
- *             calls.
- *             </p>
- *             <p>
- *             If a method contains self-recursive calls, a label is added to at
- *             the beginning of its body and the calls are replaced by jumps to
- *             that label.
+ *             for the parameters combined with a `WhileDo`. This is also
+ *             beneficial to support polymorphic tail-recursive calls.
  *             </p>
  *             <p>
  *             In scalac, if the method had type parameters, the call must contain
@@ -72,26 +87,7 @@ class TailRec extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(Erasure.name) // tailrec assumes erased types
 
-  final val labelFlags: FlagSet = Synthetic | Label | Method
-
-  private def mkLabel(method: Symbol)(implicit ctx: Context): TermSymbol = {
-    val name = TailLabelName.fresh()
-
-    if (method.owner.isClass) {
-      val MethodTpe(paramNames, paramInfos, resultType) = method.info
-
-      val enclosingClass = method.enclosingClass.asClass
-      val thisParamType =
-        if (enclosingClass.is(Module)) enclosingClass.thisType
-        else enclosingClass.classInfo.selfType
-
-      ctx.newSymbol(method, name.toTermName, labelFlags,
-        MethodType(nme.SELF :: paramNames, thisParamType :: paramInfos, resultType))
-    }
-    else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
-  }
-
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): Tree = {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TailrecAnnot)
     def noTailTransform = {
@@ -107,68 +103,108 @@ class TailRec extends MiniPhase {
       !((method is Accessor) || (tree.rhs eq EmptyTree) || (method is Label))
 
     if (isCandidate) {
-      val label = mkLabel(method)
-
+      val DefDef(name, Nil, vparams :: Nil, _, _) = tree
+      val enclosingClass = method.enclosingClass.asClass
       // Note: this can be split in two separate transforms(in different groups),
       // than first one will collect info about which transformations and rewritings should be applied
       // and second one will actually apply,
       // now this speculatively transforms tree and throws away result in many cases
-      val transformer = new TailRecElimination(method, mandatory, label)
+      val transformer = new TailRecElimination(method, enclosingClass, vparams.map(_.symbol), mandatory)
       val rhsSemiTransformed = transformer.transform(tree.rhs)
 
       if (transformer.rewrote) {
-        val DefDef(name, Nil, vparams :: Nil, _, _) = tree
-        val origVParams = vparams.map(_.symbol)
-        val origVParamRefs = origVParams.map(ref(_))
+        val varForRewrittenThis = transformer.varForRewrittenThis
+        val rewrittenParamSyms = transformer.rewrittenParamSyms
+        val varsForRewrittenParamSyms = transformer.varsForRewrittenParamSyms
 
-        if (method.owner.isClass) {
-          val classSym = tree.symbol.owner.asClass
-
-          val labelDef = DefDef(label, vrefss => {
-            assert(vrefss.size == 1, vrefss)
-            val vrefs = vrefss.head
-            val thisRef = vrefs.head
-
-            new TreeTypeMap(
-              typeMap = identity(_)
-                .substThisUnlessStatic(classSym, thisRef.tpe)
-                .subst(origVParams, vrefs.tail.map(_.tpe)),
-              treeMap = {
-                case tree: This if tree.symbol == classSym => thisRef
-                case tree => tree
-              },
-              oldOwners = method :: Nil,
-              newOwners = label :: Nil
-            ).transform(rhsSemiTransformed)
-          })
-          val callIntoLabel = ref(label).appliedToArgs(This(classSym) :: origVParamRefs)
-          cpy.DefDef(tree)(rhs = Block(List(labelDef), callIntoLabel))
-        } else {
-          // Inner methods: Tail recursion does not change `this`
-          val labelDef = DefDef(label, vrefss => {
-            assert(vrefss.size == 1, vrefss)
-            val vrefs = vrefss.head
-
-            new TreeTypeMap(
-              typeMap = identity(_)
-                .subst(origVParams, vrefs.map(_.tpe)),
-              oldOwners = method :: Nil,
-              newOwners = label :: Nil
-            ).transform(rhsSemiTransformed)
-          })
-          val callIntoLabel = ref(label).appliedToArgs(origVParamRefs)
-          cpy.DefDef(tree)(rhs = Block(List(labelDef), callIntoLabel))
+        val initialValDefs = {
+          val initialParamValDefs = for ((param, local) <- rewrittenParamSyms.zip(varsForRewrittenParamSyms)) yield {
+            ValDef(local.asTerm, ref(param))
+          }
+          varForRewrittenThis match {
+            case Some(local) => ValDef(local.asTerm, This(tree.symbol.owner.asClass)) :: initialParamValDefs
+            case none => initialParamValDefs
+          }
         }
-      }
-      else noTailTransform
+
+        val rhsFullyTransformed = varForRewrittenThis match {
+          case Some(localThisSym) =>
+            val classSym = tree.symbol.owner.asClass
+            val thisRef = localThisSym.termRef
+            new TreeTypeMap(
+              typeMap = _.substThisUnlessStatic(classSym, thisRef)
+                .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
+              treeMap = {
+                case tree: This if tree.symbol == classSym => Ident(thisRef)
+                case tree => tree
+              }
+            ).transform(rhsSemiTransformed)
+
+          case none =>
+            new TreeTypeMap(
+              typeMap = _.subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef))
+            ).transform(rhsSemiTransformed)
+        }
+
+        cpy.DefDef(tree)(rhs =
+          Block(
+            initialValDefs :::
+            WhileDo(Literal(Constant(true)), {
+              Labeled(transformer.continueLabel.get.asTerm, {
+                Return(rhsFullyTransformed, ref(method))
+              })
+            }) :: Nil,
+            Throw(Literal(Constant(null))) // unreachable code
+          )
+        )
+      } else noTailTransform
     }
     else noTailTransform
   }
 
-  private class TailRecElimination(method: Symbol, isMandatory: Boolean, label: Symbol) extends tpd.TreeMap {
+  private class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: List[Symbol], isMandatory: Boolean) extends TreeMap {
     import tpd._
 
     var rewrote: Boolean = false
+
+    var continueLabel: Option[Symbol] = None
+    var varForRewrittenThis: Option[Symbol] = None
+    var rewrittenParamSyms: List[Symbol] = Nil
+    var varsForRewrittenParamSyms: List[Symbol] = Nil
+
+    private def getContinueLabel()(implicit ctx: Context): Symbol = {
+      continueLabel match {
+        case Some(sym) => sym
+        case none =>
+          val sym = ctx.newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
+          continueLabel = Some(sym)
+          sym
+      }
+    }
+
+    private def getVarForRewrittenThis()(implicit ctx: Context): Symbol = {
+      varForRewrittenThis match {
+        case Some(sym) => sym
+        case none =>
+          val tpe =
+            if (enclosingClass.is(Module)) enclosingClass.thisType
+            else enclosingClass.asClass.classInfo.selfType
+          val sym = ctx.newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
+          varForRewrittenThis = Some(sym)
+          sym
+      }
+    }
+
+    private def getVarForRewrittenParam(param: Symbol)(implicit ctx: Context): Symbol = {
+      rewrittenParamSyms.indexOf(param) match {
+        case -1 =>
+          val sym = ctx.newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
+          rewrittenParamSyms ::= param
+          varsForRewrittenParamSyms ::= sym
+          sym
+        case index => varsForRewrittenParamSyms(index)
+      }
+    }
 
     /** Symbols of Labeled blocks that are in tail position. */
     private val tailPositionLabeledSyms = new collection.mutable.HashSet[Symbol]()
@@ -209,8 +245,6 @@ class TailRec extends MiniPhase {
           continue
         }
 
-        def enclosingClass = method.enclosingClass.asClass
-
         val call = tree.fun.symbol
         val prefix = tree.fun match {
           case Select(qual, _) => qual
@@ -228,15 +262,39 @@ class TailRec extends MiniPhase {
             tailrec.println("Rewriting tail recursive call: " + tree.pos)
             rewrote = true
 
-            def receiver =
-              if (prefix eq EmptyTree) This(enclosingClass)
-              else noTailTransform(prefix)
+            val assignParamPairs = for {
+              (param, arg) <- paramSyms.zip(arguments)
+              if (arg match {
+                case arg: Ident => arg.symbol != param
+                case _ => true
+              })
+            } yield {
+              (getVarForRewrittenParam(param), arg)
+            }
 
-            val argumentsWithReceiver =
-              if (method.owner.isClass) receiver :: arguments
-              else arguments
+            val assignThisAndParamPairs = {
+              if (prefix eq EmptyTree) assignParamPairs
+              else {
+                // TODO Opt: also avoid assigning `this` if the prefix is `this.`
+                (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
+              }
+            }
 
-            cpy.Apply(tree)(ref(label), argumentsWithReceiver)
+            val assignments = assignThisAndParamPairs match {
+              case (lhs, rhs) :: Nil =>
+                Assign(ref(lhs), rhs) :: Nil
+              case _ :: _ =>
+                val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
+                  val temp = ctx.newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Flags.Synthetic, lhs.info)
+                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withPos(tree.pos))
+                }).unzip
+                tempValDefs ::: assigns
+              case nil =>
+                Nil
+            }
+
+            val tpt = TypeTree(method.info.resultType)
+            Block(assignments, Typed(Return(Literal(Constant(())).withPos(tree.pos), ref(getContinueLabel())), tpt))
           }
           else fail("it is not in tail position")
         }
