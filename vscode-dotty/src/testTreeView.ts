@@ -26,6 +26,7 @@ type TestIdentifierHandle = string
 //   - for now: compile everything
 
 // * IDE
+// - Expand test view by default
 // - Don't discard the DLC output
 // - Figure out if we can get the output tab to be shown when running tests
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
@@ -43,6 +44,7 @@ type TestIdentifierHandle = string
 // - Scaladoc/Javadoc URL when asking for doc
 
 // * Mooc
+// - fork in Test, ...
 // - Merge compile and test project
 // - Documentation:
 //   - Take JDK/sbt page from progfun, cleanup
