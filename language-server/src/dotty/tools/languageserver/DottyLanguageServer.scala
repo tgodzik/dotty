@@ -103,7 +103,8 @@ class DottyLanguageServer extends LanguageServer
         // Instead of querying sbt for all builds, return the subset of builds that
         // use Dotty.
         new ListTestsResult(
-          drivers.keys.filter(_.hasTests).map(config =>
+          // XX remove funsets filter
+          drivers.keys.filter(_.hasTests).filter(_.id == "funsets/test").map(config =>
             new TestIdentifier(
               new BuildIdentifier(config.id, /*hasTests =*/ true),
               Nil.asJava,

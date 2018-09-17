@@ -6,7 +6,7 @@ import { LanguageClient } from 'vscode-languageclient'
 import { Commands } from './commands'
 
 import { ListTestsRequest, RunTestsRequest, TestStatusNotification } from './extensions/protocol'
-import { TestIdentifier, TestStatus, ListTestsParams } from './extensions/types'
+import { TestIdentifier, TestStatus, ListTestsParams, TestStatusKind } from './extensions/types'
 
 // We use strings for keys instead of `TestIdentifier` itself because
 // Javascript doesn't have a useful notion of value equality on objects.
@@ -16,12 +16,12 @@ type TestIdentifierHandle = string
 // - Expand "All tests" and test classes
 // - Expanding test class should start test run
 //   - Hopefully ok because children are cached
-
-// * IDE
 // - Actually use status:
 //   - When running, show spinning wheel if possible and "Running..." in tooltip
 //   - When finished, show green check mark or red cross mark, and actual error in tooltip
 //     - Check what happens with exceptions
+
+// * IDE
 // - Don't discard the DLC output
 // - Figure out if we can get the output tab to be shown when running tests
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
@@ -52,7 +52,13 @@ type TestIdentifierHandle = string
 // - Figure out how to keep alive sbt (and the dls itself too)
 
 export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandle> {
-  // <TestIdentifier>
+  readonly testRunningIcon = {
+    dark: this.context.asAbsolutePath(path.join('images', 'loading-dark.svg')),
+    light: this.context.asAbsolutePath(path.join('images', 'loading.svg'))
+  }
+  readonly testSuccessIcon = this.context.asAbsolutePath(path.join('images', 'green-check.svg'))
+  readonly testFailureIcon = this.context.asAbsolutePath(path.join('images', 'red-cross.svg'))
+
   // map[TestIdentifier, TestStatus] // add unknown status
   // TestIdentifier should have list of ids, prefix: TestIdentifier?, name: String
 
@@ -65,7 +71,7 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
 	private _onDidChangeTreeData: vscode.EventEmitter<TestIdentifierHandle | undefined> = new vscode.EventEmitter()
 	readonly onDidChangeTreeData: vscode.Event<TestIdentifierHandle | undefined> = this._onDidChangeTreeData.event
 
-	constructor(private client: LanguageClient, private workspaceRoot: string, private outputChannel: vscode.OutputChannel) {
+	constructor(private client: LanguageClient, private workspaceRoot: string, private outputChannel: vscode.OutputChannel, private context: vscode.ExtensionContext) {
 	}
 
   // update(test: TestIdentifier): TestIdentifier {
@@ -110,16 +116,16 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
   }
 
   updateTestStatus(status: TestStatus): void {
-    console.log(`setStatus`)
-    console.log(status)
+    // console.log(`setStatus`)
+    // console.log(status)
 
     const test = status.id
     const testHandle = this.registerHandle(test)
     this.statusMap.set(testHandle, status)
 
     const parent = TestIdentifier.parent(test)
-    console.log(`parent`)
-    console.log(parent)
+    // console.log(`parent`)
+    // console.log(parent)
 
     if (parent === undefined) {
       this._onDidChangeTreeData.fire()
@@ -131,8 +137,8 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
       } else {
         siblings.add(testHandle)
       }
-      console.log("childrenMap")
-      console.log(Array.from(this.childrenMap))
+      // console.log("childrenMap")
+      // console.log(Array.from(this.childrenMap))
 
       this._onDidChangeTreeData.fire(testHandle)
     }
@@ -152,7 +158,7 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
   }
 
 	refresh(): void {
-    console.log("refresh")
+    // console.log("refresh")
 
     this.nodesMap.clear()
     this.statusMap.clear()
@@ -185,11 +191,34 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
         }
       )
     } else {
+      let status = this.statusMap.get(element)
+      console.log(`status`)
+      console.log(status)
+      let iconPath: string | { dark: string, light: string } | undefined = undefined
+      let tooltip: string = ""
+      if (status !== undefined) {
+        switch (status.kind) {
+          case TestStatusKind.Running:
+            iconPath = this.testRunningIcon
+            tooltip = `Running ${test.name}...`
+            break
+          case TestStatusKind.Success:
+            iconPath = this.testSuccessIcon
+            tooltip = `Test suceeded: ${test.name}`
+            break
+          case TestStatusKind.Failure:
+            iconPath = this.testFailureIcon
+            tooltip = `Test failed: ${test.name}\n\n${status.details}`
+            break
+          default:
+        }
+      }
       // console.log("XXX")
       // console.log(TestIdentifier.name(element))
       // console.log(TestIdentifier.fullName(element))
       // console.log(element.hasChildrenTests ?
       //             vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None)
+
       
       const x = new TestNode(
         TestIdentifier.name(test),
@@ -199,7 +228,13 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
           command: Commands.BSP_RUN_TESTS,
           title: '',
           arguments: [ test ]
-        }
+        },
+        // {
+        //   dark: this.context.asAbsolutePath(path.join('images', 'loading-dark.svg')),
+        //   light: this.context.asAbsolutePath(path.join('images', 'loading.svg'))
+        // }
+        iconPath,
+        tooltip
       )
       // console.log("YYY")
       // console.log(x)
@@ -212,10 +247,14 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
       Thenable<TestIdentifierHandle[]> | TestIdentifierHandle[] {
     const test = this.getTest(element)
 
+    if (!test.hasChildrenTests) {
+      return []
+    }
+
     if (test.path.length > 1) {
       const children = this.childrenMap.get(element)
-      console.log("children")
-      console.log(children)
+      // console.log("children")
+      // console.log(children)
       if (children === undefined) {
         if (retry) {
           return this.client.sendRequest(RunTestsRequest.type, {
@@ -235,15 +274,15 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
   }
 
   getChildren(element?: TestIdentifierHandle): Thenable<TestIdentifierHandle[]> | TestIdentifierHandle[] {
-    console.log(`getChildren`)
-    console.log(element)
+    // console.log(`getChildren`)
+    // console.log(element)
     // console.log("childrenMap")
     // console.log(this.childrenMap)
 
     if (element === undefined) {
       const handle = this.registerHandle(TestIdentifier.root)
-      console.log("handle")
-      console.log(handle)
+      // console.log("handle")
+      // console.log(handle)
       return [ handle ]
     } else {
       return this.getChildrenInternal(element, true)
@@ -279,11 +318,11 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
     // })
 
   public getParent(element: TestIdentifierHandle): TestIdentifierHandle | undefined {
-    console.log(`getParent`)
-    console.log(element)
+    // console.log(`getParent`)
+    // console.log(element)
     const parent = TestIdentifier.parent(this.getTest(element))
-    console.log(`parent`)
-    console.log(parent)
+    // console.log(`parent`)
+    // console.log(parent)
     return parent === undefined ?
       undefined :
       this.getHandle(parent)
@@ -295,19 +334,12 @@ class TestNode extends vscode.TreeItem {
     public readonly label: string,
     public readonly id: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly command?: vscode.Command
+    public readonly command: vscode.Command,
+    public readonly iconPath?: string | { dark: string, light: string },
+    public readonly tooltip?: string
   ) {
     super(label, collapsibleState)
   }
-
-  // get tooltip(): string {
-  // 	return `${this.label}`
-  // }
-
-  // iconPath = {
-  // 	light: path.join(__filename, '..', '..', '..', 'resources', 'light', 'dependency.svg'),
-  // 	dark: path.join(__filename, '..', '..', '..', 'resources', 'dark', 'dependency.svg')
-  // }
 
   // contextValue = 'test'
 }

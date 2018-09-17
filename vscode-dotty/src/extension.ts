@@ -185,7 +185,7 @@ function run(serverOptions: ServerOptions) {
     });
 
     const rootPath = vscode.workspace.rootPath as string;
-	  const testProvider = new TestProvider(client, rootPath, outputChannel);
+	  const testProvider = new TestProvider(client, rootPath, outputChannel, extensionContext);
     const testView = vscode.window.createTreeView("dottyTests", {
       treeDataProvider: testProvider
     })

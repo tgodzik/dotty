@@ -260,7 +260,7 @@ object DottyBSPPlugin extends AutoPlugin {
       println("testArgs: " + testArgs)
       // val (state1, _) = runTaskInBuilds(testOnly.toTask(s" $testArgs"), Seq(build), origState)
       val state1 = try {
-        runInputTaskInBuilds(testOnly, s" $testArgs", Seq(build), state0)._1
+        runInputTaskInBuilds(testOnly, s""" -- \"$testArgs*\"""", Seq(build), state0)._1
       } catch {
         case i: Incomplete => // The tests failed
           state0
