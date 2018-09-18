@@ -62,18 +62,6 @@ object SbtClient {
 
     client
   }
-
-  // def main2(args: Array[String]): Unit = {
-  //   val client = SbtClient(null)
-
-  //   // val execParams = new SbtExecParams("compile")
-  //   // // server.sbtExec(execParams)
-  //   val testParams = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
-  //   val r = client.server.listTests(testParams)
-  //   println("r: " + r.get)
-  //   // socket.close()
-  //   // System.exit(0)
-  // }
 }
 
 class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { thisClient =>
@@ -87,21 +75,6 @@ class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { t
   private[this] var rootUri: String = _
 
   // private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
-
-  private[this] def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
-    CompletableFutures.computeAsync { cancelToken =>
-      // We do not support any concurrent use of the compiler currently.
-      thisClient.synchronized {
-        cancelToken.checkCanceled()
-        try {
-          fun(cancelToken)
-        } catch {
-          case NonFatal(ex) =>
-            ex.printStackTrace
-            throw ex
-        }
-      }
-    }
 
   def stripAnsiColors(m: String): String = m.replaceAll("\u001B\\[[;\\d]*m", "")
 
@@ -118,17 +91,23 @@ class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { t
     }
   }
 
+  override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {
+    params.getDiagnostics.asScala.foreach { diagnostic =>
+      diagnostic.setMessage(stripAnsiColors(diagnostic.getMessage))
+    }
+    languageServer.client.publishDiagnostics(params)
+  }
+
   override def testStatus(status: TestStatus): Unit = {
     languageServer.client.testStatus(status)
   }
 
-  override def publishDiagnostics(params: PublishDiagnosticsParams): Unit = {
-    languageServer.client.publishDiagnostics(params)
-  }
   override def showMessage(params: MessageParams): Unit = {
     languageServer.client.showMessage(params)
   }
+
   override def showMessageRequest(params: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = null
+
   override def telemetryEvent(event: Any): Unit = {
     languageServer.client.telemetryEvent(event)
   }
