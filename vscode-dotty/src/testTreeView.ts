@@ -32,6 +32,7 @@ type TestIdentifierHandle = string
 //     ==> actually not useful, because sbt doesn't log the exceptions :/
 //   - ... and get the problem tab to be shown when saving
 //     - vscode.commands.executeCommand("workbench.action.problems.focus")
+// - hide cyclic warning
 
 // * IDE
 // - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
@@ -40,7 +41,6 @@ type TestIdentifierHandle = string
 // - Test on Windows
 
 // * sbt-plugin
-// - hide cyclic warning
 // - deal with offline
 
 // * Dotty
