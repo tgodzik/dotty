@@ -99,7 +99,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   def buildIdentifiers: List[BuildIdentifier] =
-    drivers.keys.filter(_.id == "funsets/test")
+    drivers.keys
       .map(config => new BuildIdentifier(config.id, config.hasTests)).toList
 
   def testIdentifiers: List[TestIdentifier] =
