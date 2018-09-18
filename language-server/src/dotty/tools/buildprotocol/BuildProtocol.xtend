@@ -123,15 +123,17 @@ class RunTestsResult {
 class TestStatus {
   @NonNull TestIdentifier id
   @NonNull TestStatusKind kind
-  @NonNull String details
+  @NonNull String shortDescription
+  @NonNull String longDescription
 
   new() {
   }
 
-  new(@NonNull TestIdentifier id, @NonNull TestStatusKind kind, @NonNull String details) {
+  new(@NonNull TestIdentifier id, @NonNull TestStatusKind kind, @NonNull String shortDescription, @NonNull String longDescription) {
     this.id = id
     this.kind = kind
-    this.details = details
+    this.shortDescription = shortDescription
+    this.longDescription = longDescription
   }
 }
 

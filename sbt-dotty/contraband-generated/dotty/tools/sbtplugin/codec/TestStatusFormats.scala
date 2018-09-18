@@ -13,9 +13,10 @@ implicit lazy val TestStatusFormat: JsonFormat[dotty.tools.sbtplugin.TestStatus]
       unbuilder.beginObject(js)
       val id = unbuilder.readField[dotty.tools.sbtplugin.TestIdentifier]("id")
       val kind = unbuilder.readField[dotty.tools.sbtplugin.TestStatusKind]("kind")
-      val details = unbuilder.readField[String]("details")
+      val shortDescription = unbuilder.readField[String]("shortDescription")
+      val longDescription = unbuilder.readField[String]("longDescription")
       unbuilder.endObject()
-      dotty.tools.sbtplugin.TestStatus(id, kind, details)
+      dotty.tools.sbtplugin.TestStatus(id, kind, shortDescription, longDescription)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -24,7 +25,8 @@ implicit lazy val TestStatusFormat: JsonFormat[dotty.tools.sbtplugin.TestStatus]
     builder.beginObject()
     builder.addField("id", obj.id)
     builder.addField("kind", obj.kind)
-    builder.addField("details", obj.details)
+    builder.addField("shortDescription", obj.shortDescription)
+    builder.addField("longDescription", obj.longDescription)
     builder.endObject()
   }
 }

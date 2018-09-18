@@ -40,7 +40,8 @@ type RunTestsResult {
 type TestStatus {
   id: dotty.tools.sbtplugin.TestIdentifier!
   kind: dotty.tools.sbtplugin.TestStatusKind!
-  details: String!
+  shortDescription: String!
+  longDescription: String!
 }
 
 enum TestStatusKind {

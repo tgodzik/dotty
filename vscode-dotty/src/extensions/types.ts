@@ -88,7 +88,8 @@ export interface RunTestsResult {
 export interface TestStatus {
   id: TestIdentifier
   kind: TestStatusKind
-  details: String
+  shortDescription: String
+  longDescription: String
 }
 
 export enum TestStatusKind {

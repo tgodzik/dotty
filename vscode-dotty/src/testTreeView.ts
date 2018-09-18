@@ -195,9 +195,11 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
           default:
         }
 
-        if (status.details !== "") {
-          tooltip = `${tooltip}\n\n${status.details}`
+        if (status.shortDescription !== "") {
+          tooltip = `${tooltip}\n\n${status.shortDescription}`
         }
+        // TODO: figure out what to do about longDescription, it's too long to
+        // fit in a tooltip.
       }
 
       const x = new TestNode(
