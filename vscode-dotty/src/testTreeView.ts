@@ -58,6 +58,7 @@ type TestIdentifierHandle = string
 // - Don't discard the DLC output
 // - Figure out how to keep alive sbt (and the dls itself too)
 // - color sbt messages with syntax extension
+// - Fix documentation messages (leading spaces except on the first line)
 
 export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandle> {
   readonly testRunningIcon = {

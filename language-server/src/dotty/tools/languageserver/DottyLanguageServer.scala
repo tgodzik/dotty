@@ -121,7 +121,13 @@ class DottyLanguageServer extends LanguageServer
       else
         params
 
-    buildClient.server.compileBuilds(params1)
+    try {
+      buildClient.server.compileBuilds(params1)
+    } catch {
+      case e: Exception =>
+        println("###: " + e)
+        null
+    }
   }
 
   override def listTests(params: ListTestsParams) =
