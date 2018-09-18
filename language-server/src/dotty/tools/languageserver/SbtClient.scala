@@ -108,9 +108,13 @@ class SbtClient(val languageServer: DottyLanguageServer) extends BuildClient { t
   override def logMessage(params: MessageParams): Unit = {
     // No way to prevent sbt from sending us ANSI code currently
     val msg = stripAnsiColors(params.getMessage)
+    // Downgrade sbt log errors to warnings, logMessage errors in vscode make
+    // the output panel appear in the foreground, but we'd rather have the user
+    // see the problem panel instead.
+    val msgType = if (params.getType == MessageType.Error) MessageType.Warning else params.getType
     // Filter out some useless messages sbt likes to send
     if (msg != "Processing" && msg != "Done") {
-      languageServer.client.logMessage(new MessageParams(params.getType, msg))
+      languageServer.client.logMessage(new MessageParams(msgType, msg))
     }
   }
 
