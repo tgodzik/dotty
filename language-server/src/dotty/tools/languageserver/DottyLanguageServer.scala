@@ -100,15 +100,15 @@ class DottyLanguageServer extends LanguageServer
 
   def buildIdentifiers: List[BuildIdentifier] =
     drivers.keys.filter(_.id == "funsets/test")
-      .map(config => new BuildIdentifier(config.id, new java.lang.Boolean(config.hasTests))).toList
+      .map(config => new BuildIdentifier(config.id, config.hasTests)).toList
 
   def testIdentifiers: List[TestIdentifier] =
     buildIdentifiers
-      .filter(_.getHasTests)
+      .filter(_.isHasTests)
       .map(build => new TestIdentifier(
         build,
         Nil.asJava,
-        /*hasChildrenTests =*/ new java.lang.Boolean(build.getHasTests)
+        /*hasChildrenTests =*/ build.isHasTests
       ))
 
   override def sbtExec(params: SbtExecParams) =

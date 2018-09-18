@@ -181,12 +181,19 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
             break
           case TestStatusKind.Failure:
             iconPath = this.testFailureIcon
-            tooltip = `Test failed: ${name}\n\n${status.details}`
+            tooltip = `Test failed: ${name}`
+            break
+          case TestStatusKind.Ignored:
+            tooltip = `Test ignored: ${name}`
             break
           default:
         }
+
+        if (status.details !== "") {
+          tooltip = `${tooltip}\n\n${status.details}`
+        }
       }
-      
+
       const x = new TestNode(
         TestIdentifier.name(test),
         element,
@@ -209,7 +216,7 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
       if (!this.active) {
         return []
       }
-      
+
       const handle = this.registerHandle(TestIdentifier.root)
       return [ handle ]
     } else {

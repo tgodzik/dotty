@@ -22,12 +22,12 @@ class BuildIdentifier {
   @NonNull public static BuildIdentifier root = new BuildIdentifier("", true)
 
 	@NonNull String name
-	@NonNull Boolean hasTests
+	@NonNull boolean hasTests
 
   new() {
   }
 
-  new(@NonNull String name, @NonNull Boolean hasTests) {
+  new(@NonNull String name, @NonNull boolean hasTests) {
     this.name = name
     this.hasTests = hasTests
   }
@@ -47,12 +47,12 @@ class CompileBuildsParams {
 
 @JsonRpcData
 class CompileBuildsResult {
-  @NonNull Boolean compilationSucceeded
+  @NonNull boolean compilationSucceeded
 
   new() {
   }
 
-  new(@NonNull Boolean compilationSucceeded) {
+  new(@NonNull boolean compilationSucceeded) {
     this.compilationSucceeded = compilationSucceeded
   }
 }
@@ -64,13 +64,13 @@ class TestIdentifier {
 
   @NonNull BuildIdentifier build
 	@NonNull List<String> path
-	@NonNull Boolean hasChildrenTests
+	@NonNull boolean hasChildrenTests
 
   new() {
   }
 
   new(@NonNull BuildIdentifier build, @NonNull List<String> path,
-      @NonNull Boolean hasChildrenTests) {
+      @NonNull boolean hasChildrenTests) {
     this.build = build
     this.path = path
     this.hasChildrenTests = hasChildrenTests
