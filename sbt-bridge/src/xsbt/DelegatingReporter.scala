@@ -32,16 +32,29 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       if (cont.pos.exists) {
         val pos = cont.pos
         val src = pos.source
+
+        def lineOf(offset: Int) = src.offsetToLine(offset) + 1
+        def columnOf(offset: Int) = offset - src.lineToOffset(src.offsetToLine(offset))
+
         new Position {
           val sourceFile: Optional[java.io.File] = maybe(Option(src.file.file))
           val sourcePath: Optional[String] = maybe(Option(src.file.path))
-          val line: Optional[Integer] = Optional.of(pos.line)
+          val line: Optional[Integer] = Optional.of(lineOf(pos.point))
           val lineContent: String = pos.lineContent.stripLineEnd
           val offset: Optional[Integer] = Optional.of(pos.point)
-          val pointer: Optional[Integer] = Optional.of(pos.point - src.startOfLine(pos.point))
+          val pointer: Optional[Integer] = Optional.of(columnOf(pos.point))
           val pointerSpace: Optional[String] = Optional.of(
             ((lineContent: Seq[Char]).take(pointer.get).map { case '\t' => '\t'; case x => ' ' }).mkString
           )
+
+          override val startOffset: Optional[Integer] = Optional.of(pos.start)
+          override val endOffset: Optional[Integer] = Optional.of(pos.end)
+
+          override val startLine: Optional[Integer] = Optional.of(lineOf(pos.start))
+          override val startColumn: Optional[Integer] = Optional.of(columnOf(pos.start))
+
+          override val endLine: Optional[Integer] = Optional.of(lineOf(pos.end))
+          override val endColumn: Optional[Integer] = Optional.of(columnOf(pos.end))
         }
       } else
         noPosition
