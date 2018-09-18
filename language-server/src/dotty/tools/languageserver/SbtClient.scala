@@ -23,6 +23,7 @@ import scala.collection._
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 import scala.io.Codec
+import scala.util.Properties
 
 import config.SbtPortFile
 
@@ -36,7 +37,12 @@ object SbtClient {
     val uri = config.uri
 
     val socket = uri.getScheme match {
-      case "local" => new UnixDomainSocket(uri.getSchemeSpecificPart)
+      case "local" =>
+        if (Properties.isWin)
+          new Win32NamedPipeSocket("""\\.\pipe\""" + uri.getSchemeSpecificPart)
+        else
+          new UnixDomainSocket(uri.getSchemeSpecificPart)
+      case "tcp" => new Socket(InetAddress.getByName(uri.getHost), uri.getPort)
       case _ => sys.error(s"Unsupported uri: $uri")
     }
 
