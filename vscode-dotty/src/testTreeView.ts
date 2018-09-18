@@ -27,12 +27,13 @@ type TestIdentifierHandle = string
 // - Try harder to get updated children
 // - Add refresh button
 // - success/failure of test class using BSPListener#testEvent
-
-// * IDE
 // - Figure out if we can get the output tab to be shown when running tests
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
+//     ==> actually not useful, because sbt doesn't log the exceptions :/
 //   - ... and get the problem tab to be shown when saving
 //     - vscode.commands.executeCommand("workbench.action.problems.focus")
+
+// * IDE
 // - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
 // - Figure out how to start sbt (probably just run sbt from DLS)
 // - integrate worksheet mode, see gitter discussion

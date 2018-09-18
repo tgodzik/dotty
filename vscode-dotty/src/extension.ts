@@ -26,6 +26,12 @@ export function saveAllAndCompile(client: LanguageClient): Thenable<CompileBuild
   vscode.workspace.saveAll()
 
   return client.sendRequest(CompileBuildsRequest.type, { builds: [] })
+    .then(result => {
+      // In case of compilation errors, show the Problems panel
+      if (!result.compilationSucceeded)
+        vscode.commands.executeCommand("workbench.action.problems.focus")
+      return result
+    })
 }
 
 export function activate(context: ExtensionContext) {
