@@ -20,13 +20,9 @@ let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
 export function saveAllAndCompile(client: LanguageClient): Thenable<CompileBuildsResult> {
-  vscode.workspace.saveAll(/*includeUntitled = */false)
+  vscode.workspace.saveAll()
 
   return client.sendRequest(CompileBuildsRequest.type, { builds: [] })
-}
-
-function executeDottyLanguageServerCommand(command: string, ...params: any[]) {
-  return vscode.commands.executeCommand(Commands.EXECUTE_WORKSPACE_COMMAND, command, ...params)
 }
 
 export function activate(context: ExtensionContext) {
@@ -181,42 +177,21 @@ function run(serverOptions: ServerOptions) {
   const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
 
   client.onReady().then(() => {
-    commands.registerCommand(Commands.BSP_RUN_TESTS, (...params) => {
-      vscode.workspace.saveAll(/*includeUntitled = */false)
-      return client.sendRequest(RunTestsRequest.type, { tests: params })
-      // .then(res => {
-      //   console.log(res)
-      //   res
-      // })
-      // outputChannel.appendLine(`x: ${x}`)
-    });
-
     const compileOnSave = vscode.workspace.getConfiguration("dotty").get("compileOnSave")
     // If the dotty.compileOnSave setting is set to true, then enable shorcuts
     // in package.json configured with "when": "compileOnSaveEnabled"
     commands.executeCommand("setContext", "compileOnSaveEnabled", compileOnSave)
 
-    commands.registerCommand(Commands.COMPILE_ON_SAVE, () => {
+    commands.registerCommand(Commands.SAVE_ALL_AND_COMPILE, () => {
       return saveAllAndCompile(client)
     });
 
-    const rootPath = vscode.workspace.rootPath as string;
-	  const testProvider = new TestProvider(client, rootPath, outputChannel, extensionContext);
-    const testView = vscode.window.createTreeView("dottyTests", {
+	  const testProvider = new TestProvider(client, extensionContext);
+    const testView = vscode.window.createTreeView("dotty.testView", {
       treeDataProvider: testProvider
     })
 
-    testProvider.onDidChangeTreeData(element => {
-      if (element !== undefined) {
-        testView.reveal(element, { focus: false, select: false })
-      }
-    })
-
-    client.onNotification(TestStatusNotification.type, status => {
-      testProvider.updateTestStatus(status)
-    })
-
-    vscode.window.registerTreeDataProvider('dottyTests', testProvider);
+    extensionContext.subscriptions.push(testView);
   })
 
   // Push the disposable to the context's subscriptions so that the

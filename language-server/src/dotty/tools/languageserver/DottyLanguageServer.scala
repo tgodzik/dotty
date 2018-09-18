@@ -99,7 +99,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   def buildIdentifiers: List[BuildIdentifier] =
-    drivers.keys
+    drivers.keys.filter(_.id == "funsets/test")
       .map(config => new BuildIdentifier(config.id, new java.lang.Boolean(config.hasTests))).toList
 
   def testIdentifiers: List[TestIdentifier] =
@@ -281,47 +281,6 @@ class DottyLanguageServer extends LanguageServer
   override def didSave(params: DidSaveTextDocumentParams): Unit =
     /*thisServer.synchronized*/ {}
 
-
-  // override def executeCommand(params: ExecuteCommandParams) = computeAsync { cancelToken =>
-  //   val command = params.getCommand
-  //   val args = params.getArguments.asScala.map(_.toString)
-
-  //   import Commands._
-
-  //   command match {
-  //     case BSP_LIST_TESTS =>
-  //       if (false && !args.isEmpty) {
-  //         println(s"Unexpected arguments for command $command: $args")
-  //         null
-  //       }
-  //       else {
-  //         // val params = new ListTestsParams(List(new BuildTargetIdentifier("dotty-compiler/test")).asJava)
-  //         val params = new ListTestsParams(List(new BuildTargetIdentifier("funsets/test")).asJava)
-  //         val aa = buildClient.server.listTests(params).get
-  //         println("###aa: " + aa)
-  //         aa
-  //       }
-  //     case BSP_RUN_TESTS =>
-  //       if (args.isEmpty) {
-  //         println(s"Missing argument for $command")
-  //         null
-  //       }
-  //       else {
-  //         println("RUN args: " + args)
-  //         // FIXME: use structured data instead (decode it with gson)
-  //         val args1 = args.asInstanceOf[Seq[String]].toArray
-  //         val target = args1(0)
-  //         val ids = args1.tail.toList.map(testName => new TestIdentifier(new BuildTargetIdentifier(target), testName))
-  //         val params1 = new RunTestsParams(ids.asJava)
-  //         val zz = buildClient.server.runTests(params1).get
-  //         println("###zz: " + zz)
-  //         zz
-  //       }
-  //     case _ =>
-  //       println(s"Unrecognized command $command with arguments $args")
-  //       null
-  //   }
-  // }
 
   // FIXME: share code with messages.NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>

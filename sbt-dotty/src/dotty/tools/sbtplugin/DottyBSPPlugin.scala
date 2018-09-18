@@ -24,7 +24,6 @@ import org.apache.logging.log4j.core.LogEvent
 object DottyBSPPlugin extends AutoPlugin {
   object autoImport {
     val buildIdentifier = settingKey[String]("A unique identifier for this build")
-    // private[dotty] val listTests = inputKey[Unit]("List all test classes")
   }
   import autoImport._
 
@@ -34,105 +33,6 @@ object DottyBSPPlugin extends AutoPlugin {
   val buildIdentifierSetting =
     buildIdentifier := s"${thisProject.value.id}/${configuration.value}"
 
-  val testRunStarted = "Test run started"
-  val testRunFinishedPrefix = "Test run finished"
-  val testStarted = raw"Test (.*) started".r
-  val testIgnored = raw"Test (.*) ignored".r
-  val testFailed = raw"Test (.*) failed: (.*), took .*sec".r
-
-  def stripAnsiColors(m: String): String = m.replaceAll("\u001B\\[[;\\d]*m", "")
-
-  def testPath(test: String): List[String] = {
-    // For now, we only handle tests of the from `prefix.name` where
-    // `prefix` is a fully qualified class name.
-    val fullPath = test.split("\\.")
-    val prefix = fullPath.init.mkString(".")
-    val name = fullPath.last
-    List(prefix, name)
-  }
-
-  // FIXME: Should be replaced by sbt testListeners, but right now not good enough:
-  // ~ no event when a test start
-  // - with junit-interface, no event when a test stop
-  def logger(build: String) = {
-    val appender = new AbstractAppender(s"DottyBSPPlugin-$build", null, Restricted.dummyLayout, true)  {
-      var runningTest: Option[String] = None
-
-      def append(x: LogEvent): Unit = {
-
-        def broadcastTestStatus(build: String, test: String, kind: TestStatusKind,
-          details: String = ""): Unit = {
-          val status = 
-            TestStatus(
-              TestIdentifier(
-                BuildIdentifier(build, hasTests = true),
-                testPath(test).toVector,
-                hasChildrenTests = false
-              ),
-              kind,
-              details
-            )
-          println(s"sending testStatus $status")
-          Restricted.exchange.channels.collect {
-            case c: NetworkChannel  =>
-              c
-          }.foreach { c =>
-            println(s"sending testStatus $status to $c")
-            Restricted.jsonRpcNotify(c, "dotty/testStatus", status)
-          }
-        }
-
-        def runningTestFinished(kind: TestStatusKind, details: String = "") = {
-          runningTest foreach { prevTest =>
-            broadcastTestStatus(build, prevTest, kind, details)
-          }
-          runningTest = None
-        }
-
-        x.getMessage match {
-          case e: org.apache.logging.log4j.message.ObjectMessage =>
-            e.getParameter match {
-              case se: sbt.internal.util.StringEvent =>
-                val msg = stripAnsiColors(se.message)
-
-                if (msg == testRunStarted)
-                  runningTest = None
-                else if (msg.startsWith(testRunFinishedPrefix)) {
-                  runningTestFinished(TestStatusKind.Success)
-                }
-                else {
-                  msg match {
-                    case testStarted(startedTest) =>
-                      runningTestFinished(TestStatusKind.Success)
-                      runningTest = Some(startedTest)
-                      broadcastTestStatus(build, startedTest, TestStatusKind.Running)
-                    case testIgnored(ignoredTest) =>
-                      runningTestFinished(TestStatusKind.Success)
-                      broadcastTestStatus(build, ignoredTest, TestStatusKind.Ignored)
-                    case testFailed(failedTest, details) =>
-                      if (runningTest != Some(failedTest)) {
-                        // println(s"!!! $runningTest != $failedTest")
-                        assert(false, s"!!! $runningTest != $failedTest")
-                      }
-                      runningTestFinished(TestStatusKind.Failure, details)
-                    case _ =>
-                      // println("#MSG: " + msg)
-                  }
-                }
-                // Test funsets.FunSetSuite.union contains all elements of each set finished, took 0.001 sec
-
-
-              case _ =>
-            }
-        //   case _ =>
-        // }
-        }
-      }
-    }
-    appender.start
-    appender
-  }
-
   override def projectSettings: Seq[Setting[_]] = {
     inConfig(Compile)(Seq(
       buildIdentifierSetting,
@@ -140,27 +40,14 @@ object DottyBSPPlugin extends AutoPlugin {
     )) ++
     inConfig(Test)(Seq(
       buildIdentifierSetting,
+      testListeners += new BspTestsListener(buildIdentifier.value)
       // We use JUnit native support for listeners instead of sbt testListeners
       // because the latter is not good enough currently (e.g. it only reports
       // the status of a test once all tests in a class have finished).
       // testOptions += Tests.Argument(TestFrameworks.JUnit, "--run-listener=dotty.tools.sbtplugin.oJUnitListener")
     )) ++
     Seq(
-      // testListeners += new BspTestsListener(streams.value.log),
-      extraLoggers := {
-        val currentFunction = extraLoggers.value
-        val build = (buildIdentifier in Test).value
-
-        if (isDotty.value) {
-          (key: ScopedKey[_]) => {
-            // println("key: " + key)
-            // println("scope: " + key.scope)
-            logger(build) +: currentFunction(key)
-          }
-        } else {
-          currentFunction
-        }
-      }
+      // testListeners += new BspTestsListener,
     )
   }
 
@@ -242,37 +129,6 @@ object DottyBSPPlugin extends AutoPlugin {
       state1
     }
 
-  def listTests =
-    Command.args("listTests", "<channelName> <requestId> <builds>*") { (state0, args) =>
-      val channelName +: requestId +: builds = args
-
-      println("##builds: " + builds)
-      val (state1, tests) = runTaskInBuilds(definedTestNames, builds, state0)
-
-      println("testsSBT: " + tests)
-      val res = ListTestsResult(tests.flatMap { case (build, names) =>
-        names.map(name =>
-          TestIdentifier(
-            BuildIdentifier(build, hasTests = true),
-            path = testPath(name).toVector,
-            hasChildrenTests = true
-          )
-        )
-      }.toVector)
-
-      println("res: " + res)
-
-      Restricted.exchange.channels.collectFirst {
-        case c: NetworkChannel if c.name == channelName =>
-          c
-      }.foreach { c =>
-        println("c: " + c)
-        Restricted.jsonRpcRespond(c, res, Some(requestId))
-      }
-
-      state1
-    }
-
   def runTests =
     Command.args("runTests", "<channelName> <requestId> <build> <tests>*") { (state0, args) =>
       val channelName +: requestId +: build +: tests = args
@@ -327,7 +183,7 @@ object DottyBSPPlugin extends AutoPlugin {
     //     Restricted.jsonRpcRespond(c, params, Some(id))
     //   }
     // },
-    commands ++= Seq(compileBuilds, listTests, runTests),
+    commands ++= Seq(compileBuilds, runTests),
 
     serverHandlers += ServerHandler({ callback =>
       import callback._
@@ -338,11 +194,6 @@ object DottyBSPPlugin extends AutoPlugin {
             val params = Converter.fromJson[CompileBuildsParams](json(r)).get
             val builds = params.builds.map(_.name).mkString(" ")
             appendExec(Exec(s"compileBuilds $name ${r.id} $builds", None, Some(CommandSource(name))))
-
-          case r: JsonRpcRequestMessage if r.method == "dotty/listTests" =>
-            val params = Converter.fromJson[ListTestsParams](json(r)).get
-            val builds = params.parents.map(_.build.name).mkString(" ")
-            appendExec(Exec(s"listTests $name ${r.id} $builds", None, Some(CommandSource(name))))
 
           case r: JsonRpcRequestMessage if r.method == "dotty/runTests" =>
             val params = Converter.fromJson[RunTestsParams](json(r)).get

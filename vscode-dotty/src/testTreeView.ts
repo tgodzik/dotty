@@ -24,9 +24,10 @@ type TestIdentifierHandle = string
 //   - save all files first
 //   - configurable with a setting
 //   - for now: compile everything
+// - Try harder to get updated children
+// - Add refresh button
 
 // * IDE
-// - Expand test view by default
 // - Don't discard the DLC output
 // - Figure out if we can get the output tab to be shown when running tests
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
@@ -38,6 +39,8 @@ type TestIdentifierHandle = string
 // - Test on Windows
 
 // * sbt-plugin
+// - hide cyclic warning
+// - deal with offline
 // - success/failure of test class using BSPListener#testEvent
 
 // * Dotty
@@ -64,9 +67,6 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
   readonly testSuccessIcon = this.context.asAbsolutePath(path.join('images', 'green-check.svg'))
   readonly testFailureIcon = this.context.asAbsolutePath(path.join('images', 'red-cross.svg'))
 
-  // map[TestIdentifier, TestStatus] // add unknown status
-  // TestIdentifier should have list of ids, prefix: TestIdentifier?, name: String
-
   private nodesMap: Map<TestIdentifierHandle, TestIdentifier> = new Map()
 
   private statusMap: Map<TestIdentifierHandle, TestStatus> = new Map()
@@ -76,19 +76,46 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
 	private _onDidChangeTreeData: vscode.EventEmitter<TestIdentifierHandle | undefined> = new vscode.EventEmitter()
 	readonly onDidChangeTreeData: vscode.Event<TestIdentifierHandle | undefined> = this._onDidChangeTreeData.event
 
-	constructor(private client: LanguageClient, private workspaceRoot: string, private outputChannel: vscode.OutputChannel, private context: vscode.ExtensionContext) {
-	}
+  private active: boolean = false
 
-  // update(test: TestIdentifier): TestIdentifier {
-  //   nodesMap.put(TestIdentifier.fullName(test), test)
-  // }
+	constructor(private client: LanguageClient, private context: vscode.ExtensionContext) {
+    vscode.commands.registerCommand(Commands.RUN_ALL_TESTS, () => {
+      vscode.workspace.saveAll()
 
-  // element(name: TestIdentifierFullName): TestIdentifier {
-  //   const res = nodesMap.get(name)
-  //   if (res === undefined) {
-      
-  //   }
-  // }
+      this.nodesMap.clear()
+      this.statusMap.clear()
+      this.childrenMap.clear()
+
+      this.active = true
+
+      client.sendRequest(RunTestsRequest.type, { tests: [] })
+        .then(res => {
+          this._onDidChangeTreeData.fire()
+        })
+    });
+
+    client.onNotification(TestStatusNotification.type, status => {
+      if (!this.active)
+        return
+
+      console.log("status")
+      console.log(status)
+      const test = status.id
+      const testHandle = this.registerHandle(test)
+      this.statusMap.set(testHandle, status)
+
+      const parent = TestIdentifier.parent(test)
+      if (parent !== undefined) {
+        const parentHandle = this.getHandle(parent)
+        const siblings = this.childrenMap.get(parentHandle)
+        if (siblings === undefined) {
+          this.childrenMap.set(parentHandle, new Set( [ testHandle ] ))
+        } else {
+          siblings.add(testHandle)
+        }
+      }
+    })
+  }
 
   handleName(test: TestIdentifier): TestIdentifierHandle {
     return TestIdentifier.isRoot(test) ?
@@ -120,80 +147,20 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
     return handle
   }
 
-  updateTestStatus(status: TestStatus): void {
-    // console.log(`setStatus`)
-    // console.log(status)
-
-    const test = status.id
-    const testHandle = this.registerHandle(test)
-    this.statusMap.set(testHandle, status)
-
-    const parent = TestIdentifier.parent(test)
-    // console.log(`parent`)
-    // console.log(parent)
-
-    if (parent === undefined) {
-      this._onDidChangeTreeData.fire()
-    } else {
-      const parentHandle = this.getHandle(parent)
-      const siblings = this.childrenMap.get(parentHandle)
-      if (siblings === undefined) {
-        this.childrenMap.set(parentHandle, new Set( [ testHandle ] ))
-      } else {
-        siblings.add(testHandle)
-      }
-      // console.log("childrenMap")
-      // console.log(Array.from(this.childrenMap))
-
-      this._onDidChangeTreeData.fire(testHandle)
-    }
-
-    // const p2 = TestIdentifier.parent(parent as TestIdentifier) as TestIdentifier
-    // console.log("duck")
-    // console.log(p2)
-		// this._onDidChangeTreeData.fire(p2)
-
-    // doesn't work
-		// this._onDidChangeTreeData.fire(status.id)
-		// this._onDidChangeTreeData.fire(parent)
-
-    // works
-		// this._onDidChangeTreeData.fire(TestIdentifier.root)
-		// this._onDidChangeTreeData.fire()
-  }
-
-	refresh(): void {
-    // console.log("refresh")
-
-    this.nodesMap.clear()
-    this.statusMap.clear()
-    this.childrenMap.clear()
-		this._onDidChangeTreeData.fire()
-	}
-
 	getTreeItem(element: TestIdentifierHandle): vscode.TreeItem {
     console.log(`getTreeItem`)
     console.log(element)
     const test = this.getTest(element)
-    console.log(`test`)
-    console.log(test)
 
     const state = test.hasChildrenTests ?
-      (test.path.length === 0 ? // By default, expand the root and its children
-       vscode.TreeItemCollapsibleState.Expanded :
-       vscode.TreeItemCollapsibleState.Collapsed) :
+      vscode.TreeItemCollapsibleState.Expanded :
       vscode.TreeItemCollapsibleState.None
 
     if (TestIdentifier.isRoot(test)) {
       return new TestNode(
         "All tests",
         element,
-        state,
-        {
-          command: Commands.BSP_RUN_TESTS,
-          title: '',
-          arguments: []
-        }
+        state
       )
     } else {
       const name = TestIdentifier.name(test)
@@ -219,116 +186,62 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
           default:
         }
       }
-      // console.log("XXX")
-      // console.log(TestIdentifier.name(element))
-      // console.log(TestIdentifier.fullName(element))
-      // console.log(element.hasChildrenTests ?
-      //             vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None)
-
       
       const x = new TestNode(
         TestIdentifier.name(test),
         element,
         state,
-        {
-          command: Commands.BSP_RUN_TESTS,
-          title: '',
-          arguments: [ test ]
-        },
-        // {
-        //   dark: this.context.asAbsolutePath(path.join('images', 'loading-dark.svg')),
-        //   light: this.context.asAbsolutePath(path.join('images', 'loading.svg'))
-        // }
         iconPath,
         tooltip
       )
-      // console.log("YYY")
-      // console.log(x)
-      // console.log("ZZZ")
+      console.log("YYY")
+      console.log(x)
+      console.log("ZZZ")
       return x
     }
   }
 
-  getChildrenInternal(element: TestIdentifierHandle, retry: boolean):
-      Thenable<TestIdentifierHandle[]> | TestIdentifierHandle[] {
-    const test = this.getTest(element)
+  getChildren(element?: TestIdentifierHandle): Thenable<TestIdentifierHandle[]> | TestIdentifierHandle[] {
+    console.log(`getChildren`)
+    console.log(element)
 
-    if (!test.hasChildrenTests) {
-      return []
-    }
+    if (element === undefined) {
+      if (!this.active) {
+        return []
+      }
+      
+      const handle = this.registerHandle(TestIdentifier.root)
+      return [ handle ]
+    } else {
+      const test = this.getTest(element)
 
-    if (test.path.length > 1) {
+      if (!test.hasChildrenTests) {
+        return []
+      }
+
+      if (TestIdentifier.isRoot(test)) {
+        let result: TestIdentifierHandle[] = []
+        this.nodesMap.forEach((value, key) => {
+          if (key !== element && TestIdentifier.isBuild(value))
+            result.push(key)
+        })
+        return result
+      }
+
+      console.log("childrenMap")
+      console.log(this.childrenMap)
+
       const children = this.childrenMap.get(element)
-      // console.log("children")
-      // console.log(children)
       if (children === undefined) {
-        if (retry) {
-          return this.client.sendRequest(RunTestsRequest.type, {
-            tests: [ test ]
-          }).then(result => this.getChildrenInternal(element, false))
-        } else {
-          return []
-        }
+        return []
       } else {
         return Array.from(children)
       }
-    } else {
-      return this.client.sendRequest(ListTestsRequest.type, {
-        parents: [ test ]
-      }).then(result => result.tests.map(test => this.registerHandle(test)))
     }
   }
-
-  getChildren(element?: TestIdentifierHandle): Thenable<TestIdentifierHandle[]> | TestIdentifierHandle[] {
-    // console.log(`getChildren`)
-    // console.log(element)
-    // console.log("childrenMap")
-    // console.log(this.childrenMap)
-
-    if (element === undefined) {
-      const handle = this.registerHandle(TestIdentifier.root)
-      // console.log("handle")
-      // console.log(handle)
-      return [ handle ]
-    } else {
-      return this.getChildrenInternal(element, true)
-    }
-  }
-    //   if (element) {
-    //     if (element.key === "root") {
-    //       const params: ChildrenTestsParams = {
-    //         targets: []
-    //       }
-    //       this.client.sendRequest(ListTestsRequest.type, params)
-    //         .then(listTestsResults => {
-    //           resolve(
-    //             listTestsResults.items
-    //               .map(res => new Test(res.id.name, res.id.name, vscode.TreeItemCollapsibleState.None, {
-    //                 command: Commands.BSP_RUN_TESTS,
-    //                 title: '',
-    //                 arguments: [res.id.target.name, res.id.name]
-    //               }))
-    //           )
-    //         })
-    //     } else {
-    // 		  resolve([])
-    //     }
-    // 	} else {
-    //     resolve([new Test("Run all tests", "root", vscode.TreeItemCollapsibleState.Collapsed)])
-    //     // resolve([new Test("Run all tests", vscode.TreeItemCollapsibleState.Collapsed, {
-    //     //   command: Commands.BSP_LIST_TESTS,
-    //     //   title: '',
-    //     //   arguments: []
-    //     // })])
-    // 	}
-    // })
 
   public getParent(element: TestIdentifierHandle): TestIdentifierHandle | undefined {
-    // console.log(`getParent`)
-    // console.log(element)
     const parent = TestIdentifier.parent(this.getTest(element))
-    // console.log(`parent`)
-    // console.log(parent)
     return parent === undefined ?
       undefined :
       this.getHandle(parent)
@@ -339,13 +252,10 @@ class TestNode extends vscode.TreeItem {
   public constructor(
     public readonly label: string,
     public readonly id: string,
-    public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly command: vscode.Command,
+    public collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly iconPath?: string | { dark: string, light: string },
     public readonly tooltip?: string
   ) {
     super(label, collapsibleState)
   }
-
-  // contextValue = 'test'
 }

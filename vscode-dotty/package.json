@@ -41,9 +41,18 @@
   "contributes": {
     "commands": [
       {
-        "command": "dotty.compileOnSave",
+        "command": "dotty.saveAllAndCompile",
         "title": "Save All and Compile",
         "category": "Scala"
+      },
+      {
+        "command": "dotty.runAllTests",
+        "title": "Run all tests",
+        "category": "Scala",
+        "icon": {
+          "light": "images/refresh.svg",
+          "dark": "images/refresh-dark.svg"
+        }
       }
     ],
     "configuration": {
@@ -69,10 +78,19 @@
       "mac": "cmd+s",
       "when": "compileOnSaveEnabled"
     },
+    "menus": {
+      "view/title": [
+        {
+          "command": "dotty.runAllTests",
+          "when": "view == dotty.testView",
+          "group": "navigation"
+        }
+      ]
+    },
     "views": {
       "explorer": [
         {
-          "id": "dottyTests",
+          "id": "dotty.testView",
           "name": "Tests"
         }
       ]

@@ -1,11 +1,7 @@
 'use strict';
 
 export namespace Commands {
-  export const EXECUTE_WORKSPACE_COMMAND = "dotty.execute.workspaceCommand"
+  export const SAVE_ALL_AND_COMPILE = "dotty.saveAllAndCompile"
 
-  export const BSP_LIST_TESTS = "dotty.bsp.listTests"
-
-  export const BSP_RUN_TESTS = "dotty.bsp.runTests"
-
-  export const COMPILE_ON_SAVE = "dotty.compileOnSave"
+  export const RUN_ALL_TESTS = "dotty.runAllTests"
 }
