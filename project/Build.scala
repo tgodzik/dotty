@@ -145,8 +145,6 @@ object Build {
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
-    offline := true,
-
     onLoad := (onLoad in Global).value andThen { state =>
       def exists(submodule: String) = {
         val path = Paths.get(submodule)

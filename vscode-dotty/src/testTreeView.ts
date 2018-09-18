@@ -32,16 +32,15 @@ type TestIdentifierHandle = string
 //     ==> actually not useful, because sbt doesn't log the exceptions :/
 //   - ... and get the problem tab to be shown when saving
 //     - vscode.commands.executeCommand("workbench.action.problems.focus")
+// * sbt-plugin
 // - hide cyclic warning
+// - deal with offline
 
 // * IDE
 // - save sbt logs in lsp logs (embed in custom message, maybe telemety or traceEvent ?)
 // - Figure out how to start sbt (probably just run sbt from DLS)
 // - integrate worksheet mode, see gitter discussion
 // - Test on Windows
-
-// * sbt-plugin
-// - deal with offline
 
 // * Dotty
 // - Scaladoc/Javadoc URL when asking for doc
