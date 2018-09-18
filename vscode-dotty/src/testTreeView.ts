@@ -3,8 +3,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { LanguageClient } from 'vscode-languageclient'
 
+import { saveAllAndCompile } from './extension'
 import { Commands } from './commands'
-
 import { ListTestsRequest, RunTestsRequest, TestStatusNotification } from './extensions/protocol'
 import { TestIdentifier, TestStatus, ListTestsParams, TestStatusKind } from './extensions/types'
 
@@ -26,9 +26,9 @@ type TestIdentifierHandle = string
 //   - for now: compile everything
 // - Try harder to get updated children
 // - Add refresh button
+// - success/failure of test class using BSPListener#testEvent
 
 // * IDE
-// - Don't discard the DLC output
 // - Figure out if we can get the output tab to be shown when running tests
 //     - vscode.commands.executeCommand("...") ? switchOutput probably
 //   - ... and get the problem tab to be shown when saving
@@ -41,7 +41,6 @@ type TestIdentifierHandle = string
 // * sbt-plugin
 // - hide cyclic warning
 // - deal with offline
-// - success/failure of test class using BSPListener#testEvent
 
 // * Dotty
 // - Scaladoc/Javadoc URL when asking for doc
@@ -56,6 +55,7 @@ type TestIdentifierHandle = string
 //   - Write intro to worksheet
 
 // Later stuff:
+// - Don't discard the DLC output
 // - Figure out how to keep alive sbt (and the dls itself too)
 // - color sbt messages with syntax extension
 
@@ -80,17 +80,23 @@ export class TestProvider implements vscode.TreeDataProvider<TestIdentifierHandl
 
 	constructor(private client: LanguageClient, private context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(Commands.RUN_ALL_TESTS, () => {
-      vscode.workspace.saveAll()
+      saveAllAndCompile(client)
+        .then(result => {
+          if (!result.compilationSucceeded) {
+            vscode.window.showErrorMessage("The tests cannot be run because compilation failed.")
+            return
+          }
 
-      this.nodesMap.clear()
-      this.statusMap.clear()
-      this.childrenMap.clear()
+          this.nodesMap.clear()
+          this.statusMap.clear()
+          this.childrenMap.clear()
 
-      this.active = true
+          this.active = true
 
-      client.sendRequest(RunTestsRequest.type, { tests: [] })
-        .then(res => {
-          this._onDidChangeTreeData.fire()
+          client.sendRequest(RunTestsRequest.type, { tests: [] })
+            .then(res => {
+              this._onDidChangeTreeData.fire()
+            })
         })
     });
 

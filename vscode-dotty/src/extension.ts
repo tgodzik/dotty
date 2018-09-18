@@ -19,6 +19,9 @@ import { CompileBuildsResult, TestIdentifier } from './extensions/types'
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
+let compileItem: vscode.StatusBarItem
+let runTestsItem: vscode.StatusBarItem
+
 export function saveAllAndCompile(client: LanguageClient): Thenable<CompileBuildsResult> {
   vscode.workspace.saveAll()
 
@@ -28,6 +31,14 @@ export function saveAllAndCompile(client: LanguageClient): Thenable<CompileBuild
 export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
+
+  compileItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1)
+  compileItem.command = Commands.SAVE_ALL_AND_COMPILE
+  compileItem.text = "Compile"
+
+  runTestsItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 2)
+  runTestsItem.command = Commands.RUN_ALL_TESTS
+  runTestsItem.text = "Run all tests"
 
   const sbtArtifact = "org.scala-sbt:sbt-launch:1.2.3"
   const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
@@ -178,23 +189,26 @@ function run(serverOptions: ServerOptions) {
 
   client.onReady().then(() => {
     const compileOnSave = vscode.workspace.getConfiguration("dotty").get("compileOnSave")
-    // If the dotty.compileOnSave setting is set to true, then enable shorcuts
-    // in package.json configured with "when": "compileOnSaveEnabled"
-    commands.executeCommand("setContext", "compileOnSaveEnabled", compileOnSave)
-
     commands.registerCommand(Commands.SAVE_ALL_AND_COMPILE, () => {
       return saveAllAndCompile(client)
     });
+
+    // If the dotty.compileOnSave setting is set to true, then enable shorcuts
+    // in package.json configured with "when": "compileOnSaveEnabled"
+    commands.executeCommand("setContext", "compileOnSaveEnabled", compileOnSave)
 
 	  const testProvider = new TestProvider(client, extensionContext);
     const testView = vscode.window.createTreeView("dotty.testView", {
       treeDataProvider: testProvider
     })
 
-    extensionContext.subscriptions.push(testView);
+    compileItem.show()
+    runTestsItem.show()
+
+    extensionContext.subscriptions.push(testView)
   })
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
-  extensionContext.subscriptions.push(client.start());
+  extensionContext.subscriptions.push(client.start())
 }
