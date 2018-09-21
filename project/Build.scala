@@ -930,6 +930,16 @@ object Build {
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalacVersion)
     )
 
+  lazy val `jupyter-dotty` = project.in(file("jupyter-dotty")).
+    dependsOn(dottyCompiler(Bootstrapped)).
+    settings(commonBootstrappedSettings).
+    settings(
+      libraryDependencies ++= Seq(
+        ("sh.almond" %% "kernel" % "0.1.8").withDottyCompat(scalaVersion.value),
+        // Not sure if all these dependencies are necessaries:
+        ("sh.almond" %% "echo" % "0.1.8").withDottyCompat(scalaVersion.value),
+      )
+    )
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.

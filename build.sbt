@@ -19,6 +19,7 @@ val scalap = Build.scalap
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
 
+val `jupyter-dotty` = Build.`jupyter-dotty`
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 
