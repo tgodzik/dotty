@@ -148,13 +148,12 @@ class TailRec extends MiniPhase {
 
         cpy.DefDef(tree)(rhs =
           Block(
-            initialValDefs :::
-            WhileDo(Literal(Constant(true)), {
+            initialValDefs,
+            WhileDo(EmptyTree, {
               Labeled(transformer.continueLabel.get.asTerm, {
                 Return(rhsFullyTransformed, ref(method))
               })
-            }) :: Nil,
-            Throw(Literal(Constant(null))) // unreachable code
+            })
           )
         )
       } else noTailTransform
