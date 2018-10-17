@@ -5,7 +5,7 @@ object Macros {
 
   inline def inspect[T](x: T): Unit = ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
+  def impl[T](x: Expr[T])(implicit tasty: Tasty, quoteContext: QuoteContext): Expr[Unit] = {
     import tasty._
     val tree = x.toTasty
     '{

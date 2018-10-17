@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.NameKinds.{NumberedInfo, UniqueName}
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
+// TODO use this in some form again
 /** Refreshes local names starting from the second use of the name. Intended for readability of the pretty printed code. */
 class RefreshNames extends MiniPhase with SymTransformer {
 

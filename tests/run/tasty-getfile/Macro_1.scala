@@ -6,7 +6,7 @@ object SourceFiles {
   implicit inline def getThisFile: String =
     ~getThisFileImpl
 
-  private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {
+  private def getThisFileImpl(implicit tasty: Tasty, ctx: QuoteContext): Expr[String] = {
     import tasty._
     rootContext.source.getFileName.toString.toExpr
   }

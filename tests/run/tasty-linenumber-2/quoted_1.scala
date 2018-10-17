@@ -10,7 +10,7 @@ object LineNumber {
 
   implicit inline def line: LineNumber = ~lineImpl
 
-  def lineImpl(implicit tasty: Tasty): Expr[LineNumber] = {
+  def lineImpl(implicit tasty: Tasty): Staged[LineNumber] = {
     import tasty._
     '(new LineNumber(~rootPosition.startLine.toExpr))
   }

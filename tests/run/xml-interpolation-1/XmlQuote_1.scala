@@ -12,7 +12,7 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit tasty: Tasty): Expr[Xml] = {
+          (implicit tasty: Tasty): Staged[Xml] = {
     import tasty._
     import Term._
 

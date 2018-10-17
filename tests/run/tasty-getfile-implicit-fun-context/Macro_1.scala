@@ -9,7 +9,7 @@ object SourceFiles {
   implicit inline def getThisFile: String =
     ~getThisFileImpl
 
-  def getThisFileImpl: Macro[String] = {
+  def getThisFileImpl(implicit quoteContext: QuoteContext): Macro[String] = {
     val tasty = tastyContext
     import tasty._
     rootContext.source.getFileName.toString.toExpr

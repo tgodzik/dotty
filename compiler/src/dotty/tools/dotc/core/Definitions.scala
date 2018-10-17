@@ -690,15 +690,29 @@ class Definitions {
   lazy val QuotedLiftableType: TypeRef = ctx.requiredClassRef("scala.quoted.Liftable")
   def QuotedLiftableClass(implicit ctx: Context): ClassSymbol = QuotedLiftableType.symbol.asClass
 
-  def Unpickler_unpickleExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
-  def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
-  def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
+  lazy val UnpicklerModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.quoted.Unpickler")
+  def UnpicklerModule(implicit ctx: Context): Symbol = UnpicklerModuleRef.symbol
+  lazy val UnpicklerType: TypeRef = ctx.requiredClassRef("scala.runtime.quoted.Unpickler")
+  def UnpicklerClass(implicit ctx: Context): ClassSymbol = UnpicklerType.symbol.asClass
+
+  lazy val Unpickler_unpickleExprR: TermRef = UnpicklerModule.requiredMethodRef("unpickleExpr")
+  def Unpickler_unpickleExpr: Symbol = Unpickler_unpickleExprR.symbol
+  lazy val Unpickler_liftedExprR: TermRef = UnpicklerModule.requiredMethodRef("liftedExpr")
+  def Unpickler_liftedExpr: Symbol = Unpickler_liftedExprR.symbol
+  lazy val Unpickler_unpickleTypeR: TermRef = UnpicklerModule.requiredMethodRef("unpickleType")
+  def Unpickler_unpickleType: Symbol = Unpickler_unpickleTypeR.symbol
 
   lazy val TastyTastyType: TypeRef = ctx.requiredClassRef("scala.tasty.Tasty")
   def TastyTastyClass(implicit ctx: Context): ClassSymbol = TastyTastyType.symbol.asClass
 
   lazy val TastyTastyModule: TermSymbol = ctx.requiredModule("scala.tasty.Tasty")
     lazy val TastyTasty_macroContext: TermSymbol = TastyTastyModule.requiredMethod("macroContext")
+
+  lazy val QuoteContextType: TypeRef = ctx.requiredClassRef("scala.quoted.QuoteContext")
+  def QuoteContextClass(implicit ctx: Context): ClassSymbol = QuoteContextType.symbol.asClass
+
+  lazy val QuoteContextModule: TermSymbol = ctx.requiredModule("scala.quoted.QuoteContext")
+  lazy val QuoteContext_macroContext: TermSymbol = QuoteContextModule.requiredMethod("macroContext")
 
   lazy val EqType: TypeRef = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context): ClassSymbol = EqType.symbol.asClass

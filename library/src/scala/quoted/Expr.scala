@@ -1,21 +1,13 @@
 package scala.quoted
 
-import scala.runtime.quoted.Unpickler.Pickled
-
 sealed abstract class Expr[+T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
 
-  /** Evaluate the contents of this expression and return the result.
-   *
-   *  May throw a FreeVariableError on expressions that came from a macro.
-   */
-  final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
-
-  /** Show a source code like representation of this expression */
-  final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
+  def show(implicit ctx: QuoteContext): String = ctx.show(this)
 }
 
 object Expr {
+
   /** A term quote is desugared by the compiler into a call to this method */
   def apply[T](x: T): Expr[T] =
     throw new Error("Internal error: this method call should have been replaced by the compiler")
@@ -30,10 +22,6 @@ object Expr {
  *  These should never be used directly.
  */
 object Exprs {
-  /** An Expr backed by a pickled TASTY tree */
-  final class TastyExpr[+T](val tasty: Pickled, val args: Seq[Any]) extends Expr[T] {
-    override def toString: String = s"Expr(<pickled tasty>)"
-  }
 
   /** An Expr backed by a lifted value.
    *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.

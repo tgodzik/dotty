@@ -7,7 +7,7 @@ object Macros {
 
   inline def testDefinitions(): Unit = ~testDefinitionsImpl
 
-  def testDefinitionsImpl(implicit tasty: Tasty): Expr[Unit] = {
+  def testDefinitionsImpl(implicit tasty: Tasty): Staged[Unit] = {
     import tasty._
 
     val buff = List.newBuilder[String]

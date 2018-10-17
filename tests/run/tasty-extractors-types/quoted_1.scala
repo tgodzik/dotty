@@ -7,7 +7,7 @@ object Macros {
 
   implicit inline def printType[T]: Unit = ~impl('[T])
 
-  def impl[T](x: Type[T])(implicit tasty: Tasty): Expr[Unit] = {
+  def impl[T](x: Type[T])(implicit tasty: Tasty): Staged[Unit] = {
     import tasty._
 
     val tree = x.toTasty

@@ -7,7 +7,7 @@ object Macros {
 
   implicit inline def testMacro: Unit = ~impl
 
-  def impl(implicit tasty: Tasty): Expr[Unit] = {
+  def impl(implicit tasty: Tasty): Staged[Unit] = {
     import tasty._
 
     val buff = new StringBuilder

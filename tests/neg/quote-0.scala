@@ -2,6 +2,8 @@ import scala.quoted._
 
 class Test {
 
+  implicit def dummyCtx: QuoteContext = ???
+
   val x: Int = 0
 
   '{ '(x + 1)  // error: wrong staging level

@@ -14,7 +14,7 @@ object XmlQuote {
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit tasty: Tasty): Expr[Xml] = {
+          (implicit tasty: Tasty): Staged[Xml] = {
     import tasty._
     import Term._
 

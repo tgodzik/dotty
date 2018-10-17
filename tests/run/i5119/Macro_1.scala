@@ -6,7 +6,7 @@ object Macro {
     inline def ff(args: => Any*): String = ~Macro.impl('(sc), '(args))
   }
   implicit inline def XmlQuote(sc: => StringContext): StringContextOps = new StringContextOps(sc)
-  def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(implicit tasty: Tasty): Expr[String] = {
+  def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(implicit tasty: Tasty, ctx: QuoteContext): Expr[String] = {
     import tasty._
     (sc.toTasty.underlyingArgument.show + "\n" + args.toTasty.underlyingArgument.show).toExpr
   }

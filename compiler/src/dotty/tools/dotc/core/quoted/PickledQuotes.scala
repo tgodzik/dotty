@@ -22,12 +22,6 @@ import scala.reflect.ClassTag
 object PickledQuotes {
   import tpd._
 
-  /** Pickle the tree of the quoted.Expr */
-  def pickleExpr(tree: Tree)(implicit ctx: Context): scala.quoted.Expr[Any] = {
-    val pickled = pickleQuote(tree)
-    scala.runtime.quoted.Unpickler.unpickleExpr(pickled, Nil)
-  }
-
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
@@ -40,13 +34,6 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyExpr[_] =>
-      val unpickled = unpickleExpr(expr)
-      val force = new TreeTraverser {
-        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
-      }
-      force.traverse(unpickled)
-      unpickled
     case expr: LiftedExpr[T] =>
       expr.value match {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
@@ -59,21 +46,26 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: TreeType[Tree] @unchecked => expr.typeTree
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(expr.tasty)
-    unpickle(tastyBytes, expr.args, isType = false)(ctx.addMode(Mode.ReadPositions))
+  def unpickleExpr(tasty: scala.runtime.quoted.Unpickler.Pickled, args: Seq[Any])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    val unpickled = unpickle(tastyBytes, args, isType = false)(ctx.addMode(Mode.ReadPositions))
+    // TODO force should not be done here it should be in run and show
+    val force = new TreeTraverser {
+      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+    }
+    force.traverse(unpickled)
+    unpickled
   }
 
   /** Unpickle the tree contained in the TastyType */
-  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(ttpe.tasty)
-    unpickle(tastyBytes, ttpe.args, isType = true)(ctx.addMode(Mode.ReadPositions))
+  def unpickleType(tasty: scala.runtime.quoted.Unpickler.Pickled, args: Seq[Any])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
   }
 
   // TASTY picklingtests/pos/quoteTest.scala

@@ -7,7 +7,7 @@ object Foo {
   inline def inspectBody(i: => Int): String =
     ~inspectBodyImpl('(i))
 
-  def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
+  def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Staged[String] = {
     import tasty._
 
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {

@@ -13,13 +13,15 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
+import dotty.tools.dotc.tastyreflect.TastyImpl
 import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, PlainFile}
 
-import scala.quoted.{Expr, Type}
+import scala.quoted.{Expr, QuoteContext, Type}
+import scala.runtime.quoted.Unpickler.Pickled
 
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
@@ -50,7 +52,7 @@ class QuoteCompiler extends Compiler {
         case exprUnit: ExprCompilationUnit =>
           val tree =
             if (putInClass) inClass(exprUnit.expr)
-            else PickledQuotes.quotedExprToTree(exprUnit.expr)
+            else unpickleExpr(exprUnit.expr)
           val source = new SourceFile("", "")
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
         case typeUnit: TypeCompilationUnit =>
@@ -61,11 +63,16 @@ class QuoteCompiler extends Compiler {
       }
     }
 
+    private def unpickleExpr(code: QuoteContext => Expr[_])(implicit ctx: Context) = {
+      val expr = code(new QuoteContextImpl)
+      PickledQuotes.quotedExprToTree(expr)
+    }
+
     /** Places the contents of expr in a compilable tree for a class
       *  with the following format.
       *  `package __root__ { class ' { def apply: Any = <expr> } }`
       */
-    private def inClass(expr: Expr[_])(implicit ctx: Context): Tree = {
+    private def inClass(code: QuoteContext => Expr[_])(implicit ctx: Context): Tree = {
       val pos = Position(0)
       val assocFile = new PlainFile(Path("<quote>"))
 
@@ -74,7 +81,7 @@ class QuoteCompiler extends Compiler {
       cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
       val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
-      val quoted = PickledQuotes.quotedExprToTree(expr)(ctx.withOwner(meth))
+      val quoted = unpickleExpr(code)(ctx.withOwner(meth))
 
       val run = DefDef(meth, quoted)
       val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
@@ -83,7 +90,7 @@ class QuoteCompiler extends Compiler {
   }
 
   class ExprRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
-    def compileExpr(expr: Expr[_]): Unit = {
+    def compileExpr(expr: QuoteContext => Expr[_]): Unit = {
       val units = new ExprCompilationUnit(expr) :: Nil
       compileUnits(units)
     }

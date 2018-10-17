@@ -11,7 +11,7 @@ object LineNumber {
   implicit inline def line[T >: Unit <: Unit]: LineNumber =
     ~lineImpl('[T])
 
-  def lineImpl(x: Type[Unit])(implicit tasty: Tasty): Expr[LineNumber] = {
+  def lineImpl(x: Type[Unit])(implicit tasty: Tasty): Staged[LineNumber] = {
     import tasty._
     '(new LineNumber(~rootPosition.startLine.toExpr))
   }

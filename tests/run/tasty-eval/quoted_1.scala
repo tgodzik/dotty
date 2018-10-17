@@ -8,7 +8,7 @@ object Macros {
   implicit inline def foo(i: Int): String =
     ~impl('(i))
 
-  def impl(i: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
+  def impl(i: Expr[Int])(implicit tasty: Tasty): Staged[String] = {
     value(i).toString.toExpr
   }
 

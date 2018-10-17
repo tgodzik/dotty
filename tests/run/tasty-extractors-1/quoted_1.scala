@@ -7,7 +7,7 @@ object Macros {
   implicit inline def printTree[T](x: => T): Unit =
     ~impl('(x))
 
-  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
+  def impl[T](x: Expr[T])(implicit tasty: Tasty): Staged[Unit] = {
     import tasty._
 
     val tree = x.toTasty

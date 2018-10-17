@@ -2,6 +2,8 @@ import scala.quoted._
 
 object Test {
 
+  implicit def dummyCtx: QuoteContext = ???
+
   '{ ~implicitly[Liftable[Int]].toExpr(1) }
 
   {
@@ -12,6 +14,5 @@ object Test {
     '{ ~1.toExpr }
 
   }
-
 
 }

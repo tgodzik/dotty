@@ -18,11 +18,13 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.quoted.QuoteContextImpl
 import dotty.tools.dotc.tastyreflect.TastyImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
 
+import scala.quoted.QuoteContext
 import scala.reflect.ClassTag
 
 /** Utility class to splice quoted expressions */
@@ -111,6 +113,9 @@ object Splicer {
         override def rootPosition: SourcePosition = pos
       }
     }
+
+    protected def interpretQuoteContext()(implicit env: Env): Object =
+      new QuoteContextImpl
 
     protected def interpretStaticMethodCall(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val instance = loadModule(fn.owner)
@@ -292,6 +297,7 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
+    protected def interpretQuoteContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
@@ -310,6 +316,9 @@ object Splicer {
       case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
+      case _ if tree.symbol == defn.QuoteContext_macroContext =>
+        interpretQuoteContext()
+
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
           interpretNew(fn.symbol, args.map(interpretTree))
@@ -319,7 +328,20 @@ object Splicer {
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else {
-          unexpectedTree(tree)
+          fn match {
+            case fn @ Select(Call(fn0, args0), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
+              // Call implicit function type direct method
+              interpretStaticMethodCall(fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)))
+            case fn @ Select(Block(stats, Call(fn0, args0)), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
+              val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+                case stat: ValDef if stat.symbol.is(Synthetic) =>
+                  accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
+                case stat => return unexpectedTree(stat)
+              })
+              interpretStaticMethodCall(fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)(newEnv)))(newEnv)
+            case _ =>
+              unexpectedTree(tree)
+          }
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to

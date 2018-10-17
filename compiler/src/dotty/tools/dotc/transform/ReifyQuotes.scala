@@ -396,9 +396,18 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
-        meth.appliedTo(
-          liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
-          liftList(splices, defn.AnyType))
+        val unpickler = ctx.typer.inferImplicitArg(defn.UnpicklerType, body.pos)
+        unpickler.tpe match {
+          case fail: SearchFailureType =>
+            ctx.error("Missing an implicit to unpickle the quote. Use Staged[...] as return type", body.pos) // FIXME change text
+            EmptyTree
+          case _ =>
+            meth.appliedTo(
+              liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
+              liftList(splices, defn.AnyType),
+              unpickler
+            )
+        }
       }
       if (splices.nonEmpty) pickleAsTasty()
       else if (isType) {
