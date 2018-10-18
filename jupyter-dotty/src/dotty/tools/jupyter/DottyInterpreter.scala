@@ -32,7 +32,7 @@ class DottyInterpreter(classLoader: Option[ClassLoader]) extends Interpreter {
   def currentLine: Int = count
   @volatile private var count = 0
   private val buf = new ByteArrayOutputStream
-  private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_2.12/0.10.0-bin-SNAPSHOT-nonbootstrapped/jars/dotty-library_2.12.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.6/scala-library-2.12.6.jar"), // TODO What are the settings ?
+  private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_0.11/0.11.0-bin-SNAPSHOT/jars/dotty-library_0.11.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.7/scala-library-2.12.7.jar"), // TODO What are the settings ?
                                           out=new PrintStream(buf),
                                           classLoader=classLoader) // TODO
 
