@@ -72,14 +72,10 @@ object DottyKernel /* extends CaseApp[Options] */ {
       case cl: java.net.URLClassLoader => cl.getURLs.toList
       case _ => List[Nothing]()
     }
-    // lazy val classpath = urlsz map {_.toString}
-    // println(s"Classpath is $classpath")
-    val libURLs = List("file:/home/cranium/Documents/EPFL/MA3/dotty-jupyter/dotty/dist-bootstrapped/target/pack/lib/dotty-library_0.10-0.10.0-bin-SNAPSHOT.jar", "file:/home/cranium/Documents/EPFL/MA3/dotty-jupyter/dotty/dist-bootstrapped/target/pack/lib/scala-library-2.12.6.jar", "file:/home/cranium/Documents/EPFL/MA3/dotty-jupyter/dotty/")
+    // val defaultLoader = new URLClassLoader((ctxURLs ++ libURLs.map(new URL(_))).toArray)
+    val defaultLoader = Thread.currentThread().getContextClassLoader
 
-    val defaultLoader = new URLClassLoader((ctxURLs ++ libURLs.map(new URL(_))).toArray)
-    // val defaultLoader = Thread.currentThread().getContextClassLoader
-
-    Kernel.create(new DottyInterpreter(None), interpreterDotty, kernelThreads, logCtx)
+    Kernel.create(new DottyInterpreter(Some(defaultLoader)), interpreterDotty, kernelThreads, logCtx)
       .flatMap(_.runOnConnectionFile(connectionFile, "dotty", zeromqThreads))
       .unsafeRunSync()
 

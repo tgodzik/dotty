@@ -5,7 +5,7 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 import dotty.tools.repl.{State, ReplDriver}
 
-import almond.interpreter.{ExecuteResult, Interpreter}
+import almond.interpreter.{ExecuteResult, Interpreter, Completion}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
 import almond.protocol.KernelInfo
@@ -32,7 +32,7 @@ class DottyInterpreter(classLoader: Option[ClassLoader]) extends Interpreter {
   def currentLine: Int = count
   @volatile private var count = 0
   private val buf = new ByteArrayOutputStream
-  private val replDriver = new ReplDriver(settings=Array[String]("-usejavacp"), // TODO What are the settings ?
+  private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_2.12/0.10.0-bin-SNAPSHOT-nonbootstrapped/jars/dotty-library_2.12.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.6/scala-library-2.12.6.jar"), // TODO What are the settings ?
                                           out=new PrintStream(buf),
                                           classLoader=classLoader) // TODO
 
@@ -52,6 +52,18 @@ class DottyInterpreter(classLoader: Option[ClassLoader]) extends Interpreter {
 
     ExecuteResult.Success(
       DisplayData.text(out)
+    )
+  }
+
+  override def complete(code: String, pos: Int): Completion = {
+    val candidates = replDriver.completions(pos, code, currState)
+    // println(s"Completion candidates are: $candidates")
+
+    Completion(
+      // TODO What is this newPos doing ?
+      if (candidates.isEmpty) pos else pos+1,
+      pos,
+      candidates.map(_.value)
     )
   }
 }
