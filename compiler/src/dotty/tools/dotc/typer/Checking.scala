@@ -57,14 +57,10 @@ object Checking {
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(implicit ctx: Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
-  /** Check applied type trees for well-formedness. This means
-   *   - all arguments are within their corresponding bounds
-   *   - if type is a higher-kinded application with wildcard arguments,
-   *     check that it or one of its supertypes can be reduced to a normal application.
-   *     Unreducible applications correspond to general existentials, and we
-   *     cannot handle those.
+  /** Check applied type trees for well-formedness. This means that all arguments
+   *  are within their corresponding bounds.
    */
-  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context): Unit = {
+  def checkAppliedType(tree: AppliedTypeTree)(implicit ctx: Context): Unit = {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
@@ -77,19 +73,8 @@ object Checking {
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
       HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
-    if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
 
-    def checkWildcardApply(tp: Type, pos: Position): Unit = tp match {
-      case tp @ AppliedType(tycon, args) =>
-        if (tycon.isLambdaSub && args.exists(_.isInstanceOf[TypeBounds]))
-          ctx.errorOrMigrationWarning(
-            ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
-            pos)
-      case _ =>
-    }
-    def checkValidIfApply(implicit ctx: Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)), tree.pos)
-    checkValidIfApply(ctx.addMode(Mode.AllowLambdaWildcardApply))
+    checkBounds(orderedArgs, bounds, instantiate)
   }
 
   /** Check that kind of `arg` has the same outline as the kind of paramBounds.

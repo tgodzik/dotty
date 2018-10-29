@@ -74,30 +74,25 @@ object Mode {
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")
 
-  /** Allow hk applications of type lambdas to wildcard arguments;
-   *  used for checking that such applications do not normally arise
-   */
-  val AllowLambdaWildcardApply: Mode = newMode(16, "AllowHKApplyToWildcards")
-
   /** Read original positions when unpickling from TASTY */
-  val ReadPositions: Mode = newMode(17, "ReadPositions")
+  val ReadPositions: Mode = newMode(16, "ReadPositions")
 
   /** Don't suppress exceptions thrown during show */
-  val PrintShowExceptions: Mode = newMode(18, "PrintShowExceptions")
+  val PrintShowExceptions: Mode = newMode(17, "PrintShowExceptions")
 
   val PatternOrTypeBits: Mode = Pattern | Type | InPatternAlternative
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */
-  val InPackageClauseName: Mode = newMode(19, "InPackageClauseName")
+  val InPackageClauseName: Mode = newMode(18, "InPackageClauseName")
 
   /** We are in the IDE */
-  val Interactive: Mode = newMode(20, "Interactive")
+  val Interactive: Mode = newMode(19, "Interactive")
 
   /** We are typing the body of an inline method */
-  val InlineableBody: Mode = newMode(21, "InlineableBody")
+  val InlineableBody: Mode = newMode(20, "InlineableBody")
 
   /** Read comments from definitions when unpickling from TASTY */
-  val ReadComments: Mode = newMode(22, "ReadComments")
+  val ReadComments: Mode = newMode(21, "ReadComments")
 }

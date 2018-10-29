@@ -4559,10 +4559,9 @@ object Types {
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
           if (args.exists(isRange)) {
-            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
-            else {
+            if (variance <= 0) {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
-              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
+              // Given `C[A1, ..., An]` where some A's are ranges, try to find
               // non-range arguments L1, ..., Ln and H1, ..., Hn such that
               // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
               // ranges that appear in as co- or contravariant arguments.
@@ -4585,11 +4584,11 @@ object Types {
                   true
               }
               if (distributeArgs(args, tp.typeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.toList),
-                      tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range(defn.NothingType, defn.AnyType)
-                // TODO: can we give a better bound than `topType`?
+                return range(tp.derivedAppliedType(tycon, loBuf.toList),
+                             tp.derivedAppliedType(tycon, hiBuf.toList))
             }
+
+            range(defn.NothingType, tp.derivedAppliedType(tycon, args.map(rangeToBounds)))
           }
           else tp.derivedAppliedType(tycon, args)
       }

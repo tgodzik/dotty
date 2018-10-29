@@ -266,7 +266,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
+          if (!ctx.mode.is(Mode.Pattern))
+            Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.pos.focus)

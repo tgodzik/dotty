@@ -69,77 +69,16 @@ object TypeApplications {
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
-   *  Non-wildcard arguments are substituted everywhere as usual. A wildcard argument
-   *  `>: L <: H` is substituted for a type lambda parameter `X` only under certain conditions.
-   *
-   *  1. If Mode.AllowLambdaWildcardApply is set:
-   *  The wildcard argument is substituted only if `X` appears in a toplevel application of the form
-   *
-   *        C[..., X, ...]
-   *
-   *  and there are no other occurrences of `X` in the reduced type. In that case
-   *  the refinement above is replaced by
-   *
-   *        C[..., _ >: L <: H, ...]
-   *
-   *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
-   *  in the reduced type have been replaced with arguments.
-   *
-   *  2. If Mode.AllowLambdaWildcardApply is not set:
-   *  All `X` arguments are replaced by:
-   *
-   *        _ >: L <: H
-   *
-   *  Any other occurrence of `X` in `tycon` is replaced by `U`, if the
-   *  occurrence of `X` in `tycon` is covariant, or nonvariant, or by `L`,
-   *  if the occurrence is contravariant.
-   *
-   *  The idea is that the `AllowLambdaWildcardApply` mode is used to check whether
-   *  a type can be soundly reduced, and to give an error or warning if that
-   *  is not the case. By contrast, the default mode, with `AllowLambdaWildcardApply`
-   *  not set, reduces all applications even if this yields a different type, so
-   *  its postcondition is that no type parameters of `tycon` appear in the
-   *  result type. Using this mode, we can guarantee that `appliedTo` will never
-   *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
-    private[this] var available = (0 until args.length).toSet
-    var allReplaced: Boolean = true
-    def hasWildcardArg(p: TypeParamRef): Boolean =
-      p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
-    def canReduceWildcard(p: TypeParamRef): Boolean =
-      !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
-    def atNestedLevel(op: => Type): Type = {
-      val saved = available
-      available = Set()
-      try op
-      finally available = saved
-    }
-
-    // If this is a reference to a reducable type parameter corresponding to a
-    // wildcard argument, return the wildcard argument, otherwise apply recursively.
-    def applyArg(arg: Type): Type = arg match {
-      case p: TypeParamRef if hasWildcardArg(p) && canReduceWildcard(p) =>
-        available -= p.paramNum
-        args(p.paramNum)
-      case _ =>
-        atNestedLevel(apply(arg))
-    }
-
+  class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends ApproximatingTypeMap {
     def apply(t: Type): Type = t match {
-      case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
-        t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
-            if (ctx.mode.is(Mode.AllowLambdaWildcardApply)) { allReplaced = false; p }
-            else if (variance < 0) lo
-            else hi
+            range(atVariance(-variance)(apply(lo)), apply(hi))
           case arg =>
             arg
         }
-      case _: TypeBounds | _: AppliedType =>
-        atNestedLevel(mapOver(t))
       case _ =>
         mapOver(t)
     }
@@ -382,9 +321,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                 .appliedTo(args)
             case _ =>
               val reducer = new Reducer(dealiased, args)
-              val reduced = reducer(dealiased.resType)
-              if (reducer.allReplaced) reduced
-              else AppliedType(dealiased, args)
+              reducer(dealiased.resType)
           }
         tryReduce
       case dealiased: PolyType =>
