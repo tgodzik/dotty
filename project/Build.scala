@@ -947,8 +947,8 @@ object Build {
     )
 
   lazy val `jupyter-dotty` = project.in(file("jupyter-dotty")).
-    dependsOn(dottyCompiler(Bootstrapped)).
-    settings(commonBootstrappedSettings).
+    dependsOn(dottyCompiler(NonBootstrapped)).
+    settings(commonNonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
         ("sh.almond" %% "kernel" % "0.1.8").withDottyCompat(scalaVersion.value),
