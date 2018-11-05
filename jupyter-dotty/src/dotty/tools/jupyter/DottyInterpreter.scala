@@ -2,9 +2,11 @@ package dotty.tools
 package jupyter
 
 import java.io.{ByteArrayOutputStream, PrintStream}
+import java.nio.charset.StandardCharsets.UTF_8
 
 import dotty.tools.repl.{State, ReplDriver}
 
+// import almond.internals.FunctionOutputStream
 import almond.interpreter.{ExecuteResult, Interpreter, Completion}
 import almond.interpreter.api.{DisplayData, OutputHandler}
 import almond.interpreter.input.InputManager
@@ -29,12 +31,15 @@ class DottyInterpreter(classLoader: Option[ClassLoader]) extends Interpreter {
     // helper_links=None,
   )
 
+
   def currentLine: Int = count
   @volatile private var count = 0
-  private val buf = new ByteArrayOutputStream
-  private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_0.11/0.11.0-bin-SNAPSHOT/jars/dotty-library_0.11.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.7/scala-library-2.12.7.jar"), // TODO What are the settings ?
-                                          out=new PrintStream(buf),
-                                          classLoader=classLoader) // TODO
+
+  private val resultOutput = new StringBuilder
+  private val resultStream = new FunctionOutputStream(20, 20, UTF_8, resultOutput.append(_))
+  // private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_0.11/0.11.0-bin-SNAPSHOT/jars/dotty-library_0.11.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.7/scala-library-2.12.7.jar"),
+  private val replDriver = new ReplDriver(settings=Array[String]("-classpath", "/home/cranium/.ivy2/local/ch.epfl.lamp/dotty-library_2.12/0.11.0-bin-SNAPSHOT-nonbootstrapped/jars/dotty-library_2.12.jar:/home/cranium/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.7/scala-library-2.12.7.jar"),
+                                          out=resultStream.printStream(), classLoader=classLoader)
 
   private var currState = replDriver.initialState
 
@@ -44,14 +49,21 @@ class DottyInterpreter(classLoader: Option[ClassLoader]) extends Interpreter {
     inputManager: Option[InputManager],
     outputHandler: Option[OutputHandler]
   ): ExecuteResult = {
-    currState = replDriver.run(code)(currState)
+    outputHandler match {
+      case None =>
+        return ExecuteResult.Error("No output handler found")
+      case Some(handler) =>
+        resultStream.setOutputHandler(handler)
+    }
 
+    resultOutput.clear()
+    currState = replDriver.run(code)(currState)
     count += 1
-    val out = buf.toString("utf-8")
-    buf.reset
+    val out = resultOutput.result()
+    resultOutput.clear()
 
     ExecuteResult.Success(
-      DisplayData.text(out)
+      // DisplayData.text(out)
     )
   }
 
