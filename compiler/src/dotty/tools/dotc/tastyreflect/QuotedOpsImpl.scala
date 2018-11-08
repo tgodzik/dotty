@@ -1,5 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.FreshContext
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
@@ -21,6 +22,9 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
       typecheck(ctx)
       new scala.quoted.Exprs.TastyTreeExpr(term).asInstanceOf[scala.quoted.Expr[T]]
     }
+
+    def toExpr2(implicit ctx: Context): scala.quoted.Expr[Any] =
+      new scala.quoted.Exprs.TastyTreeExpr(term)
 
     private def typecheck[T: scala.quoted.Type](ctx: Context): Unit = {
       implicit val ctx0: FreshContext = ctx.fresh
@@ -46,4 +50,19 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with TastyCoreImpl {
       }
     }
   }
+
+
+  def TypeToQuoteDeco(tpe: Type): TypeToQuotedAPI = new TypeToQuotedAPI {
+    def toType(implicit ctx: Context): scala.quoted.Type[_] = {
+      new scala.quoted.Types.TreeType(tpd.TypeTree(tpe))
+    }
+  }
+
+
+  def TypeTreeToQuoteDeco(tpt: TypeTree): TypeToQuotedAPI = new TypeToQuotedAPI {
+    def toType(implicit ctx: Context): scala.quoted.Type[_] = {
+      new scala.quoted.Types.TreeType(tpt)
+    }
+  }
+
 }

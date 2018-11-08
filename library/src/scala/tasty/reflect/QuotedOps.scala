@@ -15,7 +15,14 @@ trait QuotedOps extends TastyCore {
 
   trait TermToQuotedAPI {
     def toExpr[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T]
+    def toExpr2(implicit ctx: Context): scala.quoted.Expr[Any]
   }
   implicit def TermToQuoteDeco(term: Term): TermToQuotedAPI
+
+  trait TypeToQuotedAPI {
+    def toType(implicit ctx: Context): scala.quoted.Type[_]
+  }
+  implicit def TypeToQuoteDeco(tpe: Type): TypeToQuotedAPI
+  implicit def TypeTreeToQuoteDeco(tpt: TypeTree): TypeToQuotedAPI
 
 }
