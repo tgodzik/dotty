@@ -68,6 +68,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
+    def Scala2CompatAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.scala2compat")
+    def hasScala2CompatAnnot: Boolean = tree.symbol.hasAnnotation(Scala2CompatAnnotType.symbol)
+
     val sym = tree.symbol
     if (!(sym is Lazy) ||
         sym.owner.is(Trait) || // val is accessor, lazy field will be implemented in subclass
@@ -87,7 +90,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         else if (sym.is(Module)) // synthetic module
           transformSyntheticModule(tree)
         else
-          transformMemberDefNonVolatile(tree)
+          if (hasScala2CompatAnnot) transformMemberDefScala2Compat(tree)
+          else transformMemberDefNonVolatile(tree)
       }
       else transformLocalDef(tree)
     }
