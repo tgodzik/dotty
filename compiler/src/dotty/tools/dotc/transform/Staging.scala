@@ -171,7 +171,7 @@ class Staging extends MacroTransformWithImplicits {
 
       def mkTagSymbolAndAssignType(typeRef: TypeRef, tag: Tree): Tree = {
         val rhs = transform(tag.select(tpnme.UNARY_~))
-        val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
+        val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs).withPos(expr.pos), rhs, rhs)
 
         val original = typeRef.symbol.asType
 
