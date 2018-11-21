@@ -21,6 +21,9 @@ val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
 
 val `jupyter-dotty` = Build.`jupyter-dotty`
+val `jupyter-lsp` = Build.`jupyter-lsp`
+val `repl-server` = Build.`repl-server`
+
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
 

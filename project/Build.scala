@@ -957,6 +957,27 @@ object Build {
       )
     )
 
+  lazy val `jupyter-lsp` = project.in(file("jupyter-lsp")).
+    dependsOn(dottyLibrary(Bootstrapped)).
+    settings(commonBootstrappedSettings).
+    settings(
+      libraryDependencies ++= Seq(
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0.M1",
+        ("sh.almond" %% "kernel" % "0.1.8").withDottyCompat(scalaVersion.value),
+        ("sh.almond" %% "echo" % "0.1.8").withDottyCompat(scalaVersion.value)
+      )
+    )
+
+  lazy val `repl-server` = project.in(file("repl-server")).
+    dependsOn(dottyCompiler(Bootstrapped), `jupyter-lsp`).
+    settings(commonBootstrappedSettings).
+    settings(
+      fork in run := true,
+      fork in Test := true,
+      libraryDependencies += "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.5.0.M1",
+      javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value
+    )
+
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
