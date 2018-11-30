@@ -53,6 +53,8 @@ class Worksheet implements Disposable {
   /** The minimum margin to add so that the decoration is shown after all text. */
   private margin: number = 0
 
+  applyEdits: Thenable<void> = Promise.resolve()
+
   private readonly _onDidStateChange: EventEmitter<void> = new EventEmitter()
   /** This event is fired when the worksheet starts or stops running. */
   readonly onDidStateChange: Event<void> = this._onDidStateChange.event
@@ -163,7 +165,7 @@ class Worksheet implements Disposable {
    * @return A `Thenable` that will insert necessary lines to fit the output
    *         and display the decorations upon completion.
    */
-  public displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
+  public displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor): Thenable<void> {
     const resultLines = runResult.trim().split(/\r\n|\r|\n/g)
 
     // The line where the next decoration should be put.
@@ -420,7 +422,8 @@ export class WorksheetProvider implements Disposable {
     if (editor) {
       const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        worksheet.displayAndSaveResult(output.line - 1, output.content, editor)
+        worksheet.applyEdits = worksheet.applyEdits.then(() => worksheet.displayAndSaveResult(output.line - 1, output.content, editor))
+        // worksheet.displayAndSaveResult(output.line - 1, output.content, editor)
       }
     }
   }
