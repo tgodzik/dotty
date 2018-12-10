@@ -644,7 +644,7 @@ object Contexts {
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, (Int, Int, Int)] =
-      uniqueSets.mapValues(s => (s.size, s.accesses, s.misses))
+      uniqueSets.mapValues(s => (s.size, s.accesses, s.misses)).toMap
 
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0

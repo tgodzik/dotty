@@ -201,7 +201,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   }
 
   // add an element to this set unless it's already in there and return this set
-  override def += (elem: A): this.type = elem match {
+  override def addOne (elem: A): this.type = elem match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
     case _    => {
       removeStaleEntries()
@@ -228,7 +228,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   }
 
   // remove an element from this set and return this set
-  override def -= (elem: A): this.type = elem match {
+  override def subtractOne(elem: A): this.type = elem match {
     case null => this
     case _ => {
       removeStaleEntries()
@@ -247,6 +247,8 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
       this
     }
   }
+
+  override def -(elem: A) = subtractOne(elem)
 
   // empty this set
   override def clear(): Unit = {
@@ -383,7 +385,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
     def bucketsCount: Int = table.size
   }
 
-  private[util] def diagnostics: Diagnostics = new Diagnostics
+  private[util] def diagnostics = new Diagnostics
 }
 
 /**

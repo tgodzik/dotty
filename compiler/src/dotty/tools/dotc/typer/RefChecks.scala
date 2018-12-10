@@ -477,7 +477,7 @@ object RefChecks {
         val missing = clazz.thisType.abstractTermMembers.filterNot(ignoreDeferred)
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped: Map[Name, Seq[SingleDenotation]] = missing groupBy (_.symbol.underlyingSymbol.name)
+        val grouped: Map[Name, collection.Seq[SingleDenotation]] = missing groupBy (_.symbol.underlyingSymbol.name)
           // Dotty deviation: Added type annotation for `grouped`.
           // The inferred type is Map[Symbol#ThisName, Seq[SingleDenotation]]
           // but then the definition of isMultiple fails with an error:

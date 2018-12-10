@@ -37,7 +37,7 @@ object ExposedValues extends AutoPlugin {
 }
 
 object Build {
-  val scalacVersion = "2.13.0-M3"
+  val scalacVersion = "2.13.0-M5-6e0cba7"
 
   val baseVersion = "0.12.0"
   val baseSbtDottyVersion = "0.2.7"
@@ -556,7 +556,7 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
         // FIXME: Not needed, but should be on the compiler CP
-        ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
+        // ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
         Dependencies.`compiler-interface`,
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
@@ -664,7 +664,8 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
+        "org.scala-js" % "scalajs-ir_2.12" % scalaJSVersion % "sourcedeps",
+        // ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
       sourceGenerators in Compile += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory

@@ -1,7 +1,7 @@
 package scala
 
 import annotation.implicitNotFound
-import scala.collection.{GenSeq, Set}
+import scala.collection.{Seq, Set}
 
 /** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
@@ -38,7 +38,7 @@ object Eq extends Eq[Any, Any] {
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
   implicit def eqProxy    : Eq[Proxy, Any]     = Eq
 
-  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[GenSeq[T], GenSeq[U]] = Eq
+  implicit def eqSeq[T, U](implicit eq: Eq[T, U]): Eq[Seq[T], Seq[U]] = Eq
   implicit def eqSet[T, U](implicit eq: Eq[T, U]): Eq[Set[T], Set[U]] = Eq
 
   implicit def eqByteNum  : Eq[Byte, Number]   = Eq

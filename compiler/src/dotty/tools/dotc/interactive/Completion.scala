@@ -260,7 +260,7 @@ object Completion {
      * @param site The type to inspect.
      * @return The members of `site` that are accessible and pass the include filter of `info`.
      */
-    private def accessibleMembers(site: Type)(implicit ctx: Context): Seq[Symbol] = site match {
+    private def accessibleMembers(site: Type)(implicit ctx: Context): collection.Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
         // Don't look inside package members -- it's too expensive.
         site.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
@@ -268,7 +268,7 @@ object Completion {
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
-        site.memberDenots(completionsFilter, appendMemberSyms).collect {
+        site.memberDenots(completionsFilter, appendMemberSyms).map {
           case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
           case _ => NoSymbol
         }.filter(_.exists)

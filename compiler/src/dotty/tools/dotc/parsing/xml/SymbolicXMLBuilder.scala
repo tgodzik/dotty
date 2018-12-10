@@ -96,7 +96,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     attrs: Tree,
     scope: Tree,
     empty: Boolean,
-    children: Seq[Tree]): Tree =
+    children: List[Tree]): Tree =
   {
     def starArgs =
       if (children.isEmpty) Nil
@@ -129,7 +129,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   protected def ProcInstr(target: Tree, txt: Tree): Tree  = New(_scala_xml_ProcInstr, LL(target, txt))
 
   /** @todo: attributes */
-  def makeXMLpat(pos: Position, n: String, args: Seq[Tree]): Tree = {
+  def makeXMLpat(pos: Position, n: String, args: List[Tree]): Tree = {
     val (prepat, labpat) = splitPrefix(n) match {
       case (Some(pre), rest)  => (const(pre), const(rest))
       case _                  => (wild, const(n))
@@ -141,8 +141,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     case _: Literal => makeTextPat(t)
     case _          => t
   }
-  protected def convertToTextPat(buf: Seq[Tree]): List[Tree] =
-    (buf map convertToTextPat).toList
+  protected def convertToTextPat(buf: List[Tree]): List[Tree] =
+    (buf map convertToTextPat)
 
   def parseAttribute(pos: Position, s: String): Tree = {
     val ts = Utility.parseAttributeValue(s, text(pos, _), entityRef(pos, _))
@@ -159,11 +159,11 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
-  def makeXMLseq(pos: Position, args: Seq[Tree]): Block = {
+  def makeXMLseq(pos: Position, args: List[Tree]): Block = {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
-    atPos(pos)( Block(buffer :: applies.toList, Ident(_buf)) )
+    atPos(pos)( Block(buffer :: applies, Ident(_buf)) )
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
@@ -173,13 +173,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   }
 
   /** Various node constructions. */
-  def group(pos: Position, args: Seq[Tree]): Tree =
+  def group(pos: Position, args: List[Tree]): Tree =
     atPos(pos)( New(_scala_xml_Group, LL(makeXMLseq(pos, args))) )
 
   def unparsed(pos: Position, str: String): Tree =
     atPos(pos)( New(_scala_xml_Unparsed, LL(const(str))) )
 
-  def element(pos: Position, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree]): Tree = {
+  def element(pos: Position, qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: List[Tree]): Tree = {
     def handleNamespaceBinding(pre: String, z: String): Tree = {
       def mkAssign(t: Tree): Tree = Assign(
         Ident(_tmpscope),

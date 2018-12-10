@@ -576,7 +576,7 @@ object Names {
     def ensureCapacity(n: Int) =
       if (n > chrs.length) {
         val newchrs = new Array[Char](chrs.length * 2)
-        chrs.copyToArray(newchrs)
+        chrs.copyToArray(newchrs, 0)
         chrs = newchrs
       }
 

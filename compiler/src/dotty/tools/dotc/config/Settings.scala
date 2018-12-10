@@ -7,6 +7,7 @@ import reflect.ClassTag
 import core.Contexts._
 import scala.annotation.tailrec
 import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory }
+import java.util.Arrays
 
 // import annotation.unchecked
   // Dotty deviation: Imports take precedence over definitions in enclosing package
@@ -24,11 +25,11 @@ object Settings {
   val OptionTag: ClassTag[Option[_]]     = ClassTag(classOf[Option[_]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
-  class SettingsState(initialValues: Seq[Any]) {
-    private[this] var values = ArrayBuffer(initialValues: _*)
+  class SettingsState(initialValues: Array[Any]) {
+    private[this] var values = initialValues.clone()
     private[this] var _wasRead: Boolean = false
 
-    override def toString: String = s"SettingsState(values: ${values.toList})"
+    override def toString: String = s"SettingsState(values: ${Arrays.toString(values.asInstanceOf[Array[AnyRef]])})"
 
     def value(idx: Int): Any = {
       _wasRead = true
@@ -194,12 +195,12 @@ object Settings {
   class SettingGroup {
 
     private[this] val _allSettings = new ArrayBuffer[Setting[_]]
-    def allSettings: Seq[Setting[_]] = _allSettings
+    def allSettings: collection.Seq[Setting[_]] = _allSettings
 
-    def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
+    def defaultState: SettingsState = new SettingsState(allSettings.map(_.default).toArray)
 
-    def userSetSettings(state: SettingsState): Seq[Setting[_]] =
-      allSettings filterNot (_.isDefaultIn(state))
+    def userSetSettings(state: SettingsState): collection.Seq[Setting[_]] =
+      allSettings.filterNot(_.isDefaultIn(state))
 
     def toConciseString(state: SettingsState): String =
       userSetSettings(state).mkString("(", " ", ")")

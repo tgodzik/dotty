@@ -4,7 +4,7 @@ package parsing
 package xml
 
 import scala.collection.mutable
-import mutable.{ Buffer, ArrayBuffer, ListBuffer }
+import mutable.{ Buffer, ListBuffer }
 import scala.util.control.ControlThrowable
 import scala.tasty.util.Chars.SU
 import Parsers._
@@ -178,7 +178,7 @@ object MarkupParsers {
       xTakeUntil(handle.comment, () => Position(start, curOffset, start), "-->")
     }
 
-    def appendText(pos: Position, ts: Buffer[Tree], txt: String): Unit = {
+    def appendText(pos: Position, ts: ListBuffer[Tree], txt: String): Unit = {
       def append(t: String) = ts append handle.text(pos, t)
 
       if (preserveWS) append(txt)
@@ -198,7 +198,7 @@ object MarkupParsers {
     /** adds entity/character to ts as side-effect
      *  @precond ch == '&'
      */
-    def content_AMP(ts: ArrayBuffer[Tree]): Unit = {
+    def content_AMP(ts: ListBuffer[Tree]): Unit = {
       nextch()
       val toAppend = ch match {
         case '#' => // CharacterRef
@@ -219,7 +219,7 @@ object MarkupParsers {
      *  @precond ch == '{'
      *  @postcond: xEmbeddedBlock == false!
      */
-    def content_BRACE(p: Position, ts: ArrayBuffer[Tree]): Unit =
+    def content_BRACE(p: Position, ts: ListBuffer[Tree]): Unit =
       if (xCheckEmbeddedBlock) ts append xEmbeddedExpr
       else appendText(p, ts, xText)
 
@@ -229,7 +229,7 @@ object MarkupParsers {
      *  @param ts ...
      *  @return   ...
      */
-    private def content_LT(ts: ArrayBuffer[Tree]): Boolean = {
+    private def content_LT(ts: ListBuffer[Tree]): Boolean = {
       if (ch == '/')
         return true   // end tag
 
@@ -243,8 +243,8 @@ object MarkupParsers {
       false
     }
 
-    def content: Buffer[Tree] = {
-      val ts = new ArrayBuffer[Tree]
+    def content: ListBuffer[Tree] = {
+      val ts = new ListBuffer[Tree]
       while (true) {
         if (xEmbeddedBlock)
           ts append xEmbeddedExpr
@@ -274,7 +274,7 @@ object MarkupParsers {
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
-        handle.element(Position(start, curOffset, start), qname, attrMap, true, new ListBuffer[Tree])
+        handle.element(Position(start, curOffset, start), qname, attrMap, true, Nil)
       }
       else { // handle content
         xToken('>')
@@ -287,8 +287,8 @@ object MarkupParsers {
         debugLastStartElement = debugLastStartElement.tail
         val pos = Position(start, curOffset, start)
         qname match {
-          case "xml:group" => handle.group(pos, ts)
-          case _ => handle.element(pos, qname, attrMap, false, ts)
+          case "xml:group" => handle.group(pos, ts.toList)
+          case _ => handle.element(pos, qname, attrMap, false, ts.toList)
         }
       }
     }
@@ -353,7 +353,7 @@ object MarkupParsers {
         input = parser.in
         handle.isPattern = false
 
-        val ts = new ArrayBuffer[Tree]
+        val ts = new ListBuffer[Tree]
         val start = curOffset
         tmppos = Position(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
         content_LT(ts)
@@ -366,7 +366,7 @@ object MarkupParsers {
             ts append element
             xSpaceOpt()
           }
-          handle.makeXMLseq(Position(start, curOffset, start), ts)
+          handle.makeXMLseq(Position(start, curOffset, start), ts.toList)
         }
         else {
           assert(ts.length == 1)
@@ -425,7 +425,7 @@ object MarkupParsers {
       debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()
 
-      val ts = new ArrayBuffer[Tree]
+      val ts = new ListBuffer[Tree]
 
       val isEmptyTag = ch == '/'
       if (isEmptyTag) nextch()
@@ -465,7 +465,7 @@ object MarkupParsers {
         debugLastStartElement = debugLastStartElement.tail
       }
 
-      handle.makeXMLpat(Position(start, curOffset, start), qname, ts)
+      handle.makeXMLpat(Position(start, curOffset, start), qname, ts.toList)
     }
   } /* class MarkupParser */
 }

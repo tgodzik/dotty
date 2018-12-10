@@ -19,12 +19,12 @@ trait TreeUtils
     def foldTypeCaseDef(x: X, tree: TypeCaseDef)(implicit ctx: Context): X
     def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
 
-    def foldTrees(x: X, trees: Iterable[Tree])(implicit ctx: Context): X = (x /: trees)(foldTree)
-    def foldTypeTrees(x: X, trees: Iterable[TypeOrBoundsTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
-    def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
-    def foldTypeCaseDefs(x: X, trees: Iterable[TypeCaseDef])(implicit ctx: Context): X = (x /: trees)(foldTypeCaseDef)
-    def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
-    private def foldParents(x: X, trees: Iterable[TermOrTypeTree])(implicit ctx: Context): X = (x /: trees)(foldTermOrTypeTree)
+    def foldTrees(x: X, trees: Iterable[Tree])(implicit ctx: Context): X = trees.foldLeft(x)(foldTree)
+    def foldTypeTrees(x: X, trees: Iterable[TypeOrBoundsTree])(implicit ctx: Context): X = trees.foldLeft(x)(foldTypeTree)
+    def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = trees.foldLeft(x)(foldCaseDef)
+    def foldTypeCaseDefs(x: X, trees: Iterable[TypeCaseDef])(implicit ctx: Context): X = trees.foldLeft(x)(foldTypeCaseDef)
+    def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = trees.foldLeft(x)(foldPattern)
+    private def foldParents(x: X, trees: Iterable[TermOrTypeTree])(implicit ctx: Context): X = trees.foldLeft(x)(foldTermOrTypeTree)
 
     def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
@@ -73,7 +73,7 @@ trait TreeUtils
           foldTrees(foldTypeTree(x, tpt), rhs)
         case IsDefinition(ddef @ DefDef(_, tparams, vparamss, tpt, rhs)) =>
           implicit val ctx = localCtx(ddef)
-          foldTrees(foldTypeTree((foldTrees(x, tparams) /: vparamss)(foldTrees), tpt), rhs)
+          foldTrees(foldTypeTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
         case IsDefinition(tdef @ TypeDef(_, rhs)) =>
           implicit val ctx = localCtx(tdef)
           foldTypeTree(x, rhs)

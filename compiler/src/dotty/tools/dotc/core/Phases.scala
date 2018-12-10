@@ -15,6 +15,7 @@ import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
+import java.util.Arrays
 
 trait Phases {
   self: Context =>
@@ -203,8 +204,8 @@ object Phases {
         this.squashedPhases = this.phases
       }
 
-      config.println(s"Phases = ${phases.deep}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
+      config.println("Phases = " + Arrays.toString(phases.asInstanceOf[Array[AnyRef]]))
+      config.println("nextDenotTransformerId = " + Arrays.toString(nextDenotTransformerId))
     }
 
     private[this] var myTyperPhase: Phase = _
