@@ -1,23 +1,26 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package typer
 
 import core._
 import Phases._
 import Contexts._
 import Symbols._
-import dotty.tools.dotc.parsing.JavaParsers.JavaParser
-import parsing.Parsers.Parser
 import config.Config
 import config.Printers.{typr, default}
 import util.Stats._
 import scala.util.control.NonFatal
 import ast.Trees._
+import ast.tpd
 
 class FrontEnd extends Phase {
 
   override def phaseName: String = FrontEnd.name
+
+  // Parser can recover from errors
+  override def isRunnable(implicit ctx: Context): Boolean = true
+
   override def isTyper: Boolean = true
-  import ast.tpd
 
   override def allowsImplicitSearch: Boolean = true
 
@@ -37,17 +40,6 @@ class FrontEnd extends Phase {
         ctx.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
         throw ex
     }
-
-  def parse(implicit ctx: Context): Unit = monitor("parsing") {
-    val unit = ctx.compilationUnit
-    unit.untpdTree =
-      if (unit.isJava) new JavaParser(unit.source).parse()
-      else new Parser(unit.source).parse()
-    val printer = if (ctx.settings.Xprint.value.contains("parser")) default else typr
-    printer.println("parsed:\n" + unit.untpdTree.show)
-    if (Config.checkPositions)
-      unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
-  }
 
   def enterSyms(implicit ctx: Context): Unit = monitor("indexing") {
     val unit = ctx.compilationUnit
@@ -78,7 +70,6 @@ class FrontEnd extends Phase {
       ctx.inform(s"compiling ${unit.source}")
       ctx.fresh.setCompilationUnit(unit)
     }
-    unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     remaining = unitContexts
     while (remaining.nonEmpty) {
@@ -90,11 +81,7 @@ class FrontEnd extends Phase {
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
   }
 
-  override def run(implicit ctx: Context): Unit = {
-    parse
-    enterSyms
-    typeCheck
-  }
+  def run(implicit ctx: Context): Unit = unsupported("run")
 }
 
 object FrontEnd {

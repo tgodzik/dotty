@@ -8,6 +8,7 @@ import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
 import dotty.tools.backend.sjs
+import dotty.tools.dotc.parsing.{ParserPhase => Parser}
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -36,7 +37,8 @@ class Compiler {
 
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
-    List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
+    List(new Parser) ::             // scanner, parser
+    List(new FrontEnd) ::           // Compiler frontend: namer, typer
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks

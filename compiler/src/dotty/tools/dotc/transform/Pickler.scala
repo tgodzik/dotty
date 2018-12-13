@@ -24,6 +24,9 @@ class Pickler extends Phase {
 
   override def phaseName: String = Pickler.name
 
+  override def isRunnable(implicit ctx: Context): Boolean =
+    super.isRunnable && !ctx.settings.fromTasty.value // No need to repickle
+
   private def output(name: String, msg: String) = {
     val s = new PrintStream(name)
     s.print(msg)
