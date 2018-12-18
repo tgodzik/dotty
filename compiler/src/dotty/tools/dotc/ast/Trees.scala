@@ -1203,6 +1203,9 @@ object Trees {
      */
     protected def inlineContext(call: Tree)(implicit ctx: Context): Context = ctx
 
+    /** Return a contexts marked as inside an Inlined tree */
+    protected def inlinedTreeContext(implicit ctx: Context): Context = ctx
+
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
 
       def transform(tree: Tree)(implicit ctx: Context): Tree =
@@ -1325,7 +1328,7 @@ object Trees {
         transform(trees).asInstanceOf[List[Tr]]
 
       protected def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = {
-        assert(ctx.reporter.errorsReported)
+        assert(ctx.reporter.errorsReported, tree)
         tree
       }
     }
