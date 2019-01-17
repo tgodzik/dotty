@@ -809,6 +809,10 @@ object Contexts {
     override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
     override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
 
+    override protected def typeLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+      ctx.typeComparer.lub(tp1, tp2, admitSingletons = true)
+    }
+
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = tvar(sym)
 
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {

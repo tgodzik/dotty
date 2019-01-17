@@ -34,6 +34,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   override protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type = param
 
+  override protected def typeLub(tp1: Type, tp2: Type)(implicit actx: AbsentContext): Type =
+    lub(tp1, tp2)
+
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
   private[this] var monitored = false
@@ -1434,9 +1437,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
-   *  @note  We do not admit singleton types in or-types as lubs.
+   *  @param admitSingletons We only admit singletons as parts of lubs when we must maintain necessary conditions,
+   *                         such as when inferring GADT constraints.
    */
-  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, admitSingletons: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
@@ -1448,6 +1452,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       else {
         val t2 = mergeIfSuper(tp2, tp1, canConstrain)
         if (t2.exists) t2
+        else if (admitSingletons) orType(tp1.widenExpr, tp2.widenExpr)
         else {
           val tp1w = tp1.widen
           val tp2w = tp2.widen
@@ -1973,9 +1978,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.hasMatchingMember(name, tp1, tp2)
     }
 
-  override def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type =
-    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain)") {
-      super.lub(tp1, tp2, canConstrain)
+  override def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, admitSingletons: Boolean = false): Type =
+    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain, admitSingletons=$admitSingletons)") {
+      super.lub(tp1, tp2, canConstrain, admitSingletons)
     }
 
   override def glb(tp1: Type, tp2: Type): Type =
