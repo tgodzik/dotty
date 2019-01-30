@@ -1,10 +1,14 @@
-package scala
+package scala.compiletime
 
 import scala.quoted._
 
 object StagedTuple {
-  import Tuple._
-  import NonEmptyTuple._
+  import Tuple.Concat
+  import Tuple.Head
+  import Tuple.Tail
+  import Tuple.Size
+  import Tuple.Elem
+  import scala.runtime.DynamicTuple._
 
   private final val specialize = true
 
@@ -121,11 +125,15 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]): Expr[Elem[Tup, N]] = {
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
+
+  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(implicit reflect: tasty.Reflection): Expr[Elem[Tup, N]] = {
+    import reflect._
+
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
-        case Some(n) => quoted.QuoteError("index out of bounds: " + n)
+        case Some(n) => quoted.QuoteError("index out of bounds: " + n, tup)
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
@@ -255,7 +263,5 @@ object StagedTuple {
       val t: U = $expr
       ${in('t)}
     }
-
   }
-
 }
