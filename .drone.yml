@@ -16,7 +16,7 @@ pipeline:
           git config user.name "Dotty CI";
           git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
         fi
-      # clone submodules in parallelRiRem
+      # clone submodules in parallel
       - git submodule update --init --recursive --jobs 3
 
   # TESTS:
