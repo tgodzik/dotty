@@ -393,6 +393,7 @@ object Build {
     connectInput in run := true,
     outputStrategy := Some(StdoutOutput),
 
+    scalacOptions += "-Ycheck:all",
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
     fork in run := true,
     fork in Test := true,
