@@ -465,7 +465,7 @@ trait Printers
       (new Buffer).printTypeOrBoundsTree(tpt).result()
 
     def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String =
-      (new Buffer).printTypeOrBound(tpe).result()
+      (new Buffer).printTypeOrBound(tpe)(None).result()
 
     def showConstant(const: Constant)(implicit ctx: Context): String =
       (new Buffer).printConstant(const).result()
@@ -544,7 +544,7 @@ trait Printers
       def lineBreak(): String = "\n" + ("  " * indent)
       def doubleLineBreak(): String = "\n\n" + ("  " * indent)
 
-      def printTree(tree: Tree): Buffer = tree match {
+      def printTree(tree: Tree)(implicit elideThis: Option[Symbol] = None): Buffer = tree match {
         case PackageObject(body)=>
           printTree(body) // Print package object
 
@@ -609,19 +609,19 @@ trait Printers
 
           def printParent(parent: TermOrTypeTree, needEmptyParens: Boolean = false): Unit = parent match {
             case IsTypeTree(parent) =>
-              printTypeTree(parent)
+              printTypeTree(parent)(Some(cdef.symbol))
             case IsTerm(Term.TypeApply(fun, targs)) =>
               printParent(fun)
             case IsTerm(Term.Apply(fun@Term.Apply(_,_), args)) =>
               printParent(fun, true)
               if (!args.isEmpty || needEmptyParens)
-                inParens(printTrees(args, ", "))
+                inParens(printTrees(args, ", ")(Some(cdef.symbol)))
             case IsTerm(Term.Apply(fun, args)) =>
               printParent(fun)
               if (!args.isEmpty || needEmptyParens)
-                inParens(printTrees(args, ", "))
+                inParens(printTrees(args, ", ")(Some(cdef.symbol)))
             case IsTerm(Term.Select(Term.New(tpt), _)) =>
-              printTypeTree(tpt)
+              printTypeTree(tpt)(Some(cdef.symbol))
             case IsTerm(parent) =>
               throw new MatchError(parent.show)
           }
@@ -673,7 +673,7 @@ trait Printers
                 indented {
                   val name1 = if (name == "_") "this" else name
                   this += " " += highlightValDef(name1, color) += ": "
-                  printTypeTree(tpt)
+                  printTypeTree(tpt)(Some(cdef.symbol))
                   this += " =>"
                 }
               }
@@ -966,7 +966,7 @@ trait Printers
         (flatStats.result(), flatExpr)
       }
 
-      def printFlatBlock(stats: List[Statement], expr: Term): Buffer = {
+      def printFlatBlock(stats: List[Statement], expr: Term)(implicit elideThis: Option[Symbol]): Buffer = {
         val (stats1, expr1) = flatBlock(stats, expr)
         // Remove Term.Lambda nodes, lambdas are printed by their definition
         val stats2 = stats1.filter { case Term.Lambda(_, _) => false; case _ => true }
@@ -987,7 +987,7 @@ trait Printers
         }
       }
 
-      def printStats(stats: List[Tree], expr: Tree): Unit = {
+      def printStats(stats: List[Tree], expr: Tree)(implicit elideThis: Option[Symbol]): Unit = {
         def printSeparator(next: Tree): Unit = {
           // Avoid accidental application of opening `{` on next line with a double break
           def rec(next: Tree): Unit = next match {
@@ -1033,13 +1033,13 @@ trait Printers
         this
       }
 
-      def printTrees(trees: List[Tree], sep: String): Buffer =
-        printList(trees, sep, printTree)
+      def printTrees(trees: List[Tree], sep: String)(implicit elideThis: Option[Symbol]): Buffer =
+        printList(trees, sep, (t: Tree) => printTree(t))
 
-      def printTypeTrees(trees: List[TypeTree], sep: String): Buffer =
-        printList(trees, sep, printTypeTree)
+      def printTypeTrees(trees: List[TypeTree], sep: String)(implicit elideThis: Option[Symbol] = None): Buffer =
+        printList(trees, sep, (t: TypeTree) => printTypeTree(t))
 
-      def printTypes(trees: List[Type], sep: String): Buffer = {
+      def printTypes(trees: List[Type], sep: String)(implicit elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[Type]): Unit = list match {
           case Nil =>
           case x :: Nil => printType(x)
@@ -1105,7 +1105,7 @@ trait Printers
         this
       }
 
-      def printTypeOrBoundsTrees(typesTrees: List[TypeOrBoundsTree], sep: String): Buffer = {
+      def printTypeOrBoundsTrees(typesTrees: List[TypeOrBoundsTree], sep: String)(implicit elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[TypeOrBoundsTree]): Unit = list match {
           case Nil =>
           case x :: Nil => printTypeOrBoundsTree(x)
@@ -1118,7 +1118,7 @@ trait Printers
         this
       }
 
-      def printTypesOrBounds(types: List[TypeOrBounds], sep: String): Buffer = {
+      def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(implicit elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[TypeOrBounds]): Unit = list match {
           case Nil =>
           case x :: Nil => printTypeOrBound(x)
@@ -1131,7 +1131,7 @@ trait Printers
         this
       }
 
-      def printTargsDefs(targs: List[(TypeDef, TypeDef)], isDef:Boolean = true): Unit = {
+      def printTargsDefs(targs: List[(TypeDef, TypeDef)], isDef:Boolean = true)(implicit elideThis: Option[Symbol]): Unit = {
         if (!targs.isEmpty) {
           def printSeparated(list: List[(TypeDef, TypeDef)]): Unit = list match {
             case Nil =>
@@ -1146,7 +1146,7 @@ trait Printers
         }
       }
 
-      def printTargDef(arg: (TypeDef, TypeDef), isMember: Boolean = false, isDef:Boolean = true): Buffer = {
+      def printTargDef(arg: (TypeDef, TypeDef), isMember: Boolean = false, isDef:Boolean = true)(implicit elideThis: Option[Symbol]): Buffer = {
         val (argDef, argCons) = arg
 
         if (isDef) {
@@ -1196,7 +1196,7 @@ trait Printers
         }
       }
 
-      def printArgsDefs(args: List[ValDef]): Unit = inParens {
+      def printArgsDefs(args: List[ValDef])(implicit elideThis: Option[Symbol]): Unit = inParens {
         args match {
           case Nil =>
           case arg :: _ =>
@@ -1216,7 +1216,7 @@ trait Printers
         printSeparated(args)
       }
 
-      def printAnnotations(trees: List[Term]): Buffer = {
+      def printAnnotations(trees: List[Term])(implicit elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[Term]): Unit = list match {
           case Nil =>
           case x :: Nil => printAnnotation(x)
@@ -1229,7 +1229,7 @@ trait Printers
         this
       }
 
-      def printParamDef(arg: ValDef): Unit = {
+      def printParamDef(arg: ValDef)(implicit elideThis: Option[Symbol]): Unit = {
         val name = arg.name
         arg.symbol.owner match {
           case IsDefSymbol(sym) if sym.name == "<init>" =>
@@ -1267,7 +1267,7 @@ trait Printers
         indented {
           caseDef.rhs match {
             case Term.Block(stats, expr) =>
-              printStats(stats, expr)
+              printStats(stats, expr)(None)
             case body =>
               this += lineBreak()
               printTree(body)
@@ -1341,7 +1341,7 @@ trait Printers
           this += highlightLiteral("'" + v.name, color)
       }
 
-      def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
+      def printTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit elideThis: Option[Symbol] = None): Buffer = tpt match {
         case TypeBoundsTree(lo, hi) =>
           this += "_ >: "
           printTypeTree(lo)
@@ -1353,7 +1353,15 @@ trait Printers
           printTypeTree(tpt)
       }
 
-      def printTypeTree(tree: TypeTree): Buffer = tree match {
+      /** Print type tree
+       *
+       *  @param elideThis Shoud printing elide `C.this` for the given class `C`?
+       *                   None means no eliding.
+       *
+       *   Self type annotation and types in parent list should elide current class
+       *   prefix `C.this` to avoid type checking errors.
+       */
+      def printTypeTree(tree: TypeTree)(implicit elideThis: Option[Symbol] = None): Buffer = tree match {
         case TypeTree.Inferred() =>
           // TODO try to move this logic into `printType`
           def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
@@ -1449,7 +1457,7 @@ trait Printers
 
       }
 
-      def printTypeOrBound(tpe: TypeOrBounds): Buffer = tpe match {
+      def printTypeOrBound(tpe: TypeOrBounds)(implicit elideThis: Option[Symbol]): Buffer = tpe match {
         case tpe@TypeBounds(lo, hi) =>
           this += "_ >: "
           printType(lo)
@@ -1458,7 +1466,15 @@ trait Printers
         case IsType(tpe) => printType(tpe)
       }
 
-      def printType(tpe: Type): Buffer = tpe match {
+      /** Print type
+       *
+       *  @param elideThis Shoud printing elide `C.this` for the given class `C`?
+       *                   None means no eliding.
+       *
+       *   Self type annotation and types in parent list should elide current class
+       *   prefix `C.this` to avoid type checking errors.
+       */
+      def printType(tpe: Type)(implicit elideThis: Option[Symbol] = None): Buffer = tpe match {
         case Type.ConstantType(const) =>
           printConstant(const)
 
@@ -1468,6 +1484,8 @@ trait Printers
             case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
               printType(prefix)
               this += "#"
+            case IsType(Type.ThisType(Type.SymRef(cdef, _)))
+            if elideThis.nonEmpty && cdef == elideThis.get =>
             case IsType(prefix) =>
               printType(prefix)
               this += "."
@@ -1600,7 +1618,7 @@ trait Printers
         case PackageDef(name, _) => this += highlightTypeDef(name, color)
       }
 
-      def printAnnotation(annot: Term): Buffer = {
+      def printAnnotation(annot: Term)(implicit elideThis: Option[Symbol]): Buffer = {
         val Annotation(ref, args) = annot
         this += "@"
         printTypeTree(ref)
@@ -1610,7 +1628,7 @@ trait Printers
           inParens(printTrees(args, ", "))
       }
 
-      def printDefAnnotations(definition: Definition): Buffer = {
+      def printDefAnnotations(definition: Definition)(implicit elideThis: Option[Symbol]): Buffer = {
         val annots = definition.symbol.annots.filter {
           case Annotation(annot, _) =>
             annot.tpe match {
@@ -1625,7 +1643,7 @@ trait Printers
         else this
       }
 
-      def printRefinement(tpe: Type): Buffer = {
+      def printRefinement(tpe: Type)(implicit elideThis: Option[Symbol]): Buffer = {
         def printMethodicType(tp: TypeOrBounds): Unit = tp match {
           case tp @ Type.MethodType(paramNames, params, res) =>
             inParens(printMethodicTypeParams(paramNames, params))
@@ -1665,7 +1683,7 @@ trait Printers
         this += lineBreak() += "}"
       }
 
-      def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds]): Unit = {
+      def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(implicit elideThis: Option[Symbol]): Unit = {
         def printInfo(info: TypeOrBounds) = info match {
           case IsTypeBounds(info) => printBounds(info)
           case IsType(info) =>
@@ -1686,7 +1704,7 @@ trait Printers
         printSeparated(paramNames.zip(params))
       }
 
-      def printBoundsTree(bounds: TypeBoundsTree): Buffer = {
+      def printBoundsTree(bounds: TypeBoundsTree)(implicit elideThis: Option[Symbol]): Buffer = {
         bounds.low match {
           case TypeTree.Inferred() =>
           case low =>
@@ -1701,7 +1719,7 @@ trait Printers
         }
       }
 
-      def printBounds(bounds: TypeBounds): Buffer = {
+      def printBounds(bounds: TypeBounds)(implicit elideThis: Option[Symbol]): Buffer = {
         this += " >: "
         printType(bounds.low)
         this += " <: "
