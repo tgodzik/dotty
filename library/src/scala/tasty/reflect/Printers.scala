@@ -1367,6 +1367,9 @@ trait Printers
             case tpe @ Type.SymRef(IsClassSymbol(sym), _) if sym.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
+            case tpe @ Type.SymRef(sym, _) if !IsTypeSymbol.unapply(sym).nonEmpty =>
+              printType(tpe)
+              this += ".type"
             case tpe => printType(tpe)
           }
           printTypeAndAnnots(tree.tpe)
@@ -1459,19 +1462,28 @@ trait Printers
         case Type.ConstantType(const) =>
           printConstant(const)
 
-        case Type.SymRef(sym, prefix) =>
+        case Type.SymRef(sym, prefix) if IsTypeSymbol.unapply(sym).nonEmpty =>
           prefix match {
             case Types.EmptyPrefix() =>
             case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
               printType(prefix)
               this += "#"
             case IsType(prefix) =>
-              if (!sym.flags.is(Flags.Local)) {
-                printType(prefix)
-                this += "."
-              }
+              printType(prefix)
+              this += "."
           }
           this += highlightTypeDef(sym.name.stripSuffix("$"), color)
+
+        case Type.SymRef(sym, prefix) if !IsTypeSymbol.unapply(sym).nonEmpty =>
+          prefix match {
+            case Types.EmptyPrefix() =>
+                this += highlightTypeDef(sym.name, color)
+            case _ =>
+              printTypeOrBound(prefix)
+              if (sym.name != "package")
+                this += "." += highlightTypeDef(sym.name, color)
+              this
+          }
 
         case Type.TermRef(name, prefix) =>
           prefix match {
