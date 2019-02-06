@@ -80,6 +80,9 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with CoreImpl {
       symbol.topLevelClass.asClass.isDefinedInCurrentRun
     }
 
+    def isType(implicit ctx: Context): Boolean = symbol.isType
+
+    def isTerm(implicit ctx: Context): Boolean = symbol.isTerm
   }
 
   object IsPackageSymbol extends IsPackageSymbolModule {

@@ -52,6 +52,10 @@ trait SymbolOps extends Core {
     def annots(implicit ctx: Context): List[Term]
 
     def isDefinedInCurrentRun(implicit ctx: Context): Boolean
+
+    def isType(implicit ctx: Context): Boolean
+
+    def isTerm(implicit ctx: Context): Boolean
   }
   implicit def SymbolDeco(symbol: Symbol): SymbolAPI
 
