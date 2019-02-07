@@ -765,7 +765,15 @@ object Contexts {
   sealed abstract class GADTMap {
     def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit
     def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean
+    def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean
     def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
+
+    /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
+      *
+      * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
+      * of some symbol when comparing types might lead to infinite recursion. Consider `bounds` instead.
+      */
+    def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds
     def contains(sym: Symbol)(implicit ctx: Context): Boolean
     def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type
     def debugBoundsDescription(implicit ctx: Context): String
@@ -793,6 +801,12 @@ object Contexts {
 
     override protected def constraint = myConstraint
     override protected def constraint_=(c: Constraint) = myConstraint = c
+
+    override protected def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
+      reverseMapping(param) match {
+        case sym: Symbol => sym.typeRef
+        case null => param
+      }
 
     override def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
     override def isSameType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
@@ -853,12 +867,21 @@ object Contexts {
       }, gadts)
     } finally boundAdditionInProgress = false
 
+    override def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean =
+      constraint.isLess(tvar(sym1).origin, tvar(sym2).origin)
+
+    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds =
+      mapping(sym) match {
+        case null => null
+        case tv => removeTypeVars(fullBounds(tv.origin)).asInstanceOf[TypeBounds]
+      }
+
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
       mapping(sym) match {
         case null => null
         case tv =>
           def retrieveBounds: TypeBounds = {
-            val tb = constraint.fullBounds(tv.origin)
+            val tb = bounds(tv.origin)
             removeTypeVars(tb).asInstanceOf[TypeBounds]
           }
           (
@@ -870,10 +893,7 @@ object Contexts {
                 boundCache = boundCache.updated(sym, bounds)
                 bounds
             }
-          ).reporting({ res =>
-            // i"gadt bounds $sym: $res"
-            ""
-          }, gadts)
+          )// .reporting({ res => i"gadt bounds $sym: $res" }, gadts)
       }
     }
 
@@ -968,7 +988,7 @@ object Contexts {
       sb ++= constraint.show
       sb += '\n'
       mapping.foreachBinding { case (sym, _) =>
-        sb ++= i"$sym: ${bounds(sym)}\n"
+        sb ++= i"$sym: ${fullBounds(sym)}\n"
       }
       sb.result
     }
@@ -977,7 +997,9 @@ object Contexts {
   @sharable object EmptyGADTMap extends GADTMap {
     override def addEmptyBounds(sym: Symbol)(implicit ctx: Context): Unit = unsupported("EmptyGADTMap.addEmptyBounds")
     override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.addBound")
+    override def isLess(sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Boolean = unsupported("EmptyGADTMap.isLess")
     override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
+    override def fullBounds(sym: Symbol)(implicit ctx: Context): TypeBounds = null
     override def contains(sym: Symbol)(implicit ctx: Context) = false
     override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGADTMap.approximation")
     override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGADTMap"
