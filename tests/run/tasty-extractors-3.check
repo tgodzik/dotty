@@ -10,6 +10,8 @@ Type.SymRef(IsClassSymbol(<scala.Any>), Type.ThisType(Type.SymRef(IsPackageSymbo
 
 Type.SymRef(IsTypeSymbol(<Test$._$_$T>), NoPrefix())
 
+Type.SymRef(IsTypeSymbol(<Test$._$_$T>), NoPrefix())
+
 TypeBounds(Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix())))))
 
 Type.SymRef(IsClassSymbol(<scala.Int>), Type.SymRef(IsPackageSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageSymbol(<<root>>), NoPrefix()))))
