@@ -550,11 +550,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        val tp1a = tp1.widenDealiasKeepRefiningAnnots
-        if (tp1a ne tp1)
-          // Follow the alias; this might avoid truncating the search space in the either below
-          // Note that it's safe to widen here because singleton types cannot be part of `|`.
-          return recur(tp1a, tp2)
+        def isSingletonlessTypeUnion(tp: Type): Boolean = tp match {
+          case OrType(a, b) => isSingletonlessTypeUnion(a) && isSingletonlessTypeUnion(b)
+          case _ => !tp.isSingleton
+        }
+        if (isSingletonlessTypeUnion(tp21) && isSingletonlessTypeUnion(tp22)) {
+          val tp1a = tp1.widenDealiasKeepRefiningAnnots
+          if (tp1a ne tp1)
+            // Follow the alias; this might avoid truncating the search space in the either below
+            // Note that it's safe to widen here because we ensured that
+            // singleton types are not top-level members of tp2
+            return recur(tp1a, tp2)
+        }
 
         // Rewrite T1 <: (T211 & T212) | T22 to T1 <: (T211 | T22) and T1 <: (T212 | T22)
         // and analogously for T1 <: T21 | (T221 & T222)
