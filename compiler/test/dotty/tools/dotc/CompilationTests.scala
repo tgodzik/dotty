@@ -300,6 +300,11 @@ class CompilationTests extends ParallelTesting {
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
   }
+
+  @Test def testPositions: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("positionsTests")
+    compileFile("tests/run/i4947.scala", defaultOptions and "-Yprint-pos" and "-Ydebug-pos" and "-Yprint-to-file")
+  }.checkCompile()
 }
 
 object CompilationTests {
