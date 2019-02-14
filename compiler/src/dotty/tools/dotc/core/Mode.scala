@@ -49,7 +49,14 @@ object Mode {
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
-  /** Allow GADTFlexType labelled types to have their bounds adjusted */
+  /** Allow mutating GADTMap, and alter `A <:< B` to mean "A <:< B is non-contradictory".
+   *
+   * In this mode, subtype checks are treated as constraint inference. In other words, "A <:< B"
+   * means "find a maximal constraint implied by A <:< B". `A <:< B == false` iff `A <:< B` is contradictory
+   * and cannot be true under any instantiation of abstract types.
+   *
+   * Note that it is _not_ necessary for subtyping relationships to hold after exiting GADTflexible mode.
+   */
   val GADTflexible: Mode = newMode(8, "GADTflexible")
 
   /** We are currently printing something: avoid to produce more logs about

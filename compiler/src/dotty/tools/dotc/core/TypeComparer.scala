@@ -150,7 +150,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
 
   def isSubType(tp1: Type, tp2: Type)(implicit nc: AbsentContext): Boolean = isSubType(tp1, tp2, NoApprox)
 
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
+  protected def frozenDescr = if (frozenConstraint) " frozen" else ""
+  def handle(st: Array[StackTraceElement]) =
+    st.iterator.drop(1).dropWhile(_.getMethodName == "isSubType").take(5).map(e => s"${e.getMethodName}:${e.getLineNumber}").mkString("", " ", "")
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx$frozenDescr\t", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -1133,16 +1136,52 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    */
   private def either(op1: => Boolean, op2: => Boolean): Boolean = {
     val preConstraint = constraint
-    op1 && {
-      val leftConstraint = constraint
-      constraint = preConstraint
-      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
-        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
-          constr.println(i"CUT - prefer $leftConstraint over $constraint")
-        constraint = leftConstraint
-      }
-      true
-    } || op2
+
+    if (ctx.mode.is(Mode.GADTflexible)) {
+      val preGadt = ctx.gadt.fresh
+      assert(preGadt.isInstanceOf[SmartGADTMap])
+      val pre = preGadt.asInstanceOf[SmartGADTMap]
+      if (op1) {
+        val leftConstraint = constraint
+        val leftGadt = ctx.gadt.fresh
+        constraint = preConstraint
+        ctx.gadt.restore(preGadt)
+        if (op2) {
+          if (pre.subsumes(leftGadt, ctx.gadt, preGadt) && subsumes(leftConstraint, constraint, preConstraint)) {
+            gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $leftGadt")
+            constr.println(i"CUT - prefer $constraint over $leftConstraint")
+            true
+          } else if (pre.subsumes(ctx.gadt, leftGadt, preGadt) && subsumes(constraint, leftConstraint, preConstraint)) {
+            gadts.println(i"GADT CUT - prefer $leftGadt over ${ctx.gadt}")
+            constr.println(i"CUT - prefer $leftConstraint over $constraint")
+            constraint = leftConstraint
+            ctx.gadt.restore(leftGadt)
+            true
+          } else {
+            gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preConstraint")
+            constr.println(i"CUT - no constraint is preferable, reverting to $constraint")
+            constraint = preConstraint
+            ctx.gadt.restore(preGadt)
+            true
+          }
+        } else {
+          constraint = leftConstraint
+          ctx.gadt.restore(leftGadt)
+          true
+        }
+      } else op2
+    } else {
+      op1 && {
+        val leftConstraint = constraint
+        constraint = preConstraint
+        if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
+          if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
+            constr.println(i"CUT - prefer $leftConstraint over $constraint")
+          constraint = leftConstraint
+        }
+        true
+      } || op2
+    }
   }
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
