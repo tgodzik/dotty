@@ -14,38 +14,32 @@ trait QuotedOpsImpl extends scala.tasty.reflect.QuotedOps with CoreImpl {
     def unseal(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
   }
 
-  def QuotedTypeDeco[T](x: scala.quoted.Type[T]): QuotedTypeAPI = new QuotedTypeAPI {
-    def unseal(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
-  }
+  protected def unsealType(tpe: quoted.Type[_])(implicit ctx: Context): TypeTree =
+    PickledQuotes.quotedTypeToTree(tpe)
 
-  def TermToQuoteDeco(term: Term): TermToQuotedAPI = new TermToQuotedAPI {
+  protected def sealTerm(term: Term, tpt: TypeTree)(implicit ctx: Context): scala.quoted.Expr[_] = {
+    def etaExpand(term: Term): Term = term.tpe.widen match {
+      case mtpe: Types.MethodType if !mtpe.isParamDependent =>
+        val closureResType = mtpe.resType match {
+          case t: Types.MethodType => t.toFunctionType()
+          case t => t
+        }
+        val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
+        val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+        tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
+      case _ => term
+    }
 
-    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] = {
-
-      val expectedType = QuotedTypeDeco(implicitly[scala.quoted.Type[T]]).unseal.tpe
-
-      def etaExpand(term: Term): Term = term.tpe.widen match {
-        case mtpe: Types.MethodType if !mtpe.isParamDependent =>
-          val closureResType = mtpe.resType match {
-            case t: Types.MethodType => t.toFunctionType()
-            case t => t
-          }
-          val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
-          val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-          tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
-        case _ => term
-      }
-
-      val expanded = etaExpand(term)
-      if (expanded.tpe <:< expectedType) {
-        new scala.quoted.Exprs.TastyTreeExpr(expanded).asInstanceOf[scala.quoted.Expr[T]]
-      } else {
-        throw new scala.tasty.TastyTypecheckError(
-          s"""Term: ${term.show}
-             |did not conform to type: ${expectedType.show}
-             |""".stripMargin
-        )
-      }
+    val expectedType = tpt.tpe
+    val expanded = etaExpand(term)
+    if (expanded.tpe <:< expectedType) {
+      new scala.quoted.Exprs.TastyTreeExpr(expanded)
+    } else {
+      throw new scala.tasty.TastyTypecheckError(
+        s"""Term: ${term.show}
+           |did not conform to type: ${expectedType.show}
+           |""".stripMargin
+      )
     }
   }
 

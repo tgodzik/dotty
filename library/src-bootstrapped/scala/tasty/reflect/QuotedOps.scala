@@ -9,17 +9,21 @@ trait QuotedOps extends Core {
   }
   implicit def QuotedExprDeco[T](expr: quoted.Expr[T]): QuotedExprAPI
 
-  trait QuotedTypeAPI {
+  implicit class QuotedTypeDeco[T <: AnyKind](tpe: quoted.Type[T]) {
     /** View this expression `Type[T]` as a `TypeTree` */
-    def unseal(implicit ctx: Context): TypeTree
+    def unseal(implicit ctx: Context): TypeTree = unsealType(tpe)
   }
-  implicit def QuotedTypeDeco[T](tpe: quoted.Type[T]): QuotedTypeAPI
 
-  trait TermToQuotedAPI {
+  protected def unsealType(tpe: quoted.Type[_])(implicit ctx: Context): TypeTree
+
+  implicit class TermToQuoteDeco(term: Term) {
     /** Convert `Term` to an `Expr[T]` and check that it conforms to `T` */
-    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T]
+    def seal[T: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[T] =
+      // Note that T should not be poly-kinded in this method
+      sealTerm(term, unsealType(implicitly[scala.quoted.Type[T]])).asInstanceOf[scala.quoted.Expr[T]]
   }
-  implicit def TermToQuoteDeco(term: Term): TermToQuotedAPI
+
+  protected def sealTerm(term: Term, tpt: TypeTree)(implicit ctx: Context): scala.quoted.Expr[_]
 
   trait TypeToQuotedAPI {
     /** Convert `Type` to an `quoted.Type[T]` */
