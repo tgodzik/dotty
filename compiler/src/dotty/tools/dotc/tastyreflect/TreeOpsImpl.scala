@@ -10,31 +10,12 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
   // ----- Tree ----------------------------------------------------
 
-  object IsPackageClause extends IsPackageClauseModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] = tree match {
-      case x: tpd.PackageDef => Some(x)
-      case _ => None
-    }
-  }
-
   object PackageClause extends PackageClauseModule {
     def apply(pid: Term.Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
       withDefaultPos(ctx => tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats)(ctx))
 
     def copy(original: PackageClause)(pid: Term.Ref, stats: List[Tree])(implicit ctx: Context): PackageClause =
       tpd.cpy.PackageDef(original)(pid, stats)
-
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term.Ref, List[Tree])] = tree match {
-      case x: tpd.PackageDef => Some((x.pid, x.stats))
-      case _ => None
-    }
-  }
-
-  object IsImport extends IsImportModule {
-    override def unapply(tree: Tree)(implicit ctx: Contexts.Context): Option[Import] = tree match {
-      case tree: tpd.Import => Some(tree)
-      case _ => None
-    }
   }
 
   object Import extends ImportModule {
@@ -43,41 +24,11 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
     def copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import =
       tpd.cpy.Import(original)(impliedOnly, expr, selectors)
-
-    def unapply(x: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])] = x match {
-      case x: tpd.Import => Some((x.impliedOnly, x.expr, x.selectors))
-      case _ => None
-    }
-  }
-
-  object IsStatement extends IsStatementModule {
-    /** Matches any Statement and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement] = tree match {
-      case IsDefinition(tree) => Some(tree)
-      case tree if tree.isTerm => Some(tree)
-      case _ => None
-    }
   }
 
   // ----- Definitions ----------------------------------------------
 
-  object IsDefinition extends IsDefinitionModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
-      case tree: tpd.MemberDef => Some(tree)
-      case tree: PackageDefinition => Some(tree)
-      case _ => None
-    }
-  }
-
-
   // ClassDef
-
-  object IsClassDef extends IsClassDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = tree match {
-      case x: tpd.TypeDef if x.isClassDef => Some(x)
-      case _ => None
-    }
-  }
 
   object ClassDef extends ClassDefModule {
 
@@ -86,22 +37,10 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
     }
 
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] = tree match {
-      case Trees.TypeDef(name, impl: tpd.Template) =>
-        Some((name.toString, impl.constr, impl.parents, impl.derived.asInstanceOf[List[TypeTree]], optional(impl.self), impl.body))
-      case _ => None
-    }
   }
 
 
   // DefDef
-
-  object IsDefDef extends IsDefDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
-      case x: tpd.DefDef => Some(x)
-      case _ => None
-    }
-  }
 
   object DefDef extends DefDefModule {
     def apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef =
@@ -120,13 +59,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
   // ValDef
 
-  object IsValDef extends IsValDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = tree match {
-      case x: tpd.ValDef => Some(x)
-      case _ => None
-    }
-  }
-
   object ValDef extends ValDefModule {
     def apply(symbol: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef =
       tpd.ValDef(symbol, rhs.getOrElse(tpd.EmptyTree))
@@ -144,13 +76,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
   // TypeDef
 
-  object IsTypeDef extends IsTypeDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = tree match {
-      case x: tpd.TypeDef if !x.symbol.isClass => Some(x)
-      case _ => None
-    }
-  }
-
   object TypeDef extends TypeDefModule {
     def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef = withDefaultPos(ctx => tpd.TypeDef(symbol)(ctx))
     def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef =
@@ -161,42 +86,9 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
     }
   }
 
-
-  // PackageDef
-
-
-  object IsPackageDef extends IsPackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] = tree match {
-      case x: PackageDefinition => Some(x)
-      case _ => None
-    }
-  }
-
-  object PackageDef extends PackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] = tree match {
-      case x: PackageDefinition =>
-        Some((x.symbol.name.toString, packageDefFromSym(x.symbol.owner)))
-      case _ => None
-    }
-  }
-
   // ----- Terms ----------------------------------------------------
 
-  object IsTerm extends IsTermModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
-      if (tree.isTerm) Some(tree) else None
-    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
-      if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
-  }
-
   object Term extends TermModule with TermCoreModule {
-
-    object IsIdent extends IsIdentModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Ident] = x match {
-        case x: tpd.Ident if x.isTerm => Some(x)
-        case _ => None
-      }
-    }
 
     object Ref extends RefModule {
       def apply(sym: Symbol)(implicit ctx: Context): Ref = withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])
@@ -214,14 +106,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsSelect extends IsSelectModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Select] = x match {
-        case x: tpd.Select if x.isTerm => Some(x)
-        case _ => None
-      }
-    }
-
 
     object Select extends SelectModule {
       def unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
@@ -242,15 +126,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsLiteral extends IsLiteralModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Literal] = x match {
-        case x: tpd.Literal => Some(x)
-        case _ => None
-      }
-    }
-
-
-
     object Literal extends LiteralModule {
 
       def apply(constant: Constant)(implicit ctx: Context): Literal =
@@ -264,14 +139,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsThis extends IsThisModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[This] = x match {
-        case x: tpd.This => Some(x)
-        case _ => None
-      }
-    }
-
 
     object This extends ThisModule {
 
@@ -287,13 +154,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsNew extends IsNewModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[New] = x match {
-        case x: tpd.New => Some(x)
-        case _ => None
-      }
-    }
-
     object New extends NewModule {
 
       def apply(tpt: TypeTree)(implicit ctx: Context): New = withDefaultPos(ctx => tpd.New(tpt)(ctx))
@@ -303,13 +163,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
 
       def unapply(x: Term)(implicit ctx: Context): Option[TypeTree] = x match {
         case x: tpd.New => Some(x.tpt)
-        case _ => None
-      }
-    }
-
-    object IsNamedArg extends IsNamedArgModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[NamedArg] = x match {
-        case x: tpd.NamedArg if x.name.isInstanceOf[Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
         case _ => None
       }
     }
@@ -328,14 +181,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsApply extends IsApplyModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Apply] = x match {
-        case x: tpd.Apply => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Apply extends ApplyModule {
 
       def apply(fn: Term, args: List[Term])(implicit ctx: Context): Apply =
@@ -349,14 +194,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsTypeApply extends IsTypeApplyModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[TypeApply] = x match {
-        case x: tpd.TypeApply => Some(x)
-        case _ => None
-      }
-    }
-
 
     object TypeApply extends TypeApplyModule {
 
@@ -372,14 +209,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsSuper extends IsSuperModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Super] = x match {
-        case x: tpd.Super => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Super extends SuperModule {
       def apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super =
         withDefaultPos(ctx => tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)(ctx))
@@ -392,14 +221,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsTyped extends IsTypedModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Typed] = x match {
-        case x: tpd.Typed => Some(x)
-        case _ => None
-      }
-    }
-
 
     object Typed extends TypedModule {
       def apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed =
@@ -414,14 +235,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsAssign extends IsAssignModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Assign] = x match {
-        case x: tpd.Assign => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Assign extends AssignModule {
       def apply(lhs: Term, rhs: Term)(implicit ctx: Context): Assign =
         withDefaultPos(ctx => tpd.Assign(lhs, rhs)(ctx))
@@ -435,43 +248,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsBlock extends IsBlockModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Block] = normalizedLoops(x) match {
-        case x: tpd.Block => Some(x)
-        case _ => None
-      }
-
-      /** Normalizes non Blocks.
-       *  i) Put `while` and `doWhile` loops in their own blocks: `{ def while$() = ...; while$() }`
-       *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
-       */
-      private def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-        case block: tpd.Block if block.stats.size > 1 =>
-          def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
-            case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
-            case x :: xs => x :: normalizeInnerLoops(xs)
-            case Nil => Nil
-          }
-          if (needsNormalization(block.expr)) {
-            val stats1 = normalizeInnerLoops(block.stats.init)
-            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
-            tpd.Block(stats1, normalLoop)
-          } else {
-            val stats1 = normalizeInnerLoops(block.stats)
-            tpd.cpy.Block(block)(stats1, block.expr)
-          }
-        case _ => tree
-      }
-
-      /** If it is the second statement of a closure. See: `normalizedLoops` */
-      private def needsNormalization(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
-        case _: tpd.Closure => true
-        case _ => false
-      }
-    }
-
-
     object Block extends BlockModule {
       def apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block =
         withDefaultPos(ctx => tpd.Block(stats, expr)(ctx))
@@ -484,14 +260,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsInlined extends IsInlinedModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Inlined] = x match {
-        case x: tpd.Inlined => Some(x)
-        case _ => None
-      }
-    }
-
 
     object Inlined extends InlinedModule {
       def apply(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
@@ -507,14 +275,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsLambda extends IsLambdaModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Lambda] = x match {
-        case x: tpd.Closure => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Lambda extends LambdaModule {
       def apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
         withDefaultPos(ctx => tpd.Closure(Nil, meth, tpt.getOrElse(tpd.EmptyTree))(ctx))
@@ -527,14 +287,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsIf extends IsIfModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[If] = x match {
-        case x: tpd.If => Some(x)
-        case _ => None
-      }
-    }
-
 
     object If extends IfModule {
       def apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If =
@@ -549,14 +301,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsMatch extends IsMatchModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Match] = x match {
-        case x: tpd.Match => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Match extends MatchModule {
       def apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
         withDefaultPos(ctx => tpd.Match(selector, cases)(ctx))
@@ -569,14 +313,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsTry extends IsTryModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Try] = x match {
-        case x: tpd.Try => Some(x)
-        case _ => None
-      }
-    }
-
 
     object Try extends TryModule {
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try =
@@ -591,14 +327,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsReturn extends IsReturnModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Return] = x match {
-        case x: tpd.Return => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Return extends ReturnModule {
       def apply(expr: Term)(implicit ctx: Context): Return =
         withDefaultPos(ctx => tpd.Return(expr, ctx.owner)(ctx))
@@ -612,14 +340,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
       }
     }
 
-    object IsRepeated extends IsRepeatedModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[Repeated] = x match {
-        case x: tpd.SeqLiteral => Some(x)
-        case _ => None
-      }
-    }
-
-
     object Repeated extends RepeatedModule {
       def apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated =
         withDefaultPos(ctx => tpd.SeqLiteral(elems, elemtpt)(ctx))
@@ -632,18 +352,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsSelectOuter extends IsSelectOuterModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[SelectOuter] = x match {
-        case x: tpd.Select =>
-          x.name match {
-            case NameKinds.OuterSelectName(_, _) => Some(x)
-            case _ => None
-          }
-        case _ => None
-      }
-    }
-
 
     object SelectOuter extends SelectOuterModule {
 
@@ -662,14 +370,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with RootPositionImpl with
         case _ => None
       }
     }
-
-    object IsWhile extends IsWhileModule {
-      def unapply(x: Term)(implicit ctx: Context): Option[While] = x match {
-        case x: tpd.WhileDo => Some(x)
-        case _ => None
-      }
-    }
-
 
     object While extends WhileModule {
       def apply(cond: Term, body: Term)(implicit ctx: Context): While =

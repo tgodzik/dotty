@@ -121,6 +121,8 @@ trait Kernel {
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position
 
+  def settings: Settings
+
   //
   // CONTEXT
   //
@@ -141,6 +143,8 @@ trait Kernel {
   /** Settings */
   type Settings <: AnyRef
 
+  def Settings_color(self: Settings): Boolean
+
   //
   // TREES
   //
@@ -158,14 +162,20 @@ trait Kernel {
   /** Tree representing a pacakage clause in the source code */
   type PackageClause <: Tree
 
+  def isPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause]
+
   def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Term_Ref
   def PackageClause_stats(self: PackageClause)(implicit ctx: Context): List[Tree]
 
   /** Tree representing a statement in the source code */
   type Statement <: Tree
 
+  def isStatement(tree: Tree)(implicit ctx: Context): Option[Statement]
+
   /** Tree representing an import in the source code */
   type Import <: Statement
+
+  def isImport(tree: Tree)(implicit ctx: Context): Option[Import]
 
   def Import_impliedOnly(self: Import): Boolean
   def Import_expr(self: Import)(implicit ctx: Context): Term
@@ -174,10 +184,14 @@ trait Kernel {
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
 
+  def isDefinition(tree: Tree)(implicit ctx: Context): Option[Definition]
+
   def Definition_name(self: Definition)(implicit ctx: Context): String
 
   /** Tree representing a package definition. This includes definitions in all source files */
   type PackageDef <: Definition
+
+  def isPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef]
 
   def PackageDef_owner(self: PackageDef)(implicit ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(implicit ctx: Context): List[Statement]
@@ -185,6 +199,8 @@ trait Kernel {
 
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
+
+  def isClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef]
 
   def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef
   def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[TermOrTypeTree]
@@ -196,11 +212,15 @@ trait Kernel {
   /** Tree representing a type (paramter or member) definition in the source code */
   type TypeDef <: Definition
 
+  def isTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]
+
   def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): TypeOrBoundsTree
   def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeSymbol
 
   /** Tree representing a method definition in the source code */
   type DefDef <: Definition
+
+  def isDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef]
 
   def DefDef_typeParams(self: DefDef)(implicit ctx: Context): List[TypeDef]
   def DefDef_paramss(self: DefDef)(implicit ctx: Context): List[List[ValDef]]
@@ -211,12 +231,18 @@ trait Kernel {
   /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
   type ValDef <: Definition
 
+  def isValDef(tree: Tree)(implicit ctx: Context): Option[ValDef]
+
   def ValDef_tpt(self: ValDef)(implicit ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(implicit ctx: Context): Option[Term]
   def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValSymbol
 
   /** Tree representing an expression in the source code */
   type Term <: Statement
+
+  def isTerm(tree: Tree)(implicit ctx: Context): Option[Term]
+
+  def isTermNotTypeTree(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context): Option[Term]
 
   def Term_pos(self: Term)(implicit ctx: Context): Position
   def Term_tpe(self: Term)(implicit ctx: Context): Type
@@ -229,10 +255,14 @@ trait Kernel {
   /** Tree representing a reference to definition with a given name */
   type Term_Ident <: Term_Ref
 
+  def isTerm_Ident(tree: Tree)(implicit ctx: Context): Option[Term_Ident]
+
   def Term_Ident_name(self: Term_Ident)(implicit ctx: Context): String
 
   /** Tree representing a selection of definition with a given name on a given prefix */
   type Term_Select <: Term_Ref
+
+  def isTerm_Select(tree: Tree)(implicit ctx: Context): Option[Term_Select]
 
   def Term_Select_qualifier(self: Term_Select)(implicit ctx: Context): Term
   def Term_Select_name(self: Term_Select)(implicit ctx: Context): String
@@ -241,20 +271,28 @@ trait Kernel {
   /** Tree representing a literal value in the source code */
   type Term_Literal <: Term
 
+  def isTerm_Literal(tree: Tree)(implicit ctx: Context): Option[Term_Literal]
+
   def Term_Literal_constant(self: Term_Literal)(implicit ctx: Context): Constant
 
   /** Tree representing `this` in the source code */
   type Term_This <: Term
+
+  def isTerm_This(tree: Tree)(implicit ctx: Context): Option[Term_This]
 
   def Term_This_id(self: Term_This)(implicit ctx: Context): Option[Id]
 
   /** Tree representing `new` in the source code */
   type Term_New <: Term
 
+  def isTerm_New(tree: Tree)(implicit ctx: Context): Option[Term_New]
+
   def Term_New_tpt(self: Term_New)(implicit ctx: Context): TypeTree
 
   /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
   type Term_NamedArg <: Term
+
+  def isTerm_NamedArg(tree: Tree)(implicit ctx: Context): Option[Term_NamedArg]
 
   def Term_NamedArg_name(self: Term_NamedArg)(implicit ctx: Context): String
   def Term_NamedArg_value(self: Term_NamedArg)(implicit ctx: Context): Term
@@ -262,11 +300,15 @@ trait Kernel {
   /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
   type Term_Apply <: Term
 
+  def isTerm_Apply(tree: Tree)(implicit ctx: Context): Option[Term_Apply]
+
   def Term_Apply_fun(self: Term_Apply)(implicit ctx: Context): Term
   def Term_Apply_args(self: Term_Apply)(implicit ctx: Context): List[Term]
 
   /** Tree an application of type arguments */
   type Term_TypeApply <: Term
+
+  def isTerm_TypeApply(tree: Tree)(implicit ctx: Context): Option[Term_TypeApply]
 
   def Term_TypeApply_fun(self: Term_TypeApply)(implicit ctx: Context): Term
   def Term_TypeApply_args(self: Term_TypeApply)(implicit ctx: Context): List[TypeTree]
@@ -274,11 +316,15 @@ trait Kernel {
   /** Tree representing `super` in the source code */
   type Term_Super <: Term
 
+  def isTerm_Super(tree: Tree)(implicit ctx: Context): Option[Term_Super]
+
   def Term_Super_qualifier(self: Term_Super)(implicit ctx: Context): Term
   def Term_Super_id(self: Term_Super)(implicit ctx: Context): Option[Id]
 
   /** Tree representing a type ascription `x: T` in the source code */
   type Term_Typed <: Term
+
+  def isTerm_Typed(tree: Tree)(implicit ctx: Context): Option[Term_Typed]
 
   def Term_Typed_expr(self: Term_Typed)(implicit ctx: Context): Term
   def Term_Typed_tpt(self: Term_Typed)(implicit ctx: Context): TypeTree
@@ -286,11 +332,15 @@ trait Kernel {
   /** Tree representing an assignment `x = y` in the source code */
   type Term_Assign <: Term
 
+  def isTerm_Assign(tree: Tree)(implicit ctx: Context): Option[Term_Assign]
+
   def Term_Assign_lhs(self: Term_Assign)(implicit ctx: Context): Term
   def Term_Assign_rhs(self: Term_Assign)(implicit ctx: Context): Term
 
   /** Tree representing a block `{ ... }` in the source code */
   type Term_Block <: Term
+
+  def isTerm_Block(tree: Tree)(implicit ctx: Context): Option[Term_Block]
 
   def Term_Block_statements(self: Term_Block)(implicit ctx: Context): List[Statement]
   def Term_Block_expr(self: Term_Block)(implicit ctx: Context): Term
@@ -298,11 +348,15 @@ trait Kernel {
   /** Tree representing a lambda `(...) => ...` in the source code */
   type Term_Lambda <: Term
 
+  def isTerm_Lambda(tree: Tree)(implicit ctx: Context): Option[Term_Lambda]
+
   def Term_Lambda_meth(self: Term_Lambda)(implicit ctx: Context): Term
   def Term_Lambda_tptOpt(self: Term_Lambda)(implicit ctx: Context): Option[TypeTree]
 
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type Term_If <: Term
+
+  def isTerm_If(tree: Tree)(implicit ctx: Context): Option[Term_If]
 
   def Term_If_cond(self: Term_If)(implicit ctx: Context): Term
   def Term_If_thenp(self: Term_If)(implicit ctx: Context): Term
@@ -311,11 +365,15 @@ trait Kernel {
   /** Tree representing a pattern match `x match  { ... }` in the source code */
   type Term_Match <: Term
 
+  def isTerm_Match(tree: Tree)(implicit ctx: Context): Option[Term_Match]
+
   def Term_Match_scrutinee(self: Term_Match)(implicit ctx: Context): Term
   def Term_Match_cases(self: Term_Match)(implicit ctx: Context): List[CaseDef]
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Term_Try <: Term
+
+  def isTerm_Try(tree: Tree)(implicit ctx: Context): Option[Term_Try]
 
   def Term_Try_body(self: Term_Try)(implicit ctx: Context): Term
   def Term_Try_cases(self: Term_Try)(implicit ctx: Context): List[CaseDef]
@@ -324,16 +382,22 @@ trait Kernel {
   /** Tree representing a `return` in the source code */
   type Term_Return <: Term
 
+  def isTerm_Return(tree: Tree)(implicit ctx: Context): Option[Term_Return]
+
   def Term_Return_expr(self: Term_Return)(implicit ctx: Context): Term
 
   /** Tree representing a variable argument list in the source code */
   type Term_Repeated <: Term
+
+  def isTerm_Repeated(tree: Tree)(implicit ctx: Context): Option[Term_Repeated]
 
   def Term_Repeated_elems(self: Term_Repeated)(implicit ctx: Context): List[Term]
   def Term_Repeated_elemtpt(self: Term_Repeated)(implicit ctx: Context): TypeTree
 
   /** Tree representing the scope of an inlined tree */
   type Term_Inlined <: Term
+
+  def isTerm_Inlined(tree: Tree)(implicit ctx: Context): Option[Term_Inlined]
 
   def Term_Inlined_call(self: Term_Inlined)(implicit ctx: Context): Option[TermOrTypeTree]
   def Term_Inlined_bindings(self: Term_Inlined)(implicit ctx: Context): List[Definition]
@@ -342,12 +406,16 @@ trait Kernel {
   /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
   type Term_SelectOuter <: Term
 
+  def isTerm_SelectOuter(tree: Tree)(implicit ctx: Context): Option[Term_SelectOuter]
+
   def Term_SelectOuter_qualifier(self: Term_SelectOuter)(implicit ctx: Context): Term
   def Term_SelectOuter_level(self: Term_SelectOuter)(implicit ctx: Context): Int
   def Term_SelectOuter_tpe(self: Term_SelectOuter)(implicit ctx: Context): Type
 
   /** Tree representing a while loop */
   type Term_While <: Term
+
+  def isTerm_While(tree: Tree)(implicit ctx: Context): Option[Term_While]
 
   def Term_While_cond(self: Term_While)(implicit ctx: Context): Term
   def Term_While_body(self: Term_While)(implicit ctx: Context): Term
@@ -363,11 +431,17 @@ trait Kernel {
   def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term]
   def CaseDef_rhs(self: CaseDef)(implicit ctx: Context): Term
 
+  def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef
+  def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef
+
   /** Branch of a type pattern match */
   type TypeCaseDef <: AnyRef
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree
   def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree
+
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef
+  def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef
 
   //
   // PATTERNS
@@ -383,17 +457,28 @@ trait Kernel {
   /** Pattern representing a value. This includes `1`, ```x``` and `_` */
   type Value <: Pattern
 
+  def isPattern_Value(pattern: Pattern): Option[Value]
+
   def Pattern_Value_value(self: Value)(implicit ctx: Context): Term
+
+  def Pattern_Value_module_apply(term: Term)(implicit ctx: Context): Value
+  def Pattern_Value_module_copy(original: Value)(term: Term)(implicit ctx: Context): Value
 
   /** Pattern representing a `_ @ _` binding. */
   type Bind <: Pattern
+
+  def isPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind]
 
   def Pattern_Bind_name(self: Bind)(implicit ctx: Context): String
 
   def Pattern_Bind_pattern(self: Bind)(implicit ctx: Context): Pattern
 
+  def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind
+
   /** Pattern representing a `Xyz(...)` unapply. */
   type Unapply <: Pattern
+
+  def isPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply]
 
   def Pattern_Unapply_fun(self: Unapply)(implicit ctx: Context): Term
 
@@ -401,15 +486,27 @@ trait Kernel {
 
   def Pattern_Unapply_patterns(self: Unapply)(implicit ctx: Context): List[Pattern]
 
+  def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply
+
   /** Pattern representing `X | Y | ...` alternatives. */
   type Alternatives <: Pattern
 
+  def isPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]
+
   def Pattern_Alternatives_patterns(self: Alternatives)(implicit ctx: Context): List[Pattern]
+
+  def Pattern_Alternatives_module_apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives
+  def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives
 
   /** Pattern representing a `x: Y` type test. */
   type TypeTest <: Pattern
 
+  def isPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]
+
   def Pattern_TypeTest_tpt(self: TypeTest)(implicit ctx: Context): TypeTree
+
+  def Pattern_TypeTest_module_apply(tpt: TypeTree)(implicit ctx: Context): TypeTest
+  def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest
 
   //
   // TYPE TREES
@@ -684,6 +781,25 @@ trait Kernel {
    */
   type ImportSelector <: AnyRef
 
+  type SimpleSelector <: ImportSelector
+
+  def isSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector]
+
+  def SimpleSelector_selection(self: SimpleSelector)(implicit ctx: Context): Id
+
+  type RenameSelector <: ImportSelector
+
+  def isRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector]
+
+  def RenameSelector_from(self: RenameSelector)(implicit ctx: Context): Id
+  def RenameSelector_to(self: RenameSelector)(implicit ctx: Context): Id
+
+  type OmitSelector <: ImportSelector
+
+  def isOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector]
+
+  def SimpleSelector_omited(self: OmitSelector)(implicit ctx: Context): Id
+
   //
   // IDENTIFIERS
   //
@@ -753,6 +869,34 @@ trait Kernel {
 
   def Constant_value(const: Constant): Any
 
+  def isConstant_Unit(constant: Constant): Boolean
+  def isConstant_Null(constant: Constant): Boolean
+  def isConstant_Boolean(constant: Constant): Option[Boolean]
+  def isConstant_Byte(constant: Constant): Option[Byte]
+  def isConstant_Short(constant: Constant): Option[Short]
+  def isConstant_Char(constant: Constant): Option[Char]
+  def isConstant_Int(constant: Constant): Option[Int]
+  def isConstant_Long(constant: Constant): Option[Long]
+  def isConstant_Float(constant: Constant): Option[Float]
+  def isConstant_Double(constant: Constant): Option[Double]
+  def isConstant_String(constant: Constant): Option[String]
+  def isConstant_ClassTag(constant: Constant): Option[Type]
+  def isConstant_Symbol(constant: Constant): Option[scala.Symbol]
+
+  def Constant_Unit_apply(): Constant
+  def Constant_Null_apply(): Constant
+  def Constant_Boolean_apply(x: Boolean): Constant
+  def Constant_Byte_apply(x: Byte): Constant
+  def Constant_Short_apply(x: Short): Constant
+  def Constant_Char_apply(x: Char): Constant
+  def Constant_Int_apply(x: Int): Constant
+  def Constant_Long_apply(x: Long): Constant
+  def Constant_Float_apply(x: Float): Constant
+  def Constant_Double_apply(x: Double): Constant
+  def Constant_String_apply(x: String): Constant
+  def Constant_ClassTag_apply(x: scala.reflect.ClassTag[_]): Constant
+  def Constant_Symbol_apply(x: scala.Symbol): Constant
+
   //
   // SYMBOLS
   //
@@ -807,23 +951,37 @@ trait Kernel {
   /** Symbol of a package definition */
   type PackageSymbol <: Symbol
 
+  def isPackageSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageSymbol]
+
   /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
   type ClassSymbol <: Symbol
+
+  def isClassSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassSymbol]
 
   /** Symbol of a type (parameter or member) definition. */
   type TypeSymbol <: Symbol
 
+  def isTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]
+
   /** Symbol representing a method definition. */
   type DefSymbol <: Symbol
+
+  def isDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefSymbol]
 
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValSymbol <: Symbol
 
+  def isValSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValSymbol]
+
   /** Symbol representing a bind definition. */
   type BindSymbol <: Symbol
 
+  def isBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]
+
   /** No symbol available. */
   type NoSymbol <: Symbol
+
+  def isNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean
 
   //
   // FLAGS
@@ -892,5 +1050,75 @@ trait Kernel {
 
   /** Convert `Type` to an `quoted.Type[T]` */
   def QuotedType_seal(self: Type)(implicit ctx: Context): scala.quoted.Type[_]
+
+  //
+  // DEFINITIONS
+  //
+
+  def Definitions_RootPackage: Symbol
+  def Definitions_RootClass: Symbol
+
+  def Definitions_EmptyPackageClass: Symbol
+
+  def Definitions_ScalaPackage: Symbol
+  def Definitions_ScalaPackageClass: Symbol
+
+  def Definitions_AnyClass: Symbol
+  def Definitions_AnyValClass: Symbol
+  def Definitions_ObjectClass: Symbol
+  def Definitions_AnyRefClass: Symbol
+  def Definitions_NullClass: Symbol
+  def Definitions_NothingClass: Symbol
+  def Definitions_UnitClass: Symbol
+  def Definitions_ByteClass: Symbol
+  def Definitions_ShortClass: Symbol
+  def Definitions_CharClass: Symbol
+  def Definitions_IntClass: Symbol
+  def Definitions_LongClass: Symbol
+  def Definitions_FloatClass: Symbol
+  def Definitions_DoubleClass: Symbol
+  def Definitions_BooleanClass: Symbol
+  def Definitions_StringClass: Symbol
+  def Definitions_ClassClass: Symbol
+  def Definitions_ArrayClass: Symbol
+  def Definitions_PredefModule: Symbol
+
+  def Definitions_JavaLangPackage: Symbol
+
+  def Definitions_ArrayModule: Symbol
+
+  def Definitions_Array_apply: Symbol
+  def Definitions_Array_clone: Symbol
+  def Definitions_Array_length: Symbol
+  def Definitions_Array_update: Symbol
+
+  def Definitions_RepeatedParamClass: Symbol
+
+  def Definitions_OptionClass: Symbol
+  def Definitions_NoneModule: Symbol
+  def Definitions_SomeModule: Symbol
+
+  def Definitions_ProductClass: Symbol
+  // TODO avoid default parameters
+  def Definitions_FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
+
+  def Definitions_TupleClass(arity: Int): Symbol
+
+  def Definitions_UnitType: Type
+  def Definitions_ByteType: Type
+  def Definitions_ShortType: Type
+  def Definitions_CharType: Type
+  def Definitions_IntType: Type
+  def Definitions_LongType: Type
+  def Definitions_FloatType: Type
+  def Definitions_DoubleType: Type
+  def Definitions_BooleanType: Type
+  def Definitions_AnyType: Type
+  def Definitions_AnyValType: Type
+  def Definitions_AnyRefType: Type
+  def Definitions_ObjectType: Type
+  def Definitions_NothingType: Type
+  def Definitions_NullType: Type
+  def Definitions_StringType: Type
 
 }
