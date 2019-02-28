@@ -115,6 +115,12 @@ package scala.tasty.reflect
  */
 trait Kernel {
 
+  /** Context of the macro expansion */
+  def rootContext: Context
+
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position
+
   //
   // CONTEXT
   //
