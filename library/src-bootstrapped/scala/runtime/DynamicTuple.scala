@@ -7,12 +7,12 @@ import scala.Tuple.Tail
 import scala.Tuple.Elem
 
 object DynamicTuple {
-  inline val $MaxSpecialized = 22
-  inline private val XXL = $MaxSpecialized + 1
+  inline val MaxSpecialized = 22
+  inline private val XXL = MaxSpecialized + 1
 
-  val $emptyArray = Array[Object]()
+  val empty$Array = Array[Object]()
 
-  def $toArray(xs: Tuple, n: Int) = {
+  def to$Array(xs: Tuple, n: Int) = {
     val arr = new Array[Object](n)
     var i = 0
     var it = xs.asInstanceOf[Product].productIterator
@@ -23,7 +23,7 @@ object DynamicTuple {
     arr
   }
 
-  def $consArray[H](x: H, elems: Array[Object]): Array[Object] = {
+  def cons$Array[H](x: H, elems: Array[Object]): Array[Object] = {
     val elems1 = new Array[Object](elems.length + 1)
     elems1(0) = x.asInstanceOf[Object]
     System.arraycopy(elems, 0, elems1, 1, elems.length)
@@ -59,7 +59,7 @@ object DynamicTuple {
 
   def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
     case self: Unit =>
-      $emptyArray
+      empty$Array
     case self: Tuple1[_] =>
       val t = self.asInstanceOf[Tuple1[Object]]
       Array(t._1)
@@ -94,7 +94,7 @@ object DynamicTuple {
       case self: Tuple4[_, _, _, _] =>
         Tuple5(x, self._1, self._2, self._3, self._4).asInstanceOf[Result]
       case _ =>
-        dynamicFromArray[Result]($consArray(x, dynamicToArray(self)))
+        dynamicFromArray[Result](cons$Array(x, dynamicToArray(self)))
     }
   }
 
