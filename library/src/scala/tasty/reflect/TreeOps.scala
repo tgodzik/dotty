@@ -16,16 +16,17 @@ trait TreeOps extends Core {
     def symbol(implicit ctx: Context): Symbol = kernel.Tree_symbol(self)
   }
 
-  val IsPackageClause: IsPackageClauseModule
-  abstract class IsPackageClauseModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause]
+  object IsPackageClause {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] =
+      kernel.isPackageClause(tree)
   }
 
   val PackageClause: PackageClauseModule
   abstract class PackageClauseModule {
     def apply(pid: Term.Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
     def copy(original: PackageClause)(pid: Term.Ref, stats: List[Tree])(implicit ctx: Context): PackageClause
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term.Ref, List[Tree])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term.Ref, List[Tree])] =
+      kernel.isPackageClause(tree).map(x => (x.pid, x.stats))
   }
 
   implicit class PackageClauseAPI(self: PackageClause) {
@@ -33,35 +34,35 @@ trait TreeOps extends Core {
     def stats(implicit ctx: Context): List[Tree] = kernel.PackageClause_stats(self)
   }
 
-  val IsImport: IsImportModule
-  abstract class IsImportModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Import]
+  object IsImport {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Import] =
+      kernel.isImport(tree)
   }
 
   val Import: ImportModule
   abstract class ImportModule {
     def apply(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
     def copy(original: Import)(impliedOnly: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import
-    def unapply(imp: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Boolean, Term, List[ImportSelector])] =
+      kernel.isImport(tree).map(x => (x.impliedOnly, x.expr, x.selectors))
   }
 
   implicit class ImportAPI(self: Import)  {
     def impliedOnly: Boolean = kernel.Import_impliedOnly(self)
     def expr(implicit ctx: Context): Term = kernel.Import_expr(self)
-    def selectors(implicit ctx: Context): List[ImportSelector] = kernel.Import_selectors(self)
+    def selectors(implicit ctx: Context): List[ImportSelector] =
+      kernel.Import_selectors(self)
   }
 
-  val IsStatement: IsStatementModule
-  abstract class IsStatementModule {
+  object IsStatement {
     /** Matches any Statement and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Statement] = kernel.isStatement(tree)
   }
 
   // ----- Definitions ----------------------------------------------
 
-  val IsDefinition: IsDefinitionModule
-  abstract class IsDefinitionModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition]
+  object IsDefinition {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = kernel.isDefinition(tree)
   }
 
   implicit class DefinitionAPI(self: Definition) {
@@ -70,16 +71,16 @@ trait TreeOps extends Core {
 
   // ClassDef
 
-  val IsClassDef: IsClassDefModule
-  abstract class IsClassDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef]
+  object IsClassDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = kernel.isClassDef(tree)
   }
 
   val ClassDef: ClassDefModule
   abstract class ClassDefModule {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
     def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[TermOrTypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], List[TypeTree], Option[ValDef], List[Statement])] =
+      kernel.isClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
   }
 
   implicit class ClassDefAPI(self: ClassDef) {
@@ -93,38 +94,38 @@ trait TreeOps extends Core {
 
   // DefDef
 
-  val IsDefDef: IsDefDefModule
-  abstract class IsDefDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef]
+  object IsDefDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = kernel.isDefDef(tree)
   }
 
   val DefDef: DefDefModule
   abstract class DefDefModule {
     def apply(symbol: DefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(implicit ctx: Context): DefDef
     def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
+      kernel.isDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
   }
 
   implicit class DefDefAPI(self: DefDef) {
     def typeParams(implicit ctx: Context): List[TypeDef] = kernel.DefDef_typeParams(self)
     def paramss(implicit ctx: Context): List[List[ValDef]] = kernel.DefDef_paramss(self)
-    def returnTpt(implicit ctx: Context): TypeTree = kernel.DefDef_returnTpt(self)
+    def returnTpt(implicit ctx: Context): TypeTree = kernel.DefDef_returnTpt(self) // TODO rename to tpt
     def rhs(implicit ctx: Context): Option[Term] = kernel.DefDef_rhs(self)
     def symbol(implicit ctx: Context): DefSymbol = kernel.DefDef_symbol(self)
   }
 
   // ValDef
 
-  val IsValDef: IsValDefModule
-  abstract class IsValDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef]
+  object IsValDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = kernel.isValDef(tree)
   }
 
   val ValDef: ValDefModule
   abstract class ValDefModule {
     def apply(sym: ValSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef
     def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] =
+      kernel.isValDef(tree).map(x => (x.name, x.tpt, x.rhs))
   }
 
   implicit class ValDefAPI(self: ValDef) {
@@ -135,16 +136,16 @@ trait TreeOps extends Core {
 
   // TypeDef
 
-  val IsTypeDef: IsTypeDefModule
-  abstract class IsTypeDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef]
+  object IsTypeDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = kernel.isTypeDef(tree)
   }
 
   val TypeDef: TypeDefModule
   abstract class TypeDefModule {
     def apply(symbol: TypeSymbol)(implicit ctx: Context): TypeDef
     def copy(original: TypeDef)(name: String, rhs: TypeOrBoundsTree)(implicit ctx: Context): TypeDef
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] =
+      kernel.isTypeDef(tree).map(x => (x.name, x.rhs))
   }
 
   implicit class TypeDefAPI(self: TypeDef) {
@@ -154,9 +155,9 @@ trait TreeOps extends Core {
 
   // PackageDef
 
-  val IsPackageDef: IsPackageDefModule
-  abstract class IsPackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef]
+  object IsPackageDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] =
+      kernel.isPackageDef(tree)
   }
 
   implicit class PackageDefAPI(self: PackageDef) {
@@ -165,9 +166,9 @@ trait TreeOps extends Core {
     def symbol(implicit ctx: Context): PackageSymbol = kernel.PackageDef_symbol(self)
   }
 
-  val PackageDef: PackageDefModule
-  abstract class PackageDefModule {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)]
+  object PackageDef {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] =
+      kernel.isPackageDef(tree).map(x => (x.name, x.owner))
   }
 
   // ----- Terms ----------------------------------------------------
@@ -179,22 +180,23 @@ trait TreeOps extends Core {
     def underlying(implicit ctx: Context): Term = kernel.Term_underlying(self)
   }
 
-  val IsTerm: IsTermModule
-  abstract class IsTermModule {
+  object IsTerm {
     /** Matches any term */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Term]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
+      kernel.isTerm(tree)
+
     /** Matches any term */
-    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term]
+    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
+      kernel.isTermNotTypeTree(parent)
   }
 
   /** Scala term. Any tree that can go in expression position. */
   val Term: TermModule
   abstract class TermModule extends TermCoreModule {
 
-    val IsIdent: IsIdentModule
-    abstract class IsIdentModule {
+    object IsIdent {
       /** Matches any Ident and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Ident] = kernel.isTerm_Ident(tree)
     }
 
     val Ref: RefModule
@@ -215,14 +217,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(name: String)(implicit ctx: Context): Ident
 
       /** Matches a term identifier and returns its name */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[String]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[String] =
+        kernel.isTerm_Ident(tree).map(_.name)
     }
 
-    val IsSelect: IsSelectModule
-    abstract class IsSelectModule {
+    object IsSelect {
       /** Matches any Select and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Select]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = kernel.isTerm_Select(tree)
     }
 
     /** Scala term selection */
@@ -241,14 +242,14 @@ trait TreeOps extends Core {
 
       def copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select
 
-      /** Matches `<qual: Term>.<name: String>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)]
+      /** Matches `<qualifier: Term>.<name: String>` */
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, String)] =
+        kernel.isTerm_Select(tree).map(x => (x.qualifier, x.name))
     }
 
-    val IsLiteral: IsLiteralModule
-    abstract class IsLiteralModule {
+    object IsLiteral {
       /** Matches any Literal and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Literal]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Literal] = kernel.isTerm_Literal(tree)
     }
 
     /** Scala literal constant */
@@ -261,14 +262,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(constant: Constant)(implicit ctx: Context): Literal
 
       /** Matches a literal constant */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Constant]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Constant] =
+        kernel.isTerm_Literal(tree).map(_.constant)
     }
 
-    val IsThis: IsThisModule
-    abstract class IsThisModule {
+    object IsThis {
       /** Matches any This and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[This]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[This] = kernel.isTerm_This(tree)
     }
 
     /** Scala `this` or `this[id]` */
@@ -281,14 +281,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This
 
       /** Matches `this[<id: Option[Id]>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Option[Id]] =
+        kernel.isTerm_This(tree).map(_.id)
 
     }
 
-    val IsNew: IsNewModule
-    abstract class IsNewModule {
+    object IsNew {
       /** Matches any New and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[New]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[New] = kernel.isTerm_New(tree)
     }
 
     /** Scala `new` */
@@ -301,14 +301,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): New
 
       /** Matches a `new <tpt: TypeTree>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeTree] =
+        kernel.isTerm_New(tree).map(_.tpt)
     }
 
-    val IsNamedArg: IsNamedArgModule
-    abstract class IsNamedArgModule {
+    object IsNamedArg {
       /** Matches any NamedArg and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[NamedArg] = kernel.isTerm_NamedArg(tree)
     }
 
     /** Scala named argument `x = y` in argument position */
@@ -321,14 +320,14 @@ trait TreeOps extends Core {
       def copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg
 
       /** Matches a named argument `<name: String> = <value: Term>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(String, Term)] =
+        kernel.isTerm_NamedArg(tree).map(x => (x.name, x.value))
 
     }
 
-    val IsApply: IsApplyModule
-    abstract class IsApplyModule {
+    object IsApply {
       /** Matches any Apply and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Apply]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Apply] = kernel.isTerm_Apply(tree)
     }
 
     /** Scala parameter application */
@@ -341,14 +340,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Apply
 
       /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Term])] =
+        kernel.isTerm_Apply(tree).map(x => (x.fun, x.args))
     }
 
-    val IsTypeApply: IsTypeApplyModule
-    abstract class IsTypeApplyModule {
+    object IsTypeApply {
       /** Matches any TypeApply and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply] =
+        kernel.isTerm_TypeApply(tree)
     }
 
     /** Scala type parameter application */
@@ -361,14 +360,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply
 
       /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[TypeTree])]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[TypeTree])] =
+        kernel.isTerm_TypeApply(tree).map(x => (x.fun, x.args))
 
     }
 
-    val IsSuper: IsSuperModule
-    abstract class IsSuperModule {
+    object IsSuper {
       /** Matches any Super and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Super]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Super] = kernel.isTerm_Super(tree)
     }
 
     /** Scala `x.super` or `x.super[id]` */
@@ -381,14 +380,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Id])] =
+        kernel.isTerm_Super(tree).map(x => (x.qualifier, x.id))
     }
 
-    val IsTyped: IsTypedModule
-    abstract class IsTypedModule {
+    object IsTyped {
       /** Matches any Typed and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Typed]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Typed] = kernel.isTerm_Typed(tree)
     }
 
     /** Scala ascription `x: T` */
@@ -401,14 +399,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed
 
       /** Matches `<expr: Term>: <tpt: TypeTree>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TypeTree)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, TypeTree)] =
+        kernel.isTerm_Typed(tree).map(x => (x.expr, x.tpt))
 
     }
 
-    val IsAssign: IsAssignModule
-    abstract class IsAssignModule {
+    object IsAssign {
       /** Matches any Assign and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Assign]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Assign] = kernel.isTerm_Assign(tree)
     }
 
     /** Scala assign `x = y` */
@@ -421,14 +419,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Assign
 
       /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
+        kernel.isTerm_Assign(tree).map(x => (x.lhs, x.rhs))
     }
 
-    val IsBlock: IsBlockModule
-    abstract class IsBlockModule {
+    object IsBlock {
       /** Matches any Block and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Block]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Block] = kernel.isTerm_Block(tree)
     }
 
     /** Scala code block `{ stat0; ...; statN; expr }` term */
@@ -441,14 +438,13 @@ trait TreeOps extends Core {
       def copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block
 
       /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Statement], Term)]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] =
+        kernel.isTerm_Block(tree).map(x => (x.statements, x.expr))
     }
 
-    val IsLambda: IsLambdaModule
-    abstract class IsLambdaModule {
+    object IsLambda {
       /** Matches any Lambda and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.isTerm_Lambda(tree)
     }
 
     val Lambda: LambdaModule
@@ -458,14 +454,13 @@ trait TreeOps extends Core {
 
       def copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])]
-
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])] =
+        kernel.isTerm_Lambda(tree).map(x => (x.meth, x.tptOpt))
     }
 
-    val IsIf: IsIfModule
-    abstract class IsIfModule {
+    object IsIf {
       /** Matches any If and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[If]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[If] = kernel.isTerm_If(tree)
     }
 
     /** Scala `if`/`else` term */
@@ -478,14 +473,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If
 
       /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term, Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term, Term)] =
+        kernel.isTerm_If(tree).map(x => (x.cond, x.thenp, x.elsep))
 
     }
 
-    val IsMatch: IsMatchModule
-    abstract class IsMatchModule {
+    object IsMatch {
       /** Matches any Match and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Match]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Match] = kernel.isTerm_Match(tree)
     }
 
     /** Scala `match` term */
@@ -498,14 +493,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
 
       /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef])] =
+        kernel.isTerm_Match(tree).map(x => (x.scrutinee, x.cases))
 
     }
 
-    val IsTry: IsTryModule
-    abstract class IsTryModule {
+    object IsTry {
       /** Matches any Try and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Try]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Try] = kernel.isTerm_Try(tree)
     }
 
     /** Scala `try`/`catch`/`finally` term */
@@ -518,14 +513,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try
 
       /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
+        kernel.isTerm_Try(tree).map(x => (x.body, x.cases, x.finalizer))
 
     }
 
-    val IsReturn: IsReturnModule
-    abstract class IsReturnModule {
+    object IsReturn {
       /** Matches any Return and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Return]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Return] = kernel.isTerm_Return(tree)
     }
 
     /** Scala local `return` */
@@ -538,14 +533,14 @@ trait TreeOps extends Core {
       def copy(original: Tree)(expr: Term)(implicit ctx: Context): Return
 
       /** Matches `return <expr: Term>` */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Term]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
+        kernel.isTerm_Return(tree).map(_.expr)
 
     }
 
-    val IsRepeated: IsRepeatedModule
-    abstract class IsRepeatedModule {
+    object IsRepeated {
       /** Matches any Repeated and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Repeated] = kernel.isTerm_Repeated(tree)
     }
 
     val Repeated: RepeatedModule
@@ -555,14 +550,14 @@ trait TreeOps extends Core {
 
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree)(implicit ctx: Context): Repeated
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Term], TypeTree)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Term], TypeTree)] =
+        kernel.isTerm_Repeated(tree).map(x => (x.elems, x.elemtpt))
 
     }
 
-    val IsInlined: IsInlinedModule
-    abstract class IsInlinedModule {
+    object IsInlined {
       /** Matches any Inlined and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Inlined] = kernel.isTerm_Inlined(tree)
     }
 
     val Inlined: InlinedModule
@@ -572,14 +567,14 @@ trait TreeOps extends Core {
 
       def copy(original: Tree)(call: Option[TermOrTypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)] =
+        kernel.isTerm_Inlined(tree).map(x => (x.call, x.bindings, x.body))
 
     }
 
-    val IsSelectOuter: IsSelectOuterModule
-    abstract class IsSelectOuterModule {
+    object IsSelectOuter {
       /** Matches any SelectOuter and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[SelectOuter] = kernel.isTerm_SelectOuter(tree)
     }
 
     val SelectOuter: SelectOuterModule
@@ -589,14 +584,14 @@ trait TreeOps extends Core {
 
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter
 
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
+        kernel.isTerm_SelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
 
     }
 
-    val IsWhile: IsWhileModule
-    abstract class IsWhileModule {
+    object IsWhile {
       /** Matches any While and returns it */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[While]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[While] = kernel.isTerm_While(tree)
     }
 
     val While: WhileModule
@@ -608,7 +603,8 @@ trait TreeOps extends Core {
       def copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While
 
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)] =
+        kernel.isTerm_While(tree).map(x => (x.cond, x.body))
 
     }
   }
