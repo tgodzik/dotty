@@ -7,7 +7,6 @@ class ReflectionImpl private (ctx: Contexts.Context, pos: SourcePosition)
     extends scala.tasty.Reflection
     with CoreImpl
     with ContextOpsImpl
-    with PrintersImpl
     with SymbolOpsImpl
     with TreeOpsImpl
     with TypeOrBoundsTreesOpsImpl
