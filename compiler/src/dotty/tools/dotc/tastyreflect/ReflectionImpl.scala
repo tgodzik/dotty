@@ -8,8 +8,6 @@ class ReflectionImpl private (ctx: Contexts.Context, pos: SourcePosition)
     with CoreImpl
     with ContextOpsImpl
     with SymbolOpsImpl
-    with TreeOpsImpl
-    with TypeOrBoundsTreesOpsImpl
     with TypeOrBoundsOpsImpl {
 
   val kernel: KernelImpl = new KernelImpl(ctx, pos)
