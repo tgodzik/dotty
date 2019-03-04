@@ -1143,17 +1143,11 @@ object Build {
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(`dotty-interfaces`).
       dependsOn(dottyLibrary).
-      settings(dottyCompilerSettings).
-      bootstrappedSettings(
-        // To support kind polymorphism of scala.quote.Type
-        scalacOptions in Compile += "-Ykind-polymorphism"
-      )
+      settings(dottyCompilerSettings)
 
     def asDottyLibrary(implicit mode: Mode): Project = project.withCommonSettings.
       settings(dottyLibrarySettings).
       bootstrappedSettings(
-        // To support kind polymorphism of scala.quote.Type
-        scalacOptions in Compile += "-Ykind-polymorphism",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
         scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath)
       )
