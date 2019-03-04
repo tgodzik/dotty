@@ -6,7 +6,6 @@ import dotty.tools.dotc.util.{SourcePosition, Spans}
 class ReflectionImpl private (ctx: Contexts.Context, pos: SourcePosition)
     extends scala.tasty.Reflection
     with CoreImpl
-    with ContextOpsImpl
     with SymbolOpsImpl
     with TypeOrBoundsOpsImpl {
 
