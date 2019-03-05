@@ -15,7 +15,7 @@ object Location {
       if (sym == definitions.RootClass || sym == definitions.EmptyPackageClass) acc
       else listOwnerNames(sym.owner, sym.name :: acc)
 
-    val list = listOwnerNames(rootContext.owner, Nil)
+    val list = listOwnerNames(ctx.owner, Nil)
     '{new Location(${list.toExpr})}
   }
 

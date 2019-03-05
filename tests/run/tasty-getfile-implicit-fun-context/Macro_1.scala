@@ -12,7 +12,7 @@ object SourceFiles {
   def getThisFileImpl: Macro[String] = {
     val reflect = tastyContext
     import reflect._
-    rootContext.source.getFileName.toString.toExpr
+    ctx.source.getFileName.toString.toExpr
   }
 
 

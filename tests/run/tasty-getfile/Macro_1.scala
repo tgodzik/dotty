@@ -8,7 +8,7 @@ object SourceFiles {
 
   private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
     import reflect._
-    rootContext.source.getFileName.toString.toExpr
+    ctx.source.getFileName.toString.toExpr
   }
 
 }
