@@ -6,8 +6,7 @@ import dotty.tools.dotc.util.{SourcePosition, Spans}
 class ReflectionImpl private (ctx: Contexts.Context, pos: SourcePosition)
     extends scala.tasty.Reflection
     with CoreImpl
-    with SymbolOpsImpl
-    with TypeOrBoundsOpsImpl {
+    with SymbolOpsImpl {
 
   val kernel: KernelImpl = new KernelImpl(ctx, pos)
 
