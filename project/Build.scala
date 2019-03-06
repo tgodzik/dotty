@@ -845,10 +845,12 @@ object Build {
 
         val scalacClasspath = toClasspath(scalaLibrary, scalaCompiler, scalaReflect)
         val pluginClasspath = toClasspath(pluginJar, dottyLibrary, dottyCompiler, dottyInterfaces)
+        val dottyClasspath = toClasspath(scalaLibrary, dottyLibrary, dottyCompiler, dottyInterfaces)
 
         Seq(
           "-Dscalac.classpath=" + scalacClasspath,
           "-Dscalac.plugin.classpath=" + pluginClasspath,
+          "-Ddotty.classpath=" + dottyClasspath,
           "-Dtest.root.directory=" + (baseDirectory.value / "test-resources")
         )
       }

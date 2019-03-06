@@ -18,7 +18,8 @@ public final class CompilerTest {
     @Parameterized.Parameters(name = "{index}: {0}")
     public static Collection<Compiler[]> parameters() {
         return Arrays.asList(new Compiler[][]{
-                {Scalac$.MODULE$.apply()}
+                {Scalac$.MODULE$.apply()},
+                {Dotty$.MODULE$.apply()}
         });
     }
 
