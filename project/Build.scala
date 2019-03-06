@@ -808,44 +808,18 @@ object Build {
       libraryDependencies := Seq("org.scala-lang" % "scalap" % scalacVersion)
     )
 
-  lazy val tasty4scalac = project.
+  lazy val scalacPluginSettings = commonSettings ++ Seq(
+    version := dottyVersion,
+    scalaVersion := scalacVersion
+  )
+
+  lazy val `tasty4scalac-plugin` = project.
+    in(file("tasty4scalac/plugin")).
     dependsOn(`dotty-compiler`).
-    settings(commonSettings).
+    settings(scalacPluginSettings).
     settings(
       libraryDependencies := Seq("org.scala-lang" % "scala-compiler" % scalacVersion),
-      fork in Test := true,
-
-      // From kind-projector
-      scalacOptions in Test ++= {
-        val pluginJar = (packageBin in Compile).value
-        val interfacesJar = packageBin.in(`dotty-interfaces`, Compile).value
-        val libraryJar = packageBin.in(`dotty-library`, Compile).value
-        val compilerJar = packageBin.in(`dotty-compiler`, Compile).value
-        Seq(
-          s"-Xplugin:${pluginJar.getAbsolutePath}:${libraryJar.getAbsolutePath}:${compilerJar.getAbsolutePath}:${interfacesJar.getAbsolutePath}",
-          s"-Jdummy=${pluginJar.lastModified}" // ensures recompile
-        )
-      },
-      scalacOptions in Test += "-Yrangepos"
     )
-  // lazy val tasty4scalacTests = project.
-  //   dependsOn(tasty4scalac % "plugin->default(compile)").
-  //   settings(commonSettings).
-  //   settings(
-  //     autoCompilerPlugins := true,
-  //     scalacOptions ++= {
-  //       val jar = (packageBin in Compile in tasty4scalac).value
-
-  //       val libraryJar = packageBin.in(`dotty-library`, Compile).value
-  //       val compilerJar = packageBin.in(`dotty-compiler`, Compile).value
-  //       Seq(
-  //         "-Yrangepos",
-  //         s"-Xplugin:${jar.getAbsolutePath}:${compilerJar}:${libraryJar}",
-  //         s"-Jdummy=${jar.lastModified}" // ensures recompile
-  //       )
-  //     }
-  //   )
-
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.
