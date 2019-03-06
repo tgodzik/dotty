@@ -848,7 +848,8 @@ object Build {
 
         Seq(
           "-Dscalac.classpath=" + scalacClasspath,
-          "-Dscalac.plugin.classpath=" + pluginClasspath
+          "-Dscalac.plugin.classpath=" + pluginClasspath,
+          "-Dtest.root.directory=" + (baseDirectory.value / "test-resources")
         )
       }
     )
