@@ -827,6 +827,30 @@ object Build {
     settings(scalacPluginSettings).
     settings(
       fork in Test := true,
+      javaOptions ++= {
+        val attList = (dependencyClasspath in Runtime).value
+        def lib(name: String): String = findLib(attList, name)
+
+        def toClasspath(strings: String*): String = strings.mkString(File.pathSeparator)
+
+        val scalaLibrary = lib("scala-library")
+        val scalaCompiler = lib("scala-compiler")
+        val scalaReflect = lib("scala-reflect")
+
+        val dottyLibrary = packageBin.in(`dotty-library`, Compile).value.absolutePath
+        val dottyCompiler = packageBin.in(`dotty-compiler`, Compile).value.absolutePath
+        val dottyInterfaces = packageBin.in(`dotty-interfaces`, Compile).value.absolutePath
+
+        val pluginJar = packageBin.in(`tasty4scalac-plugin`, Compile).value.absolutePath
+
+        val scalacClasspath = toClasspath(scalaLibrary, scalaCompiler, scalaReflect)
+        val pluginClasspath = toClasspath(pluginJar, dottyLibrary, dottyCompiler, dottyInterfaces)
+
+        Seq(
+          "-Dscalac.classpath=" + scalacClasspath,
+          "-Dscalac.plugin.classpath=" + pluginClasspath
+        )
+      }
     )
 
   // sbt plugin to use Dotty in your own build, see
