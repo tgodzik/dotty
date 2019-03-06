@@ -19,6 +19,7 @@ val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 
 val `tasty4scalac-plugin` = Build.`tasty4scalac-plugin`
+val `tasty4scalac-integration` = Build.`tasty4scalac-integration`
 
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`

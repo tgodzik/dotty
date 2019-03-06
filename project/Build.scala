@@ -821,6 +821,14 @@ object Build {
       libraryDependencies := Seq("org.scala-lang" % "scala-compiler" % scalacVersion),
     )
 
+  lazy val `tasty4scalac-integration` = project.
+    in(file("tasty4scalac/integration")).
+    dependsOn(`tasty4scalac-plugin`).
+    settings(scalacPluginSettings).
+    settings(
+      fork in Test := true,
+    )
+
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
