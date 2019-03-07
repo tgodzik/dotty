@@ -17,7 +17,10 @@ val `scala-library` = Build.`scala-library`
 val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
-val tasty4scalac = Build.tasty4scalac
+
+val `tasty4scalac-plugin` = Build.`tasty4scalac-plugin`
+val `tasty4scalac-integration` = Build.`tasty4scalac-integration`
+
 val dist = Build.dist
 val `dist-bootstrapped` = Build.`dist-bootstrapped`
 val `community-build` = Build.`community-build`
