@@ -38,7 +38,7 @@ final class Scalac(settings: Settings) extends Global(settings, NoReporter) with
   }
 }
 
-object Scalac extends Compiler.Factory {
+object Scalac {
   private val classpath = System.getProperty("scalac.classpath")
   private val pluginPath = System.getProperty("scalac.plugin.classpath")
 

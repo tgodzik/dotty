@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Contexts
 import dotty.tools.dotc.core.Contexts.ContextBase
 import dotty.tools.dotc.reporting.Reporter.NoReporter
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import tasty4scalac.Compiler.Factory
 
 final class Dotty(val baseContext: Contexts.Context) extends dotty.tools.dotc.Compiler with Compiler {
   override def compile(code: String): Set[Tasty] = {
@@ -36,11 +35,11 @@ final class Dotty(val baseContext: Contexts.Context) extends dotty.tools.dotc.Co
   }
 }
 
-object Dotty extends Factory {
+object Dotty {
   private val classpath = System.getProperty("dotty.classpath")
 
-  override def apply(): Compiler = {
-    implicit val ctx: Contexts.FreshContext = new ContextBase().initialCtx.fresh
+  def apply(): Compiler = {
+    val ctx = new ContextBase().initialCtx.fresh
     ctx.setSetting(ctx.settings.classpath, classpath)
     ctx.setSetting(ctx.settings.encoding, "UTF8")
 

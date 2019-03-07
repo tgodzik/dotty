@@ -10,8 +10,4 @@ trait Compiler {
 object Compiler {
   def dotty(): Compiler = Dotty()
   def scalac(): Compiler = Scalac()
-
-  trait Factory {
-    def apply(): Compiler
-  }
 }
