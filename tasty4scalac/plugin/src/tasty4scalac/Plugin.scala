@@ -1,20 +1,13 @@
 package tasty4scalac
 
-import scala.tools.nsc.Global
-import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
-import scala.collection.mutable
-import scala.tools.nsc.SubComponent
-import scala.tools.nsc.Phase
-import scala.tools.nsc.backend.jvm.GenBCode
-import scala.tools.nsc.typechecker.Analyzer
-import scala.tools.nsc.transform.Erasure
-
 import dotty.tools.dotc.core.tasty.TastyPrinter
 
-import java.io._
-import java.nio.file._
+import scala.tools.nsc.{Global, Phase}
+import scala.tools.nsc.backend.jvm.PostProcessorFrontendAccess
+import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
 
-class Plugin(val global: Global) extends NscPlugin { self =>
+class Plugin(val global: Global) extends NscPlugin {
+  self =>
   val name = "tasty"
   val description = "Pickles Scala trees (tasty format)."
   val components = List[NscPluginComponent](TastyComponent)
@@ -42,8 +35,10 @@ class Plugin(val global: Global) extends NscPlugin { self =>
   } with NscPluginComponent {
     override val runsAfter = List("superaccessors")
     override val runsRightAfter = Some("superaccessors")
-    val phaseName = "tasty"
+    override val phaseName = "tasty"
     override def description = "pickle tasty trees"
+
+    private val frontendAccess = new PostProcessorFrontendAccess.PostProcessorFrontendAccessImpl(global)
 
     import global._
 
@@ -52,24 +47,22 @@ class Plugin(val global: Global) extends NscPlugin { self =>
         val tree = unit.body
         assert(!unit.isJava)
 
-        println("Hello: " + tree)
         val pickler = new ScalacTastyPickler(global)
         val treePkl = pickler.treePkl
         treePkl.pickle(List(tree.asInstanceOf[treePkl.g.Tree]))
 
         treePkl.compactify()
-        val pickled = pickler.assembleParts()
-
-        val ctx = (new dotty.tools.dotc.core.Contexts.ContextBase).initialCtx
-        new TastyPrinter(pickled)(ctx).printContents()
-
-        val dir = Paths.get("mine/collection/immutable")
-        Files.createDirectories(dir)
-        val path = dir.resolve("Vector.tasty")
-        Files.write(path, pickled)
-
-        // dotty.tools.dotc.core.Main.process("-from-tasty"
+        writeTasty(unit, pickler)
       }
+    }
+
+    private def writeTasty(unit: CompilationUnit, pickler: ScalacTastyPickler): Unit = {
+      val pickled = pickler.assembleParts()
+      val outputDirectory = frontendAccess.compilerSettings.outputDirectory(unit.source.file)
+      val tastyFile = outputDirectory.fileNamed(unit.source.file.name + ".tasty")
+      val out = tastyFile.output
+      out.write(pickled)
+      out.close()
     }
   }
 }
