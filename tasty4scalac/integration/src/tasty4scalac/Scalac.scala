@@ -39,9 +39,9 @@ final class Scalac(settings: Settings) extends Global(settings, NoReporter) with
 }
 
 object Scalac {
-  private val classpath = System.getProperty("scalac.classpath")
-  private val pluginPath = System.getProperty("scalac.plugin.classpath")
+  private val classpath = "/home/tgodzik/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.8.jar:/home/tgodzik/.ivy2/cache/org.scala-lang/scala-compiler/jars/scala-compiler-2.12.8.jar:/home/tgodzik/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.12.8.jar" // System.getProperty("scalac.classpath")
 
+  private val pluginPath = "/home/tgodzik/Documents/dotty/tasty4scalac/plugin/target/scala-2.12/tasty4scalac-plugin_2.12-0.14.0-bin-SNAPSHOT.jar:/home/tgodzik/Documents/dotty/library/target/scala-2.12/dotty-library_2.12-0.14.0-bin-SNAPSHOT-nonbootstrapped.jar:/home/tgodzik/Documents/dotty/compiler/target/scala-2.12/dotty-compiler_2.12-0.14.0-bin-SNAPSHOT-nonbootstrapped.jar:/home/tgodzik/Documents/dotty/interfaces/target/dotty-interfaces-0.14.0-bin-SNAPSHOT.jar" //  System.getProperty("scalac.plugin.classpath")
   def apply(): Scalac = {
     val settings = new Settings()
     settings.classpath.value = classpath

@@ -64,6 +64,11 @@ class TreeBuffer extends TastyBuffer(50000) {
     fillAddr(at, addr)
   }
 
+  /** Fill previously reserved field with a reference with a current addr */
+  def fillRef(at: Addr, relative: Boolean): Unit = {
+    fillRef(at, currentAddr, relative)
+  }
+
   /** The amount by which the bytes at the given address are shifted under compression */
   def deltaAt(at: Addr): Int = {
     val idx = bestFit(offsets, numOffsets, at.index - 1)

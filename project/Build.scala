@@ -827,6 +827,7 @@ object Build {
     settings(scalacPluginSettings).
     settings(
       fork in Test := true,
+      fork in Compile := true,
       javaOptions ++= {
         val attList = (dependencyClasspath in Runtime).value
         def lib(name: String): String = findLib(attList, name)
@@ -846,7 +847,7 @@ object Build {
         val scalacClasspath = toClasspath(scalaLibrary, scalaCompiler, scalaReflect)
         val pluginClasspath = toClasspath(pluginJar, dottyLibrary, dottyCompiler, dottyInterfaces)
         val dottyClasspath = toClasspath(scalaLibrary, dottyLibrary, dottyCompiler, dottyInterfaces)
-
+        println(scalacClasspath)
         Seq(
           "-Dscalac.classpath=" + scalacClasspath,
           "-Dscalac.plugin.classpath=" + pluginClasspath,

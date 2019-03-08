@@ -565,6 +565,8 @@ object Names {
     i == len
   }
 
+  def copyFromChrs(start : Int, length : Int): Array[Byte] = Codec.toUTF8(chrs, start, length)
+
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */

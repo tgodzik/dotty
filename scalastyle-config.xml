@@ -80,6 +80,7 @@
  <check level="warning" class="org.scalastyle.scalariform.StructuralTypeChecker" enabled="false"></check>
  <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="true">
   <parameters>
+   <customMessage>Please add space after if</customMessage>
    <parameter name="regex"><![CDATA[if\(]]></parameter>
   </parameters>
  </check>
