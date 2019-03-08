@@ -1,8 +1,10 @@
 package tasty4scalac;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import scala.collection.immutable.Set;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,8 +26,9 @@ public final class CompilerTest {
     }
 
     @Test
-    public void compilesSimpleClass() {
+    public void generatesTasty() {
         String code = "class A";
-        compiler.compile(code);
+        Set<Tasty> tastySet = compiler.compile(code);
+        Assert.assertFalse(tastySet.isEmpty());
     }
 }

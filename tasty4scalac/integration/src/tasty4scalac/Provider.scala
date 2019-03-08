@@ -15,6 +15,8 @@ object Providers {
   def compiledSourceProvider: Provider = new CompiledSources(root)
 
   private final class CompiledSources(root: Path) extends Provider {
+    private val scalaExtension = ".scala"
+
     private val negativeTests = Seq(
       Pattern.compile(".*/neg(-.*)?/.*"),
       Pattern.compile(".*/run-with-compiler/.*"),
@@ -34,12 +36,12 @@ object Providers {
         .iterator()
         .asScala
         .filterNot(path => negativeTests.exists(p => p.matcher(path.toString).matches()))
-        .filter(_.getFileName.toString.endsWith(".scala"))
+        .filter(_.getFileName.toString.endsWith(scalaExtension))
         .toSeq
     }
 
     private def createTestCase(path: Path): CompileSource = {
-      val name = root.relativize(path).toString.dropRight(6) // drop ".scala"
+      val name = root.relativize(path).toString.dropRight(scalaExtension.length)
       new CompileSource(name, path)
     }
   }
