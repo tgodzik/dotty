@@ -1,8 +1,8 @@
-package tasty4scalac.pickler
+package dotty.tools.dotc.core.tasty.pickler
 
 import dotty.tools.dotc.core.tasty.TastyBuffer
 import dotty.tools.dotc.core.tasty.TastyBuffer.NameRef
-import tasty4scalac.ast.{AST, ASTTranslator}
+import dotty.tools.dotc.core.tasty.translator.{AST, ASTTranslator}
 
 import scala.collection.mutable
 

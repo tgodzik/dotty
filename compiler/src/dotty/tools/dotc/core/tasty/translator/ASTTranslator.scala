@@ -1,4 +1,4 @@
-package tasty4scalac.ast
+package dotty.tools.dotc.core.tasty.translator
 
 
 trait ASTConstants[Constant] {

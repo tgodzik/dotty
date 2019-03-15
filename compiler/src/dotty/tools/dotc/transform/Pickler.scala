@@ -20,7 +20,8 @@ object Pickler {
 
 /** This phase pickles trees */
 class Pickler extends Phase {
-  import ast.tpd._
+
+  import dotty.tools.dotc.ast.tpd._
 
   override def phaseName: String = Pickler.name
 

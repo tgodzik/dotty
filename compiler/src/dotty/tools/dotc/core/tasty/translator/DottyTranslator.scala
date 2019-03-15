@@ -1,4 +1,4 @@
-package tasty4scalac.ast
+package dotty.tools.dotc.core.tasty.translator
 
 import dotty.tools.dotc.ast.Trees.{Ident, MemberDef, This}
 import dotty.tools.dotc.ast.{Trees, tpd}

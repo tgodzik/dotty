@@ -1,6 +1,6 @@
-package tasty4scalac
+package dotty.tools.dotc.core.tasty.pickler
 
-import tasty4scalac.ast.AST
+import dotty.tools.dotc.core.tasty.translator.AST
 
 import scala.collection.JavaConverters._
 

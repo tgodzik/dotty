@@ -1,9 +1,8 @@
-package tasty4scalac.pickler
+package dotty.tools.dotc.core.tasty.pickler
 
 import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyFormat, TastyPickler, TreeBuffer}
-import tasty4scalac.MutableSymbolAddressMap
-import tasty4scalac.ast.{AST, ASTTranslator}
+import dotty.tools.dotc.core.tasty.translator.{AST, ASTTranslator}
 
 
 object TreePicklerT {

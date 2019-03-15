@@ -1,9 +1,9 @@
-package tasty4scalac.pickler
+package dotty.tools.dotc.core.tasty.pickler
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.tasty.TastyBuffer.{Addr, NameRef}
 import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHash, TreePickler}
-import tasty4scalac.ast.{AST, ASTTranslator}
+import dotty.tools.dotc.core.tasty.translator.{AST, ASTTranslator}
 import TastyBuffer._
 import dotty.tools.dotc.core.tasty.TastyFormat._
 

@@ -1,9 +1,8 @@
-package tasty4scalac.ast
+package tasty4scalac
+
+import dotty.tools.dotc.core.tasty.translator._
 
 import scala.tools.nsc.Global
-
-
-
 
 object ScalacTranslator {
 
