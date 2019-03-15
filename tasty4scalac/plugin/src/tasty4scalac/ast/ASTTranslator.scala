@@ -84,12 +84,18 @@ trait ASTSymbols[Symbol, Context, Name] {
 
   def fullName(symbol: Symbol)(implicit context: Context): Name
 
+  def name(symbol: Symbol)(implicit context: Context): Name
+
   def isEffectiveRoot(symbol: Symbol)(implicit context: Context): Boolean
 }
 
-trait ASTTypes[Type, Context, Constant, Symbol, Annotation] {
+trait ASTTypes[Type, Context, Constant, Symbol, Annotation, ParamRef] {
 
   def stripTypeVar(tpe: Type)(implicit ctx: Context): Type
+
+  def binder(tpe: ParamRef): Type
+
+  def paramNum(tpe: ParamRef): Int
 
   protected def isConstant(tpe: Type): Boolean
 
@@ -131,6 +137,7 @@ trait ASTTypes[Type, Context, Constant, Symbol, Annotation] {
 
   def isParamRef(tpe: Type): Boolean
 
+  def paramRef(tpe: Type): ParamRef
 
 }
 
@@ -142,11 +149,14 @@ trait ASTTranslator[A <: AST] {
 
   val symbols: ASTSymbols[A#Symbol, A#Context, A#Name]
 
-  val types: ASTTypes[A#Type, A#Context, A#Constant, A#Symbol, A#Annotation]
+  val types: ASTTypes[A#Type, A#Context, A#Constant, A#Symbol, A#Annotation, A#ParamRef]
 
-  def emptyTree : A#Tree
+  def emptyTree: A#Tree
 
   def getTree(annotation: A#Annotation): A#Tree
+
+  // TODO is Template/class, Hole or type
+  def shouldPickleTree(tree: A#Tree): Boolean
 
   def isType(tree: A#Tree): Boolean
 
@@ -184,18 +194,18 @@ trait ASTTranslator[A <: AST] {
 
   def isValDef(tpe: A#Tree): Boolean
 
-  def getValDef(tpe: A#Tree): (A#Symbol, A#Tree)
+  def getValDef(tpe: A#Tree): (A#Symbol, A#Tree, A#Tree)
 
   object ValDef {
-    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree)] = if (isValDef(arg)) Some(getValDef(arg)) else None
+    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree, A#Tree)] = if (isValDef(arg)) Some(getValDef(arg)) else None
   }
 
   def isDefDef(tpe: A#Tree): Boolean
 
-  def getDefDef(tpe: A#Tree): (A#Symbol, A#Tree, A#Tree)
+  def getDefDef(tpe: A#Tree): (A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])
 
   object DefDef {
-    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree, A#Tree)] = if (isDefDef(arg)) Some(getDefDef(arg)) else None
+    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])] = if (isDefDef(arg)) Some(getDefDef(arg)) else None
   }
 
   def isTypeDef(tpe: A#Tree): Boolean
@@ -204,6 +214,14 @@ trait ASTTranslator[A <: AST] {
 
   object TypeDef {
     def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree)] = if (isTypeDef(arg)) Some(getTypeDef(arg)) else None
+  }
+
+  def isPackageDef(tree: A#Tree): Boolean
+
+  def getPackageDef(tree: A#Tree): (A#Tree, List[A#Tree])
+
+  object PackageDef {
+    def unapply(arg: A#Tree): Option[(A#Tree, List[A#Tree])] = if (isPackageDef(arg)) Some(getPackageDef(arg)) else None
   }
 
 }

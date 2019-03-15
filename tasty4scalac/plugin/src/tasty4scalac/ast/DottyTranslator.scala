@@ -92,9 +92,11 @@ class DottySymbols extends ASTSymbols[Symbols.Symbol, Contexts.Context, Names.Na
   override def fullName(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Names.Name = symbol.fullName
 
   override def isEffectiveRoot(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Boolean = symbol.isEffectiveRoot
+
+  override def name(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Names.Name = ???
 }
 
-class DottyTypes extends ASTTypes[Trees.Tree[_], Types.Type, Contexts.Context, Constants.Constant, Symbols.Symbol, Annotations.Annotation] {
+class DottyTypes extends ASTTypes[Types.Type, Contexts.Context, Constants.Constant, Symbols.Symbol, Annotations.Annotation, Types.ParamRef] {
   override def stripTypeVar(tpe: Types.Type)(implicit ctx: Contexts.Context): Types.Type = tpe.stripTypeVar
 
   override protected def isConstant(tpe: Types.Type): Boolean = ???
@@ -119,17 +121,11 @@ class DottyTypes extends ASTTypes[Trees.Tree[_], Types.Type, Contexts.Context, C
 
   override def isErasedMethod(tpe: Types.Type): Boolean = ???
 
-  override def isDefDef(tpe: Types.Type): Boolean = ???
+  override def binder(tpe: Types.ParamRef): Types.Type = ???
 
-  override def getDefDef(tpe: Types.Type): (Symbols.Symbol, Types.Type) = ???
+  override def paramNum(tpe: Types.ParamRef): Int = ???
 
-  override def isValDef(tpe: Types.Type): Boolean = ???
-
-  override def getValDef(tpe: Types.Type): (Symbols.Symbol, Types.Type, Trees.Tree[_]) = ???
-
-  override def isTypeDef(tpe: Types.Type): Boolean = ???
-
-  override def getTypeDef(tpe: Types.Type): (Symbols.Symbol, Trees.Tree[_]) = ???
+  override def paramRef(tpe: Types.Type): Types.ParamRef = ???
 }
 
 class DottyTranslator extends ASTTranslator[DottyAST.type] {
@@ -140,7 +136,7 @@ class DottyTranslator extends ASTTranslator[DottyAST.type] {
 
   override val symbols: ASTSymbols[Symbols.Symbol, Contexts.Context, Names.Name] = new DottySymbols
 
-  override val types: ASTTypes[Trees.Tree[_], Types.Type, Contexts.Context, Constant, Symbols.Symbol, Annotations.Annotation] = new DottyTypes
+  override val types: ASTTypes[Types.Type, Contexts.Context, Constant, Symbols.Symbol, Annotations.Annotation, Types.ParamRef] = new DottyTypes
 
   override def isIdent(t: tpd.Tree): Boolean = t.isInstanceOf[Ident[_]]
 
@@ -172,4 +168,26 @@ class DottyTranslator extends ASTTranslator[DottyAST.type] {
 
 
   override protected def isMemberDef(tree: DottyAST.Tree): Boolean = ???
+
+  override def emptyTree: DottyAST.Tree = ???
+
+  override def getTree(annotation: Annotations.Annotation): DottyAST.Tree = ???
+
+  override def shouldPickleTree(tree: DottyAST.Tree): Boolean = ???
+
+  override def isValDef(tpe: DottyAST.Tree): Boolean = ???
+
+  override def getValDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree) = ???
+
+  override def isDefDef(tpe: DottyAST.Tree): Boolean = ???
+
+  override def getDefDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree, List[tpd.Tree], List[List[tpd.Tree]]) = ???
+
+  override def isTypeDef(tpe: DottyAST.Tree): Boolean = ???
+
+  override def getTypeDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree) = ???
+
+  override def isPackageDef(tree: DottyAST.Tree): Boolean = ???
+
+  override def getPackageDef(tree: DottyAST.Tree): (DottyAST.Tree, List[tpd.Tree]) = ???
 }

@@ -10,15 +10,6 @@ object ScalacTranslator {
 
     new ASTTranslator[ScalacAST.type] {
 
-      override def isUnit(c: ScalacAST.Constant): Boolean = c.tag == global.UnitTag
-
-      override def isBoolean(c: ScalacAST.Constant): Boolean = c.tag == global.BooleanTag
-
-      override def getBoolean(c: ScalacAST.Constant): Boolean = c.booleanValue
-
-      override def isByte(c: ScalacAST.Constant): Boolean = c.tag == global.ByteTag
-
-      override def getByte(c: ScalacAST.Constant): Byte = c.byteValue
 
       override def isIdent(t: ScalacAST.Tree): Boolean = t.isInstanceOf[global.Ident]
 
@@ -36,11 +27,40 @@ object ScalacTranslator {
 
       override def isEmpty(t: ScalacAST.Tree): Boolean = ???
 
-      override def isNotWildcardName(n: ScalacAST.Name): Boolean = ???
       override protected def isThis(t: ScalacAST.Tree): Boolean = ???
 
       override protected def getThisQual(t: ScalacAST.Tree): ScalacAST.Tree = ???
 
+      override val constants: ASTConstants[ScalacAST.Constant] = _
+      override val names: ASTNames[ScalacAST.Name, ScalacAST.TermName, ScalacAST.TypeName] = _
+      override val symbols: ASTSymbols[ScalacAST.Symbol, Nothing, ScalacAST.Name] = _
+      override val types: ASTTypes[ScalacAST.Type, Nothing, ScalacAST.Constant, ScalacAST.Symbol, ScalacAST.Annotation, ScalacAST.TypeRef] = _
+
+      override def emptyTree: ScalacAST.Tree = ???
+
+      override def getTree(annotation: ScalacAST.Annotation): ScalacAST.Tree = ???
+
+      override def shouldPickleTree(tree: ScalacAST.Tree): Boolean = ???
+
+      override def getSymbol(tree: ScalacAST.Tree): ScalacAST.Symbol = ???
+
+      override protected def isMemberDef(tree: ScalacAST.Tree): Boolean = ???
+
+      override def isValDef(tpe: ScalacAST.Tree): Boolean = ???
+
+      override def getValDef(tpe: ScalacAST.Tree): (ScalacAST.Symbol, ScalacAST.Tree, ScalacAST.Tree) = ???
+
+      override def isDefDef(tpe: ScalacAST.Tree): Boolean = ???
+
+      override def getDefDef(tpe: ScalacAST.Tree): (ScalacAST.Symbol, ScalacAST.Tree, ScalacAST.Tree, List[ScalacAST.Tree], List[List[ScalacAST.Tree]]) = ???
+
+      override def isTypeDef(tpe: ScalacAST.Tree): Boolean = ???
+
+      override def getTypeDef(tpe: ScalacAST.Tree): (ScalacAST.Symbol, ScalacAST.Tree) = ???
+
+      override def isPackageDef(tree: ScalacAST.Tree): Boolean = ???
+
+      override def getPackageDef(tree: ScalacAST.Tree): (ScalacAST.Tree, List[ScalacAST.Tree]) = ???
     }
   }
 }

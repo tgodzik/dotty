@@ -14,6 +14,7 @@ trait AST {
   type Type
   type TypeRef <: Type
   type TermRef <: Type
+  type ParamRef <: Type
 
   type Constant
   type Tree
@@ -33,6 +34,7 @@ object DottyAST extends AST {
   override type Type = Types.Type
   override type TermRef = Types.TermRef
   override type TypeRef = Types.TypeRef
+  override type ParamRef = Types.ParamRef
 
   override type Constant = Constants.Constant
   override type Tree = tpd.Tree
@@ -44,7 +46,6 @@ object DottyAST extends AST {
 }
 
 
-
 final class GlobalBasedAST(global: Global) extends AST {
   override type Name = global.Name
   override type TypeName = global.TypeName
@@ -54,6 +55,7 @@ final class GlobalBasedAST(global: Global) extends AST {
   // TODO find proper alternative
   override type TypeRef = global.TypeRef
   override type TermRef = Nothing
+  override type ParamRef = global.TypeRef
 
   override type Constant = global.Constant
   override type Tree = global.Tree

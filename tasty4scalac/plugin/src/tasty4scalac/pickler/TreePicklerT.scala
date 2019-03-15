@@ -12,6 +12,7 @@ object TreePicklerT {
 
 class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
 
+  import pickler.translator._
   import pickler.translator
 
   val buf: TreeBuffer = new TreeBuffer
@@ -26,7 +27,7 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
   private val pickledTypes = new java.util.IdentityHashMap[A#Type, Addr]
 
   def pickle(trees: List[A#Tree])(implicit ctx: A#Context): Unit = {
-    trees.foreach(tree => if (!translator.isEmpty(tree)) pickleTree(tree, ctx))
+    trees.foreach(tree => if (!translator.isEmpty(tree)) pickleTree(tree))
 
     def missing = forwardSymRefs.keysIterator.toList // TODO map for .map(_.showLocated)
 
@@ -73,21 +74,21 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
 
   private def pickleForwardSymRef(sym: A#Symbol)(implicit ctx: A#Context) = {
     val ref = buf.reserveRef(relative = false)
-    assert(!translator.symbols.isPackage(sym), sym)
+    assert(!symbols.isPackage(sym), sym)
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
   private def pickleConstant(constant: A#Constant)(implicit ctx: A#Context): Unit = {
-    if (translator.constants.isUnit(constant)) {
+    if (constants.isUnit(constant)) {
       buf.writeByte(TastyFormat.UNITconst)
-    } else if (translator.constants.isBoolean(constant)) {
-      buf.writeByte(if (translator.constants.getBoolean(constant)) TastyFormat.TRUEconst else TastyFormat.FALSEconst)
+    } else if (constants.isBoolean(constant)) {
+      buf.writeByte(if (constants.getBoolean(constant)) TastyFormat.TRUEconst else TastyFormat.FALSEconst)
     }
     // TODO write the rest of possible constants
   }
 
   private def pickleType(tpe0: A#Type, richTypes: Boolean = false)(implicit ctx: A#Context): Unit = {
-    val tpe = translator.types.stripTypeVar(tpe0) // TODO should we strip type var here or can it happen before
+    val tpe = types.stripTypeVar(tpe0) // TODO should we strip type var here or can it happen before
     try {
       if (pickledTypes.containsKey(tpe)) {
         val prev = pickledTypes.get(tpe)
@@ -107,28 +108,28 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
 
   private def pickleNewType(tpe: A#Type, richTypes: Boolean)(implicit ctx: A#Context): Unit = tpe match {
     // TODO - add omitted types
-    case translator.types.ConstantType(value) =>
+    case types.ConstantType(value) =>
       pickleConstant(value)
-    case translator.types.ThisType(tref, cls) =>
-      if (translator.symbols.isPackage(cls) && !translator.symbols.isEffectiveRoot(cls)) {
+    case types.ThisType(tref, cls) =>
+      if (symbols.isPackage(cls) && !symbols.isEffectiveRoot(cls)) {
         buf.writeByte(TastyFormat.TERMREFpkg)
-        pickleName(translator.symbols.fullName(cls))
+        pickleName(symbols.fullName(cls))
       }
       else {
         buf.writeByte(TastyFormat.THIS)
         pickleType(tref)
       }
 
-    case translator.types.AnnotatedType(parent, annot) =>
+    case types.AnnotatedType(parent, annot) =>
       buf.writeByte(TastyFormat.ANNOTATEDtype)
       withLength {
         pickleType(parent, richTypes)
         pickleTree(translator.getTree(annot))
       }
-    case translator.types.MethodType(isContextual, isImplicitMethod, isErasedMethod) if richTypes =>
+    case types.MethodType(isContextual, isImplicitMethod, isErasedMethod) if richTypes =>
       pickleMethodic(TastyFormat.methodType(isContextual, isImplicitMethod, isErasedMethod), tpe)
-    case tpe if translator.types.isParamRef(tpe) =>
-      assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
+    case tpe if types.isParamRef(tpe) =>
+      assert(pickleParamRef(types.paramRef(tpe)), s"orphan parameter reference: $tpe")
   }
 
   private def pickleMethodic(tag: Int, tpe: A#Type)(implicit ctx: A#Context): Unit = {
@@ -143,14 +144,14 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
   }
 
   // TODO - have more specialized types than TP?
-  def pickleParamRef(tpe: A#Type)(implicit ctx: A#Context): Boolean = {
-    val binder = pickledTypes.get(tpe.binder)
+  def pickleParamRef(tpe: A#ParamRef)(implicit ctx: A#Context): Boolean = {
+    val binder = pickledTypes.get(types.binder(tpe))
     val pickled = binder != null
     if (pickled) {
       buf.writeByte(TastyFormat.PARAMtype)
       withLength {
         buf.writeRef(binder.asInstanceOf[Addr])
-        buf.writeNat(tpe.paramNum)
+        buf.writeNat(types.paramNum(tpe))
       }
     }
     pickled
@@ -164,11 +165,10 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
     registerDef(sym)
     buf.writeByte(tag)
     withLength {
-      pickleName(sym.name)
+      pickleName(symbols.name(sym))
       pickleParams
-      tpt match {
-        case _: Template | _: Hole => pickleTree(tpt)
-        case _ if tpt.isType => pickleTree(tpt)
+      if (translator.shouldPickleTree(tpt)) {
+        pickleTree(tpt)
       }
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym)
@@ -178,8 +178,8 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
   private def pickleParam(tree: A#Tree)(implicit ctx: A#Context): Unit = {
     buf.registerTreeAddr(tree)
     tree match {
-      case translator.ValDef(symbol, tpt) => pickleDef(TastyFormat.PARAM, symbol, tpt)
-      case translator.DefDef(symbol, tpt, rhs) => pickleDef(TastyFormat.PARAM, symbol, tpt, rhs)
+      case translator.ValDef(symbol, tpt, _) => pickleDef(TastyFormat.PARAM, symbol, tpt)
+      case translator.DefDef(symbol, tpt, rhs, _, _) => pickleDef(TastyFormat.PARAM, symbol, tpt, rhs)
       case translator.TypeDef(symbol, rhs) => pickleDef(TastyFormat.TYPEPARAM, symbol, rhs)
     }
   }
@@ -200,7 +200,7 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
       try tree match {
         // identifier
         case translator.Ident(name, tpe) =>
-          if (translator.isTermRef(tpe) && translator.names.isNotWildcardName(name)) {
+          if (translator.isTermRef(tpe) && names.isNotWildcardName(name)) {
             // wildcards are pattern bound, need to be preserved as ids.
             pickleType(tpe)
           }
@@ -218,25 +218,25 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
           }
         case translator.ValDef(symbol, tpt, rhs) =>
           pickleDef(TastyFormat.VALDEF, symbol, tpt, rhs)
-        case tree: DefDef =>
+        case translator.DefDef(symbol, tpt, rhs, tparams, vparamss) =>
           def pickleAllParams = {
-            pickleParams(tree.tparams)
-            for (vparams <- tree.vparamss) {
-              buf.writeByte(PARAMS)
+            pickleParams(tparams)
+            for (vparams <- vparamss) {
+              buf.writeByte(TastyFormat.PARAMS)
               withLength {
                 pickleParams(vparams)
               }
             }
           }
 
-          pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
-        case tree: TypeDef =>
-          pickleDef(TYPEDEF, tree.symbol, tree.rhs)
+          pickleDef(TastyFormat.DEFDEF, symbol, tpt, rhs, pickleAllParams)
+        case TypeDef(symbol, rhs) =>
+          pickleDef(TastyFormat.TYPEDEF, symbol, rhs)
 
         case PackageDef(pid, stats) =>
-          buf.writeByte(PACKAGE)
+          buf.writeByte(TastyFormat.PACKAGE)
           withLength {
-            pickleType(pid.tpe, ctx)
+            pickleType(getTpe(pid))
             pickleStats(stats)
           }
 
@@ -246,6 +246,11 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
           println(s"error when pickling tree $tree")
           throw ex
       }
+  }
+
+  private def pickleStats(stats: List[A#Tree])(implicit ctx: A#Context): Unit = {
+    stats.foreach(preRegister)
+    stats.foreach(stat => if (!translator.isEmpty(stat)) pickleTree(stat))
   }
 
   private def pickleModifiers(sym: A#Symbol, moduleClass: Boolean = false, mutable: Boolean = false,
