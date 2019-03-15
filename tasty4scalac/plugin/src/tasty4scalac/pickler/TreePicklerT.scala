@@ -38,7 +38,7 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
     buf.compactify()
 
     def updateMapWithDeltas(mp: MutableSymbolAddressMap[A#Symbol, Addr]) =
-      for (key <- mp.keysIterator.toBuffer[Symbol]) mp(key) = buf.adjusted(mp(key))
+      for (key <- mp.keysIterator.toBuffer[A#Symbol]) mp(key) = buf.adjusted(mp(key))
 
     updateMapWithDeltas(symRefs)
   }
@@ -233,10 +233,10 @@ class TreePicklerT[A <: AST](pickler: TastyPicklerT[A]) {
         case TypeDef(symbol, rhs) =>
           pickleDef(TastyFormat.TYPEDEF, symbol, rhs)
 
-        case PackageDef(pid, stats) =>
+        case PackageDef(tpe, stats) =>
           buf.writeByte(TastyFormat.PACKAGE)
           withLength {
-            pickleType(getTpe(pid))
+            pickleType(tpe)
             pickleStats(stats)
           }
 

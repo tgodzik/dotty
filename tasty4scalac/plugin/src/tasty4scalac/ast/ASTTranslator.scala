@@ -1,7 +1,5 @@
 package tasty4scalac.ast
 
-import dotty.tools.dotc.core.Annotations.Annotation
-
 
 trait ASTConstants[Constant] {
 
@@ -38,7 +36,7 @@ trait ASTNames[Name, TermName <: Name, TypeName <: Name] {
 
   protected def isSignedName(termName: TermName): Boolean
 
-  def isSimpleName(termName: TermName)
+  def isSimpleName(termName: TermName) : Boolean
 
   object SignedName {
     def unapply(termName: TermName): Option[(TermName, List[TypeName], TypeName)] = if (isSignedName(termName)) Some(signedName(termName)) else None
@@ -137,7 +135,7 @@ trait ASTTypes[Type, Context, Constant, Symbol, Annotation, ParamRef] {
 
   def isParamRef(tpe: Type): Boolean
 
-  def paramRef(tpe: Type): ParamRef
+  def paramRef(tpe: Type) : ParamRef
 
 }
 
@@ -153,7 +151,7 @@ trait ASTTranslator[A <: AST] {
 
   def emptyTree: A#Tree
 
-  def getTree(annotation: A#Annotation): A#Tree
+  def getTree(annotation: A#Annotation)(implicit ctx: A#Context): A#Tree
 
   // TODO is Template/class, Hole or type
   def shouldPickleTree(tree: A#Tree): Boolean
@@ -166,7 +164,7 @@ trait ASTTranslator[A <: AST] {
 
   def getTpe(tree: A#Tree): A#Type
 
-  def getSymbol(tree: A#Tree): A#Symbol
+  def getSymbol(tree: A#Tree)(implicit ctx: A#Context): A#Symbol
 
   def isEmpty(tree: A#Tree): Boolean
 
@@ -189,39 +187,41 @@ trait ASTTranslator[A <: AST] {
   protected def isMemberDef(tree: A#Tree): Boolean
 
   object MemberDef {
-    def unapply(tree: A#Tree): Option[A#Symbol] = if (isMemberDef(tree)) Some(getSymbol(tree)) else None
+    def unapply(tree: A#Tree)(implicit ctx : A#Context): Option[A#Symbol] = if (isMemberDef(tree)) Some(getSymbol(tree)) else None
   }
 
   def isValDef(tpe: A#Tree): Boolean
 
-  def getValDef(tpe: A#Tree): (A#Symbol, A#Tree, A#Tree)
+  def getValDef(tpe: A#Tree)(implicit ctx: A#Context): (A#Symbol, A#Tree, A#Tree)
 
   object ValDef {
-    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree, A#Tree)] = if (isValDef(arg)) Some(getValDef(arg)) else None
+    def unapply(arg: A#Tree)(implicit ctx: A#Context): Option[(A#Symbol, A#Tree, A#Tree)] = if (isValDef(arg)) Some(getValDef(arg)) else None
   }
 
   def isDefDef(tpe: A#Tree): Boolean
 
-  def getDefDef(tpe: A#Tree): (A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])
+  def getDefDef(tpe: A#Tree)(implicit ctx: A#Context): (A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])
 
   object DefDef {
-    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])] = if (isDefDef(arg)) Some(getDefDef(arg)) else None
+    def unapply(arg: A#Tree)(implicit ctx: A#Context): Option[(A#Symbol, A#Tree, A#Tree, List[A#Tree], List[List[A#Tree]])] = {
+      if (isDefDef(arg)) Some(getDefDef(arg)) else None
+    }
   }
 
   def isTypeDef(tpe: A#Tree): Boolean
 
-  def getTypeDef(tpe: A#Tree): (A#Symbol, A#Tree)
+  def getTypeDef(tpe: A#Tree)(implicit ctx: A#Context): (A#Symbol, A#Tree)
 
   object TypeDef {
-    def unapply(arg: A#Tree): Option[(A#Symbol, A#Tree)] = if (isTypeDef(arg)) Some(getTypeDef(arg)) else None
+    def unapply(arg: A#Tree)(implicit ctx: A#Context): Option[(A#Symbol, A#Tree)] = if (isTypeDef(arg)) Some(getTypeDef(arg)) else None
   }
 
   def isPackageDef(tree: A#Tree): Boolean
 
-  def getPackageDef(tree: A#Tree): (A#Tree, List[A#Tree])
+  def getPackageDef(tree: A#Tree): (A#Type, List[A#Tree])
 
   object PackageDef {
-    def unapply(arg: A#Tree): Option[(A#Tree, List[A#Tree])] = if (isPackageDef(arg)) Some(getPackageDef(arg)) else None
+    def unapply(arg: A#Tree): Option[(A#Type, List[A#Tree])] = if (isPackageDef(arg)) Some(getPackageDef(arg)) else None
   }
 
 }

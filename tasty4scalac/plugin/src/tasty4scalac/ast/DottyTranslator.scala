@@ -1,6 +1,6 @@
 package tasty4scalac.ast
 
-import dotty.tools.dotc.ast.Trees.{Ident, This}
+import dotty.tools.dotc.ast.Trees.{Ident, MemberDef, This}
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.NameKinds._
@@ -8,8 +8,10 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.{TermRef, ThisType}
 import dotty.tools.dotc.core.{Contexts, _}
 import Decorators._
+import dotty.tools.dotc.ast.tpd.Template
 import dotty.tools.dotc.core.NameKinds.SignedName.SignedInfo
 import dotty.tools.dotc.core.Names.{DerivedName, SimpleName}
+import dotty.tools.dotc.core.tasty.TreePickler.Hole
 
 
 class DottyNames extends ASTNames[Names.Name, Names.TermName, Names.TypeName] {
@@ -60,11 +62,14 @@ class DottyNames extends ASTNames[Names.Name, Names.TermName, Names.TypeName] {
 
   override def getTermKindTag(termName: Names.TermName): Int = termName.toTermName.info.kind.tag
 
-  override def isSimpleName(termName: Names.TermName): Unit = termName.isInstanceOf[SimpleName]
+  override def isSimpleName(termName: Names.TermName): Boolean = termName.isInstanceOf[SimpleName]
 
-  override protected def anyNumberedName(termName: Names.TermName): (Names.TermName, Int) = ???
+  override protected def anyNumberedName(termName: Names.TermName): (Names.TermName, Int) = termName match {
+    case AnyNumberedName(termName, infoNum) => (termName, infoNum)
+  }
 
-  override protected def isAnyNumberedName(termName: Names.TermName): Boolean = ???
+  override protected def isAnyNumberedName(termName: Names.TermName): Boolean =
+    termName.isInstanceOf[DerivedName] && termName.asInstanceOf[DerivedName].info.isInstanceOf[NumberedInfo]
 
   override def start(name: Names.Name): Int = name.asInstanceOf[SimpleName].start
 
@@ -93,41 +98,48 @@ class DottySymbols extends ASTSymbols[Symbols.Symbol, Contexts.Context, Names.Na
 
   override def isEffectiveRoot(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Boolean = symbol.isEffectiveRoot
 
-  override def name(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Names.Name = ???
+  override def name(symbol: Symbols.Symbol)(implicit context: Contexts.Context): Names.Name = symbol.name
 }
 
 class DottyTypes extends ASTTypes[Types.Type, Contexts.Context, Constants.Constant, Symbols.Symbol, Annotations.Annotation, Types.ParamRef] {
   override def stripTypeVar(tpe: Types.Type)(implicit ctx: Contexts.Context): Types.Type = tpe.stripTypeVar
 
-  override protected def isConstant(tpe: Types.Type): Boolean = ???
+  override protected def isConstant(tpe: Types.Type): Boolean = tpe.isInstanceOf[Types.ConstantType]
 
-  override protected def getConstant(tpe: Types.Type): Constant = ???
+  override protected def getConstant(tpe: Types.Type): Constant = tpe match {
+    case constantTpe: Types.ConstantType => constantTpe.value
+  }
 
-  override def isThisType(tpe: Types.Type): Boolean = ???
+  override def isThisType(tpe: Types.Type): Boolean = tpe.isInstanceOf[Types.ThisType]
 
-  override def isAnnotatedType(tpe: Types.Type): Boolean = ???
+  override def isAnnotatedType(tpe: Types.Type): Boolean = tpe.isInstanceOf[Types.AnnotatedType]
 
-  override def isMethodType(tpe: Types.Type): Boolean = ???
+  override def isMethodType(tpe: Types.Type): Boolean = tpe.isInstanceOf[Types.MethodType]
 
-  override def isParamRef(tpe: Types.Type): Boolean = ???
+  override def isParamRef(tpe: Types.Type): Boolean = tpe.isInstanceOf[Types.ParamRef]
 
-  override protected def getThisType(tpe: Types.Type): (Types.Type, Symbols.Symbol) = ???
+  override protected def getThisType(tpe: Types.Type): (Types.Type, Symbols.Symbol) = tpe match {
+    case ThisType(tp, sym) => (tp, sym)
+  }
 
-  override protected def getAnnotatedType(tpe: Types.Type): (Types.Type, Annotations.Annotation) = ???
+  override protected def getAnnotatedType(tpe: Types.Type): (Types.Type, Annotations.Annotation) = tpe match{
+    case AnnotatedType(tp, annon) => (tp, annon)
+  }
 
-  override def isContextualMethod(tpe: Types.Type): Boolean = ???
+  override def isContextualMethod(tpe: Types.Type): Boolean = tpe.isContextual
 
-  override def isImplicitMethod(tpe: Types.Type): Boolean = ???
+  override def isImplicitMethod(tpe: Types.Type): Boolean = tpe.isImplicitMethod
 
-  override def isErasedMethod(tpe: Types.Type): Boolean = ???
+  override def isErasedMethod(tpe: Types.Type): Boolean = tpe.isErasedMethod
 
-  override def binder(tpe: Types.ParamRef): Types.Type = ???
+  override def binder(tpe: Types.ParamRef): Types.Type = tpe.binder
 
-  override def paramNum(tpe: Types.ParamRef): Int = ???
+  override def paramNum(tpe: Types.ParamRef): Int = tpe.paramNum
 
-  override def paramRef(tpe: Types.Type): Types.ParamRef = ???
+  override def paramRef(tpe: Types.Type): Types.ParamRef = tpe.asInstanceOf[Types.ParamRef]
 }
 
+// TODO - might need to drop the unapplies for the sake of optymization
 class DottyTranslator extends ASTTranslator[DottyAST.type] {
 
   override val constants: ASTConstants[Constant] = new DottyConstants
@@ -164,30 +176,40 @@ class DottyTranslator extends ASTTranslator[DottyAST.type] {
     case This(qual) => qual
   }
 
-  override def getSymbol(tree: DottyAST.Tree): Symbols.Symbol = ???
+  override def getSymbol(tree: DottyAST.Tree)(implicit ctx: Contexts.Context): Symbols.Symbol = tree.symbol
 
 
-  override protected def isMemberDef(tree: DottyAST.Tree): Boolean = ???
+  override protected def isMemberDef(tree: DottyAST.Tree): Boolean = tree.isInstanceOf[tpd.MemberDef]
 
-  override def emptyTree: DottyAST.Tree = ???
+  override def emptyTree: DottyAST.Tree = tpd.EmptyTree
 
-  override def getTree(annotation: Annotations.Annotation): DottyAST.Tree = ???
+  override def getTree(annotation: Annotations.Annotation)(implicit ctx: Contexts.Context): DottyAST.Tree = annotation.tree
 
-  override def shouldPickleTree(tree: DottyAST.Tree): Boolean = ???
+  override def shouldPickleTree(tree: DottyAST.Tree): Boolean =
+    tree.isInstanceOf[Template] || tree.isInstanceOf[Hole] || tree.isType
 
-  override def isValDef(tpe: DottyAST.Tree): Boolean = ???
 
-  override def getValDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree) = ???
+  override def isValDef(tpe: DottyAST.Tree): Boolean = tpe.isInstanceOf[tpd.ValDef]
 
-  override def isDefDef(tpe: DottyAST.Tree): Boolean = ???
+  override def getValDef(tpe: DottyAST.Tree)(implicit ctx: Contexts.Context): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree) = tpe match {
+    case tpe: tpd.ValDef => (tpe.symbol, tpe.tpt, tpe.rhs)
+  }
 
-  override def getDefDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree, List[tpd.Tree], List[List[tpd.Tree]]) = ???
+  override def isDefDef(tpe: DottyAST.Tree): Boolean = tpe.isInstanceOf[tpd.DefDef]
 
-  override def isTypeDef(tpe: DottyAST.Tree): Boolean = ???
+  override def getDefDef(tpe: DottyAST.Tree)(implicit ctx: Contexts.Context): (Symbols.Symbol, DottyAST.Tree, DottyAST.Tree, List[tpd.Tree], List[List[tpd.Tree]]) = tpe match {
+    case tpe: tpd.DefDef => (tpe.symbol, tpe.tpt, tpe.rhs, tpe.tparams, tpe.vparamss)
+  }
 
-  override def getTypeDef(tpe: DottyAST.Tree): (Symbols.Symbol, DottyAST.Tree) = ???
+  override def isTypeDef(tpe: DottyAST.Tree): Boolean = tpe.isInstanceOf[tpd.TypeDef]
 
-  override def isPackageDef(tree: DottyAST.Tree): Boolean = ???
+  override def getTypeDef(tpe: DottyAST.Tree)(implicit ctx: Contexts.Context): (Symbols.Symbol, DottyAST.Tree) = tpe match {
+    case tpe: tpd.TypeDef => (tpe.symbol, tpe.rhs)
+  }
 
-  override def getPackageDef(tree: DottyAST.Tree): (DottyAST.Tree, List[tpd.Tree]) = ???
+  override def isPackageDef(tree: DottyAST.Tree): Boolean = tree.isInstanceOf[tpd.PackageDef]
+
+  override def getPackageDef(tree: DottyAST.Tree): (DottyAST.Type, List[tpd.Tree]) = tree match {
+    case packageDef: tpd.PackageDef => (packageDef.pid.tpe, packageDef.stats)
+  }
 }

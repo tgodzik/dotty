@@ -46,15 +46,15 @@ object DottyAST extends AST {
 }
 
 
-final class GlobalBasedAST(global: Global) extends AST {
+final class GlobalBasedAST(val global: Global) extends AST {
   override type Name = global.Name
   override type TypeName = global.TypeName
   override type TermName = global.TermName
 
   override type Type = global.Type
-  // TODO find proper alternative
   override type TypeRef = global.TypeRef
-  override type TermRef = Nothing
+  // TODO find proper alternative
+  override type TermRef = global.Type
   override type ParamRef = global.TypeRef
 
   override type Constant = global.Constant

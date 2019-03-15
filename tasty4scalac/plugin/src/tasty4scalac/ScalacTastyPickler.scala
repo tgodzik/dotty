@@ -4,13 +4,13 @@ import dotty.tools._
 import dotc._
 import core._
 import tasty._
-
 import TastyFormat._
+
 import collection.mutable
 import TastyBuffer._
-import core.Symbols.{Symbol, ClassSymbol}
-import ast.tpd
+import core.Symbols.{ClassSymbol, Symbol}
 import Decorators._
+import dotty.tools.dotc.ast.tpd
 
 import scala.tools.nsc.Global
 

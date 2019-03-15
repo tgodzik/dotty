@@ -76,6 +76,6 @@ class TastyPicklerT[A <: AST](val translator: ASTTranslator[A]) {
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl: TreePickler = new TreePickler(this)
+  val treePkl: TreePicklerT[A] = new TreePicklerT[A](this)
 
 }

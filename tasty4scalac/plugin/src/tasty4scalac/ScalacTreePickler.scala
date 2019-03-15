@@ -5,8 +5,6 @@ import dotc._
 import core._
 import tasty._
 
-import ast.Trees._
-import ast.{untpd, tpd}
 import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
@@ -28,7 +26,6 @@ class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
-  import tpd._
 
   private val symRefs = new mutable.HashMap[g.Symbol, Addr]
   private val forwardSymRefs = new mutable.HashMap[g.Symbol, List[Addr]]
