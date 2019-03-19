@@ -38,7 +38,7 @@ final class Dotty(val baseContext: Contexts.Context) extends dotty.tools.dotc.Co
 object Dotty {
   private val classpath = System.getProperty("dotty.classpath")
 
-  def apply(): Compiler = {
+  def apply(): Dotty = {
     val ctx = new ContextBase().initialCtx.fresh
     ctx.setSetting(ctx.settings.classpath, classpath)
     ctx.setSetting(ctx.settings.encoding, "UTF8")
