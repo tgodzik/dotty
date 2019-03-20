@@ -1,11 +1,11 @@
 package tasty.tree.types
 
 import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePool
+import tasty.names.ScalacNamePickler
 
 import scala.tools.nsc.Global
 
-final class ScalacConstantPickler(val namePool: ScalacNamePool, val output: BinaryOutput)(implicit g: Global)
+final class ScalacConstantPickler(val namePool: ScalacNamePickler, val output: BinaryOutput)(implicit g: Global)
   extends ConstantPickler {
   override type Name = Global#Name
   override protected type Constant = Global#Constant

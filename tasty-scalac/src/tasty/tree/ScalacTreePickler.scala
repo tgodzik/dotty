@@ -1,12 +1,12 @@
 package tasty.tree
 
 import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePool
+import tasty.names.ScalacNamePickler
 import tasty.tree.terms.ScalacTermPickler
 
 import scala.tools.nsc.Global
 
-final class ScalacTreePickler(val namePool: ScalacNamePool,
+final class ScalacTreePickler(val namePool: ScalacNamePickler,
                               val output: BinaryOutput)(implicit g: Global) extends TreePickler {
   override type Tree = Global#Tree
   override protected type Name = Global#Name

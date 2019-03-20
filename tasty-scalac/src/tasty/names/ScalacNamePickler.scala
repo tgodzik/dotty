@@ -5,7 +5,7 @@ import tasty.binary.BinaryOutput
 import scala.io.Codec
 import scala.tools.nsc.Global
 
-final class ScalacNamePool(val output: BinaryOutput)(implicit g: Global) extends NamePool[Global#Name] {
+final class ScalacNamePickler(val output: BinaryOutput)(implicit g: Global) extends PicklerNamePool[Global#Name] {
 
   override protected def pickle(name: Global#Name): Unit = {
     val bytes =

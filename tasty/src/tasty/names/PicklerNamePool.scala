@@ -2,7 +2,7 @@ package tasty.names
 
 import scala.collection.mutable
 
-abstract class NamePool[Name] extends NameSectionPickler[Name] {
+abstract class PicklerNamePool[Name] extends NameSectionPickler[Name] {
   private val pool = mutable.Map[Name, NameRef]()
 
   final def pickleName(name: Name): NameRef = {

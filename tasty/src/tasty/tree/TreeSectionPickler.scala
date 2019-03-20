@@ -2,12 +2,12 @@ package tasty.tree
 
 import dotty.tools.dotc.core.tasty.TastyFormat
 import tasty.binary.TaggedSectionPickler
-import tasty.names.NamePool
+import tasty.names.PicklerNamePool
 
 trait TreeSectionPickler extends TaggedSectionPickler {
   protected type Name
 
-  def namePool: NamePool[Name]
+  def namePool: PicklerNamePool[Name]
 
   protected final def pickleName(name: Name): Unit = {
     val ref = namePool.pickleName(name)

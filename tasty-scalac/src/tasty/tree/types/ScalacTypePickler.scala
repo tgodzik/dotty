@@ -2,11 +2,11 @@ package tasty.tree.types
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
 import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePool
+import tasty.names.ScalacNamePickler
 
 import scala.tools.nsc.Global
 
-final class ScalacTypePickler(val namePool: ScalacNamePool,val output: BinaryOutput)(implicit g: Global) extends TypePickler {
+final class ScalacTypePickler(val namePool: ScalacNamePickler, val output: BinaryOutput)(implicit g: Global) extends TypePickler {
   override type Name = Global#Name
   override type Type = Global#Type
 

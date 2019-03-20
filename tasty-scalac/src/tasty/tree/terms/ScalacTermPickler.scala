@@ -2,12 +2,12 @@ package tasty.tree.terms
 
 import tasty.ScalacConversions
 import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePool
+import tasty.names.ScalacNamePickler
 import tasty.tree.types.ScalacTypePickler
 
 import scala.tools.nsc.Global
 
-final class ScalacTermPickler(val namePool: ScalacNamePool, val output: BinaryOutput)(implicit val g: Global)
+final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: BinaryOutput)(implicit val g: Global)
   extends TermPickler with ScalacConversions {
   type Term = Global#Tree
   override protected type Name = Global#Name

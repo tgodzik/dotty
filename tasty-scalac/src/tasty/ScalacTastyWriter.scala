@@ -3,7 +3,7 @@ package tasty
 import dotty.tools.dotc.core.tasty.TastyFormat._
 import tasty.binary.BinaryOutput
 import tasty.binary.BinaryOutput.hashOf
-import tasty.names.ScalacNamePool
+import tasty.names.ScalacNamePickler
 import tasty.tree.ScalacTreePickler
 
 import scala.tools.nsc.Global
@@ -11,7 +11,7 @@ import scala.tools.nsc.Global
 final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
   override type Name = Global#Name
   private val namesSection = new BinaryOutput()
-  private val namePool = new ScalacNamePool(namesSection)
+  private val namePool = new ScalacNamePickler(namesSection)
 
   private val treeSection = new BinaryOutput
   private val treeSectionName = g.newTermName("ASTs")
