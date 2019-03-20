@@ -9,7 +9,7 @@ class BinaryOutput(initialSize: Int = 32) {
 
   final def size: Int = length
 
-  final def bytes: Array[Byte] = buffer
+  final def bytes: Array[Byte] = buffer.take(length)
 
   final def write(subsection: BinaryOutput): Unit = {
     writeNat(subsection.size)
