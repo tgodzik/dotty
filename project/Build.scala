@@ -813,9 +813,25 @@ object Build {
     scalaVersion := scalacVersion
   )
 
+  lazy val tasty = project.
+    in(file("tasty")).
+    dependsOn(`dotty-compiler`). // as long as TastyFormat is in there
+    settings(commonSettings)
+
+  lazy val tastyDotty = project.
+    in(file("tasty-dotty")).
+    settings(commonSettings).
+    dependsOn(tasty, `dotty-compiler`)
+
+  lazy val tastyScalac = project.
+    in(file("tasty-scalac")).
+    dependsOn(tasty, `dotty-compiler`).
+    settings(commonSettings).
+    settings(libraryDependencies += "org.scala-lang" % "scala-compiler" % scalacVersion)
+
   lazy val `tasty4scalac-plugin` = project.
     in(file("tasty4scalac/plugin")).
-    dependsOn(`dotty-compiler`).
+    dependsOn(tastyDotty, tastyScalac).
     settings(scalacPluginSettings).
     settings(
       libraryDependencies := Seq("org.scala-lang" % "scala-compiler" % scalacVersion),

@@ -18,6 +18,9 @@ val `scala-compiler` = Build.`scala-compiler`
 val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 
+val tasty = Build.tasty
+val `tasty-dotty` = Build.tastyDotty
+val `tasty-scalac` = Build.tastyScalac
 val `tasty4scalac-plugin` = Build.`tasty4scalac-plugin`
 val `tasty4scalac-integration` = Build.`tasty4scalac-integration`
 
