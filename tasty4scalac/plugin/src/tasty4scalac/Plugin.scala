@@ -1,6 +1,7 @@
 package tasty4scalac
 
 import dotty.tools.dotc.core.tasty.TastyPrinter
+import tasty.ScalacTastyWriter
 
 import scala.tools.nsc.backend.jvm.PostProcessorFrontendAccess
 import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
@@ -36,6 +37,7 @@ class Plugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("superaccessors")
     override val runsRightAfter = Some("superaccessors")
     override val phaseName = "tasty"
+
     override def description = "pickle tasty trees"
 
     private val frontendAccess = new PostProcessorFrontendAccess.PostProcessorFrontendAccessImpl(global)
@@ -51,6 +53,7 @@ class Plugin(val global: Global) extends NscPlugin {
           case EmptyTree =>
           case PackageDef(_, ClassDef(_, name, _, _) :: Nil) => // TODO currently only single top-level class is supported
             writeTasty(unit, name)
+          case ClassDef(_, name, _, _) => writeTasty(unit, name)
           case _ =>
         }
       }
@@ -59,12 +62,9 @@ class Plugin(val global: Global) extends NscPlugin {
     private def writeTasty(unit: CompilationUnit, name: global.Name): Unit = {
       val tree = unit.body
 
-      val pickler = new ScalacTastyPickler(global)
-      val treePkl = pickler.treePkl
-      treePkl.pickle(List(tree.asInstanceOf[treePkl.g.Tree]))
-
-      treePkl.compactify()
-      val bytes = pickler.assembleParts()
+      val writer = new ScalacTastyWriter()
+      writer.write(tree)
+      val bytes = writer.output()
 
       // write tasty to file
       val outputDirectory = frontendAccess.compilerSettings.outputDirectory(unit.source.file)
@@ -79,4 +79,5 @@ class Plugin(val global: Global) extends NscPlugin {
       println(cnt)
     }
   }
+
 }

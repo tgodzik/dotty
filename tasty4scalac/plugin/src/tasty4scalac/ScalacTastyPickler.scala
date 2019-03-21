@@ -1,17 +1,16 @@
 package tasty4scalac
 
 import dotty.tools._
-import dotc._
-import core._
-import tasty._
+import dotty.tools.dotc._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.tasty.TastyBuffer._
+import dotty.tools.dotc.core.tasty.TastyFormat._
+import dotty.tools.dotc.core.tasty.{NameBuffer, TastyBuffer}
 
-import TastyFormat._
-import collection.mutable
-import TastyBuffer._
-import core.Symbols.{Symbol, ClassSymbol}
-import ast.tpd
-import Decorators._
-
+import scala.collection.mutable
 import scala.tools.nsc.Global
 
 class ScalacTastyPickler(val g: Global) {

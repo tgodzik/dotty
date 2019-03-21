@@ -1,34 +1,28 @@
 package tasty4scalac
 
 import dotty.tools._
-import dotc._
-import core._
-import tasty._
+import dotty.tools.dotc._
+import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.tasty.TastyBuffer._
+import dotty.tools.dotc.core.tasty.TastyFormat._
+import dotty.tools.dotc.core.tasty.TreeBuffer
 
-import ast.Trees._
-import ast.{untpd, tpd}
-import TastyFormat._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
-import collection.mutable
-import typer.Inliner
-import NameOps._, NameKinds._
-import StdNames.nme
-import TastyBuffer._
-import TypeApplications._
-import transform.SymUtils._
-import printing.Printer
-import printing.Texts._
-import config.Config
-
+import scala.collection.mutable
 import scala.tools.nsc.Global
 
 class ScalacTreePickler(pickler: ScalacTastyPickler, val g: Global) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
-  import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
-  import tpd._
 
   private val symRefs = new mutable.HashMap[g.Symbol, Addr]
   private val forwardSymRefs = new mutable.HashMap[g.Symbol, List[Addr]]
