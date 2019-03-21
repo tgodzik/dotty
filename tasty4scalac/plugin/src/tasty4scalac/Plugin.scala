@@ -2,9 +2,9 @@ package tasty4scalac
 
 import dotty.tools.dotc.core.tasty.TastyPrinter
 
-import scala.tools.nsc.{Global, Phase}
 import scala.tools.nsc.backend.jvm.PostProcessorFrontendAccess
 import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
+import scala.tools.nsc.{Global, Phase}
 
 class Plugin(val global: Global) extends NscPlugin {
   self =>
@@ -31,7 +31,7 @@ class Plugin(val global: Global) extends NscPlugin {
 
 
   object TastyComponent extends {
-    val global: self.global.type = self.global
+    implicit val global: self.global.type = self.global
   } with NscPluginComponent {
     override val runsAfter = List("superaccessors")
     override val runsRightAfter = Some("superaccessors")
@@ -47,22 +47,36 @@ class Plugin(val global: Global) extends NscPlugin {
         val tree = unit.body
         assert(!unit.isJava)
 
-        val pickler = new ScalacTastyPickler(global)
-        val treePkl = pickler.treePkl
-        treePkl.pickle(List(tree.asInstanceOf[treePkl.g.Tree]))
-
-        treePkl.compactify()
-        writeTasty(unit, pickler)
+        tree match {
+          case EmptyTree =>
+          case PackageDef(_, ClassDef(_, name, _, _) :: Nil) => // TODO currently only single top-level class is supported
+            writeTasty(unit, name)
+          case _ =>
+        }
       }
     }
 
-    private def writeTasty(unit: CompilationUnit, pickler: ScalacTastyPickler): Unit = {
-      val pickled = pickler.assembleParts()
+    private def writeTasty(unit: CompilationUnit, name: global.Name): Unit = {
+      val tree = unit.body
+
+      val pickler = new ScalacTastyPickler(global)
+      val treePkl = pickler.treePkl
+      treePkl.pickle(List(tree.asInstanceOf[treePkl.g.Tree]))
+
+      treePkl.compactify()
+      val bytes = pickler.assembleParts()
+
+      // write tasty to file
       val outputDirectory = frontendAccess.compilerSettings.outputDirectory(unit.source.file)
-      val tastyFile = outputDirectory.fileNamed(unit.source.file.name + ".tasty")
+      val tastyFile = outputDirectory.fileNamed(name.decode + ".tasty")
       val out = tastyFile.output
-      out.write(pickled)
+      out.write(bytes)
       out.close()
+
+      // print tasty
+      val ctx = (new dotty.tools.dotc.core.Contexts.ContextBase).initialCtx
+      val cnt = new TastyPrinter(bytes)(ctx).printContents()
+      println(cnt)
     }
   }
 }
