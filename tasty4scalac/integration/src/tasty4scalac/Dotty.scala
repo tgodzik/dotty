@@ -9,19 +9,19 @@ import dotty.tools.dotc.reporting.Reporter.NoReporter
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 
 final class Dotty(val baseContext: Contexts.Context) extends dotty.tools.dotc.Compiler with Compiler {
-  override def compile(code: String): Set[BinaryTasty] = {
+  override def compile(code: String): Map[String, BinaryTasty] = {
     val ctx = baseContext.fresh
 
     val output = newOutputDirectory
     ctx.setSetting(ctx.settings.outputDir, output)
     newRun(ctx).compile(code)
 
-    findTastyFiles(output.iterator().toSeq, Set())
+    findTastyFiles(output.iterator().toSeq, Map())
   }
 
   private def newOutputDirectory = new VirtualDirectory("tasty-dotty-" + UUID.randomUUID().toString)
 
-  private def findTastyFiles(files: Seq[AbstractFile], acc: Set[BinaryTasty]): Set[BinaryTasty] = files match {
+  private def findTastyFiles(files: Seq[AbstractFile], acc: Map[String, BinaryTasty]): Map[String, BinaryTasty] = files match {
     case Seq() => acc
 
     case file +: tail if file.isDirectory =>
@@ -29,7 +29,7 @@ final class Dotty(val baseContext: Contexts.Context) extends dotty.tools.dotc.Co
       findTastyFiles(newFiles ++ tail, acc)
 
     case file +: tail if file.name.endsWith(".tasty") =>
-      findTastyFiles(tail, acc + BinaryTasty(file.toByteArray))
+      findTastyFiles(tail, acc + (file.name -> BinaryTasty(file.toByteArray)))
 
     case _ +: tail => findTastyFiles(tail, acc)
   }
