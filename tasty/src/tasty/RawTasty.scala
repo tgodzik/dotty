@@ -6,9 +6,11 @@ import dotty.tools.dotc.core.tasty.TastyFormat.{MajorVersion, MinorVersion, head
 import tasty.binary.BinaryInput
 import tasty.names.NameRef
 
-final class TastyReader {
+final class RawTasty(val id: UUID, val nameSection: BinaryInput, val sections: Map[NameRef, BinaryInput])
 
-  def unpickle(input: BinaryInput): RawTasty = {
+object RawTasty {
+
+  def apply(input: BinaryInput): RawTasty = {
     val id = readHeader(input)
     val nameSection = input.subsection()
     val sections = readSections(input)
@@ -42,5 +44,3 @@ final class TastyReader {
     sections.toMap
   }
 }
-
-final class RawTasty(val id: UUID, val nameSection: BinaryInput, val sections: Map[NameRef, BinaryInput])
