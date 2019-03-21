@@ -10,12 +10,12 @@ import scala.tools.nsc.reporters.NoReporter
 import scala.tools.nsc.{Global, Settings}
 
 final class Scalac(settings: Settings) extends Global(settings, NoReporter) with Compiler {
-  override def compile(code: String): Set[Tasty] = {
+  override def compile(code: String): Set[BinaryTasty] = {
     val file = new BatchSourceFile(NoFile, code.toCharArray)
     compile(file)
   }
 
-  private def compile(files: SourceFile*): Set[Tasty] = {
+  private def compile(files: SourceFile*): Set[BinaryTasty] = {
     val output = newOutputDirectory
     settings.outputDirs.setSingleOutput(output)
     new Run().compileSources(files.toList)
@@ -24,7 +24,7 @@ final class Scalac(settings: Settings) extends Global(settings, NoReporter) with
 
   private def newOutputDirectory = new VirtualDirectory("tasty-scalac-" + UUID.randomUUID().toString, None)
 
-  private def findTastyFiles(files: Seq[AbstractFile], acc: Set[Tasty]): Set[Tasty] = files match {
+  private def findTastyFiles(files: Seq[AbstractFile], acc: Set[BinaryTasty]): Set[BinaryTasty] = files match {
     case Seq() => acc
 
     case file +: tail if file.isDirectory =>
@@ -32,7 +32,7 @@ final class Scalac(settings: Settings) extends Global(settings, NoReporter) with
       findTastyFiles(newFiles ++ tail, acc)
 
     case file +: tail if file.name.endsWith(".tasty") =>
-      findTastyFiles(tail, acc + Tasty(file.toByteArray))
+      findTastyFiles(tail, acc + BinaryTasty(file.toByteArray))
 
     case _ +: tail => findTastyFiles(tail, acc)
   }

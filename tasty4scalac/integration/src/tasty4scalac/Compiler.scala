@@ -2,7 +2,7 @@ package tasty4scalac
 
 
 trait Compiler {
-  def compile(code: String): Set[Tasty]
+  def compile(code: String): Set[BinaryTasty]
 
   final override def toString: String = getClass.getSimpleName
 }
