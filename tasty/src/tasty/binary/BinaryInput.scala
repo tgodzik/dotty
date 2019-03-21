@@ -24,7 +24,7 @@ final class BinaryInput(bytes: Array[Byte], start: Int, end: Int) {
     new BinaryInput(bytes, offset - length, offset)
   }
 
-  def consume(fn: BinaryInput => Any): Unit = {
+  def untilEndReached(fn: BinaryInput => Unit): Unit = {
     while (offset < end) fn(this)
     if (offset > end) throw new IllegalStateException()
   }
