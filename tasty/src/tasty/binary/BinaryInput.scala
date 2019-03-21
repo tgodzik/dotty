@@ -1,13 +1,15 @@
 package tasty.binary
 
-import tasty.RawTasty
-
 import scala.collection.mutable
 
 final class BinaryInput(bytes: Array[Byte], start: Int, end: Int) {
   def this(bytes: Array[Byte]) = this(bytes, 0, bytes.length)
 
-  def readSequenceOf[A](fn: BinaryInput => A): Seq[A] = {
+  def ifNotEmpty[A](fn: BinaryInput => A): Option[A] =
+    if (offset == end) None
+    else Some(fn(this))
+
+  def readSequence[A](fn: BinaryInput => A): Seq[A] = {
     val buffer = mutable.ArrayBuffer[A]()
 
     while (offset < end) buffer += fn(this)

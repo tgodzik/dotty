@@ -5,5 +5,5 @@ abstract class TastyWriter {
 }
 
 object TastyWriter {
-  val headerBytes = 36
+  val headerBytes = 22
 }

@@ -39,7 +39,7 @@ object RawTasty {
       nameRef -> subsection
     }
 
-    val sections = input.readSequenceOf(section)
+    val sections = input.readSequence(section)
 
     sections.toMap
   }
