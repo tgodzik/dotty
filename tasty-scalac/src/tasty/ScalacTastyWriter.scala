@@ -25,7 +25,8 @@ final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
 
     writeHeader(output)
     output.write(namesSection)
-    output.write(treeSection, nameRef = Some(treeSectionNameRef))
+    output.writeNat(treeSectionNameRef.index)
+    output.write(treeSection)
 
     output.bytes
   }

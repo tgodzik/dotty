@@ -12,8 +12,7 @@ class BinaryOutput(initialSize: Int = 32) {
 
   final def bytes: Array[Byte] = buffer.take(length)
 
-  final def write(subsection: BinaryOutput, nameRef: Option[NameRef] = None): Unit = {
-    nameRef.foreach(ref => writeNat(ref.index))
+  final def write(subsection: BinaryOutput): Unit = {
     writeNat(subsection.size)
     writeBytes(subsection.bytes, subsection.size)
   }
