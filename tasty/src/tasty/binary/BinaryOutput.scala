@@ -2,6 +2,7 @@ package tasty.binary
 
 import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHash}
 import dotty.tools.dotc.util.Util.dble
+import tasty.names.NameRef
 
 class BinaryOutput(initialSize: Int = 32) {
   private var buffer = new Array[Byte](initialSize)

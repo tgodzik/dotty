@@ -14,17 +14,19 @@ final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
   private val namePool = new ScalacNamePickler(namesSection)
 
   private val treeSection = new BinaryOutput
-  private val treeSectionName = g.newTermName("ASTs")
+  private val treeSectionNameRef = namePool.pickleName(g.newTermName("ASTs"))
   private val treePickler = new ScalacTreePickler(namePool, treeSection)
 
   def write(tree: Global#Tree): Unit = treePickler.pickleTree(tree)
 
   def output(): Array[Byte] = {
-    val totalSize = TastyWriter.headerBytes + namesSection.size // + sections.values.map(_.size).sum
+    val totalSize = TastyWriter.headerBytes + namesSection.size + treeSection.size
     val output = new BinaryOutput(totalSize) // TODO can be streamed instead of copying arrays in memory
 
     writeHeader(output)
     output.write(namesSection)
+    output.writeNat(treeSectionNameRef.index)
+    output.write(treeSection)
 
     output.bytes
   }
@@ -33,7 +35,7 @@ final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
     val namesHash = hashOf(namesSection)
     val treeHash = hashOf(treeSection)
     val uuidLow: Long = namesHash ^ treeHash
-    val uuidHi = (Map() - treeSectionName).values.foldLeft(0L)(_ ^ hashOf(_))
+    val uuidHi = (Map() - treeSectionNameRef).values.foldLeft(0L)(_ ^ hashOf(_))
 
     for (ch <- header) output.writeByte(ch.toByte)
     output.writeNat(MajorVersion)
