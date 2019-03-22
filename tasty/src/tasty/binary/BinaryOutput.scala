@@ -2,6 +2,7 @@ package tasty.binary
 
 import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHash}
 import dotty.tools.dotc.util.Util.dble
+import tasty.names.NameRef
 
 class BinaryOutput(initialSize: Int = 32) {
   private var buffer = new Array[Byte](initialSize)
@@ -11,7 +12,8 @@ class BinaryOutput(initialSize: Int = 32) {
 
   final def bytes: Array[Byte] = buffer.take(length)
 
-  final def write(subsection: BinaryOutput): Unit = {
+  final def write(subsection: BinaryOutput, nameRef: Option[NameRef] = None): Unit = {
+    nameRef.foreach(ref => writeNat(ref.index))
     writeNat(subsection.size)
     writeBytes(subsection.bytes, subsection.size)
   }

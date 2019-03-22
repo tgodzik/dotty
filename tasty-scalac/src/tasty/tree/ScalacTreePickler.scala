@@ -17,7 +17,7 @@ final class ScalacTreePickler(val namePool: ScalacNamePickler,
   private val termPickler = new ScalacTermPickler(namePool, output)
   private val modifierPickler = new ScalacModifierPickler(namePool, output)
 
-  override protected def pickle(tree: Global#Tree): Unit = {
+  override protected def pickle(tree: Global#Tree): Unit = if (!tree.isEmpty) {
     val symbol = tree.symbol
     val owner = symbol.owner
 
