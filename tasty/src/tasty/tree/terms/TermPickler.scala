@@ -1,6 +1,7 @@
 package tasty.tree.terms
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
+import tasty.names.NameRef
 import tasty.tree.TreeSectionPickler
 
 import scala.collection.mutable
@@ -20,6 +21,11 @@ abstract class TermPickler extends TreeSectionPickler {
       cache.put(term, offset)
       pickle(term)
     }
+  }
+
+  final def picklePackageRef(nameRef: NameRef) = {
+    output.writeByte(TERMREFpkg)
+    output.writeNat(nameRef.index)
   }
 
   protected def pickle(tree: Term): Unit
