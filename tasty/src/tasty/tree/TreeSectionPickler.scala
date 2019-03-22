@@ -11,7 +11,7 @@ trait TreeSectionPickler extends TaggedSectionPickler {
 
   protected final def pickleName(name: Name): Unit = {
     val ref = namePool.pickleName(name)
-    output.writeNat(ref.value)
+    output.writeNat(ref.index)
   }
 
   override protected final def startsSubsection(tag: Int): Boolean = tag >= TastyFormat.firstLengthTreeTag

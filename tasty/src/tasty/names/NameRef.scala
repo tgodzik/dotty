@@ -1,3 +1,3 @@
 package tasty.names
 
-final class NameRef(val value: Int) extends AnyVal
+final class NameRef(val index: Int) extends AnyVal

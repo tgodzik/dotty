@@ -24,6 +24,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
       buf.length + natSize(buf.length)
 
     nameBuffer.assemble()
+
     sections.foreach(_._2.assemble())
 
     val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
