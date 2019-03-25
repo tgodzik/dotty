@@ -36,10 +36,12 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
 
       case g.Select(qualifier, name) =>
         val appliesTypesToConstructor = symbol.isConstructor && owner.typeParams.nonEmpty
-        namePool.pickleName(g.TermName(term.toString()))
+
         if (appliesTypesToConstructor) {
           val g.TypeRef(_, _, targs) = qualifier.tpe.widen
           // TODO onTypeApply(tree, targs)
+        } else if (symbol.hasPackageFlag && !symbol.isRoot) {
+          picklePackageRef(g.TermName(term.toString()))
         } else onSelect(name, qualifier)
 
       case g.TypeTree() => pickleType(term.tpe)
