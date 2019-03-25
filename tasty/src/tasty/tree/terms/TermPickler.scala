@@ -23,15 +23,12 @@ abstract class TermPickler extends TreeSectionPickler {
     }
   }
 
-  final def picklePackageRef(nameRef: NameRef) = {
-    output.writeByte(TERMREFpkg)
-    output.writeNat(nameRef.index)
-  }
-
   protected def pickle(tree: Term): Unit
 
   protected def pickleType(t: Type): Unit
 
+  protected final def picklePackageRef(nameRef: NameRef): Unit = tagged(TERMREFpkg)(output.writeNat(nameRef.index))
+  
   protected final def onIdent(name: Name, t: Type): Unit = tagged(IDENT) {
     pickleName(name)
     pickleType(t)
