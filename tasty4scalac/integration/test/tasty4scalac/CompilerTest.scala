@@ -1,6 +1,6 @@
 package tasty4scalac
 
-import java.util
+import java.nio.file.Path
 
 import org.junit.Assert._
 import org.junit.Test
@@ -10,8 +10,17 @@ import org.junit.runners.Parameterized.Parameters
 import tasty.binary.BinaryInput
 import tasty.{TastyADT, TastyADTUnpickler}
 
+import scala.io.Source
+
 @RunWith(classOf[Parameterized])
-class CompilerTest(scalacOutput: Map[String, TastyADT], dottyOutput: Map[String, TastyADT]) {
+class CompilerTest(name: String, unused: String) {
+
+  private val scalac = Scalac()
+  private val dotty = Dotty()
+  private val code = Source.fromFile(CompilerTest.root.resolve(name).toFile).mkString
+  private val scalacOutput = scalac.compile(code).mapValues(convert)
+  private val dottyOutput = dotty.compile(code).mapValues(convert)
+
   @Test
   def scalacEmitsSameAmountOfTastyFiles(): Unit =
     assertEquals(dottyOutput.keySet, scalacOutput.keySet)
@@ -26,29 +35,23 @@ class CompilerTest(scalacOutput: Map[String, TastyADT], dottyOutput: Map[String,
       missingNames = scalacEmittedNames -- dottyEmittedNames
     } assertTrue(s"scalac emitted non-matching names for: $name. Those are: [$missingNames]", missingNames.isEmpty)
   }
+
+  private def convert(binary: BinaryTasty): TastyADT = {
+    val input = new BinaryInput(binary.bytes)
+    TastyADTUnpickler.unpickle(input)
+  }
 }
 
 object CompilerTest {
 
   import collection.JavaConverters._
 
-  private val scalac = Scalac()
-  private val dotty = Dotty()
+  private val testCases = ScalaTestCaseSource.testCases().map(_.getFileName.toString)
 
-  @Parameters()
-  def parameters(): util.Collection[Array[Any]] = {
+  def root: Path = ScalaTestCaseSource.root
 
-    val testCases = for {
-      code <- ScalaTestCaseSource.testCases()
-      scalacOutput = scalac.compile(code).mapValues(convert)
-      dottyOutput = dotty.compile(code).mapValues(convert)
-    } yield Array[Any](scalacOutput, dottyOutput)
-
-    testCases.asJavaCollection
-  }
-
-  private def convert(binary: BinaryTasty): TastyADT = {
-    val input = new BinaryInput(binary.bytes)
-    TastyADTUnpickler.unpickle(input)
+  @Parameters(name = "{0}")
+  def data(): java.util.Collection[Array[String]] = {
+    testCases.zip(testCases).map { case (code1, code2) => Array(code1, code2) }.asJavaCollection
   }
 }
