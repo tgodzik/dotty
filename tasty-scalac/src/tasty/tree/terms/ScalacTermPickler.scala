@@ -41,8 +41,7 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
           val g.TypeRef(_, _, targs) = qualifier.tpe.widen
           // TODO onTypeApply(tree, targs)
         } else if (symbol.hasPackageFlag && !symbol.isRoot) {
-          val packageNameRef = namePool.pickleName(g.TermName(term.toString()))
-          picklePackageRef(packageNameRef)
+          picklePackageRef(g.TermName(term.toString()))
         } else onSelect(name, qualifier)
 
       case g.TypeTree() => pickleType(term.tpe)
