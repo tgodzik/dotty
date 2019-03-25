@@ -18,6 +18,7 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
 
   override protected def pickle(term: Term): Unit = {
     val symbol = term.symbol
+    // symbol might be null
     lazy val owner = symbol.owner
 
     term match {
@@ -52,8 +53,6 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
       case g.Block(stats, expr) => onBlock(stats, expr)
 
       case g.TypeTree() => pickleType(term.tpe)
-
-      case g.Super(qual, mix) => ???
 
       case g.Literal(c) => constantPickler.pickleConstant(c)
 

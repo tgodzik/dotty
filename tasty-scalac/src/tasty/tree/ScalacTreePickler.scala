@@ -31,7 +31,7 @@ final class ScalacTreePickler(val namePool: ScalacNamePickler,
       case tree@g.DefDef(mods, name, tparams, vparams, tpt, rhs) =>
         val returnType = if (tree.symbol.isConstructor) g.TypeTree(g.definitions.UnitTpe) else tpt
         val body = if (tree.symbol.isPrimaryConstructor) {
-          // need to pickle the super
+          // need to pickle the super constructor call as parent_term
           pickleTerm(tree.rhs.asInstanceOf[Global#Block].stats.head)
           None
         } else Some(tree.rhs)
