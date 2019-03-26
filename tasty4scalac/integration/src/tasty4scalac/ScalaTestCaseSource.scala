@@ -7,7 +7,7 @@ import scala.collection.JavaConverters._
 
 object ScalaTestCaseSource {
   private val scalaExtension = ".scala"
-  val root: Path = Paths.get(getClass.getClassLoader.getResource("test-cases").toURI)
+  private val root: Path = Paths.get(getClass.getClassLoader.getResource("test-cases").toURI)
 
   def testCases(): Seq[Path] = findTestCases(root)
 

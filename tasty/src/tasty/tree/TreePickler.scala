@@ -57,7 +57,6 @@ abstract class TreePickler extends TreeSectionPickler {
     pickleName(name)
     // TODO type parameters
     tagged(PARAMS){
-      // TODO scalac params are list of list - check why
       parameters.foreach(_.foreach(pickleTerm))
     }
     pickleTerm(returnType)
