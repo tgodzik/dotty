@@ -1,7 +1,10 @@
 package tasty.tree
 
-abstract class ModifierPickler extends TreeSectionPickler {
-  type Modifier
+import tasty.binary.SectionWriter
+import tasty.names.WriterNamePool
 
-  def pickleModifier(modifier: Modifier): Unit
+abstract class ModifierWriter[Modifier, Name](nameSection: WriterNamePool[Name],
+                                              underlying: SectionWriter)
+  extends TreeSectionWriter[Modifier, Name](nameSection, underlying) {
+
 }
