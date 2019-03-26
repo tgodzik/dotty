@@ -5,7 +5,7 @@ import tasty.binary.SectionWriter
 import scala.io.Codec
 import scala.tools.nsc.Global
 
-final class ScalacWriterNamePool(output: SectionWriter)(g: Global) extends WriterNamePool[Global#Name](output) {
+final class ScalacWriterNamePool(output: SectionWriter)(implicit g: Global) extends WriterNamePool[Global#Name](output) {
   override protected def write(name: Global#Name): Unit = {
     val stringName = name.toString
     if (stringName.contains('.')) {
