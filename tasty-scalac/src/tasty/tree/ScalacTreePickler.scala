@@ -32,7 +32,7 @@ final class ScalacTreePickler(val namePool: ScalacNamePickler,
 
       case tree@g.DefDef(mods, name, tparams, vparams, tpt, rhs) =>
         val returnType = if (tree.symbol.isConstructor) g.TypeTree(g.definitions.UnitTpe) else tpt
-        val body = if (tree.symbol.isPrimaryConstructor) None
+        val body = if (tree.symbol.isPrimaryConstructor) None // TODO: Check if there's no information lost here
         else Some(tree.rhs)
         val name = if (symbol.isConstructor && owner.isTrait) g.nme.CONSTRUCTOR // FIXME: this is not enough, if trait is PureInterface, no $init$ is generated at all
         else symbol.name
