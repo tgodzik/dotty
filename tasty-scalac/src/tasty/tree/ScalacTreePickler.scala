@@ -1,5 +1,10 @@
 package tasty.tree.terms
 
+import tasty.binary.BinaryOutput
+import tasty.names.{ScalacName, ScalacNamePickler}
+import tasty.tree.terms.ScalacTermPickler
+
+import scala.tools.nsc.Global
 import dotty.tools.dotc.core.tasty.TastyFormat.SELECT
 import tasty.ScalacConversions
 import tasty.binary.SectionPickler
@@ -7,12 +12,10 @@ import tasty.names.ScalacPicklerNamePool
 import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
 import tasty.tree.{ScalacModifierPickler, TreePickler}
 
-import scala.tools.nsc.Global
-
 final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
                              underlying: SectionPickler)
                             (implicit val g: Global)
-  extends TreePickler[Global#Tree, Global#Name](nameSection, underlying) with ScalacConversions {
+  extends TreePickler[Global#Tree, ScalacName](nameSection, underlying) with ScalacConversions {
 
   override protected type Type = Global#Type
   override protected type Modifier = Global#Symbol

@@ -1,14 +1,14 @@
 package tasty.tree.types
 
 import tasty.binary.SectionPickler
-import tasty.names.ScalacPicklerNamePool
+import tasty.names.{ScalacName, ScalacPicklerNamePool}
 
 import scala.tools.nsc.Global
 
 final class ScalacConstantPickler(val nameSection: ScalacPicklerNamePool,
                                  output: SectionPickler)
                                 (implicit g: Global)
-  extends ConstantPickler[Global#Constant, Global#Name](nameSection, output) {
+  extends ConstantPickler[Global#Constant, ScalacName](nameSection, output) {
 
   override def pickle(constant: Global#Constant): Unit = constant.tag match {
     // TODO   case g.NoTag => ???
