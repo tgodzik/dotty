@@ -1,27 +1,27 @@
 package tasty
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.BinaryOutput
-import tasty.binary.BinaryOutput.hashOf
-import tasty.names.ScalacNamePickler
-import tasty.tree.ScalacTreePickler
+import tasty.binary.BinaryWriter.hashOf
+import tasty.binary.{BinaryWriter, SectionWriter}
+import tasty.names.ScalacWriterNamePool
+import tasty.tree.terms.ScalacTreeWriter
 
 import scala.tools.nsc.Global
 
 final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
   override type Name = Global#Name
-  private val namesSection = new BinaryOutput()
-  private val namePool = new ScalacNamePickler(namesSection)
+  private val namesSection = new SectionWriter
+  private val namePool = new ScalacWriterNamePool(namesSection)
 
-  private val treeSection = new BinaryOutput
-  private val treeSectionNameRef = namePool.pickleName(g.newTermName("ASTs"))
-  private val treePickler = new ScalacTreePickler(namePool, treeSection)
+  private val treeSection = new SectionWriter
+  private val treeSectionNameRef = namePool.writeName(g.newTermName("ASTs"))
+  private val treePickler = new ScalacTreeWriter(namePool, treeSection)
 
-  def write(tree: Global#Tree): Unit = treePickler.pickleTree(tree)
+  def write(tree: Global#Tree): Unit = treePickler.write(tree)
 
   def output(): Array[Byte] = {
     val totalSize = TastyWriter.headerBytes + namesSection.size + treeSection.size
-    val output = new BinaryOutput(totalSize) // TODO can be streamed instead of copying arrays in memory
+    val output = new BinaryWriter(totalSize) // TODO can be streamed instead of copying arrays in memory
 
     writeHeader(output)
     output.write(namesSection)
@@ -31,7 +31,7 @@ final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
     output.bytes
   }
 
-  private def writeHeader(output: BinaryOutput): Unit = {
+  private def writeHeader(output: BinaryWriter): Unit = {
     val namesHash = hashOf(namesSection)
     val treeHash = hashOf(treeSection)
     val uuidLow: Long = namesHash ^ treeHash
