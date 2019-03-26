@@ -1,44 +1,42 @@
 package tasty.tree.types
 
-import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePickler
+import dotty.tools.dotc.core.tasty.TastyFormat.{TERMREFpkg, TYPEREFpkg}
+import tasty.Writer
+import tasty.binary.SectionWriter
+import tasty.names.ScalacWriterNamePool
 
 import scala.tools.nsc.Global
 
-final class ScalacTypePickler(val namePool: ScalacNamePickler, val output: BinaryOutput)(implicit g: Global) extends TypePickler {
-  override type Name = Global#Name
-  override type Type = Global#Type
+final class ScalacTypeWriter(nameSection: ScalacWriterNamePool,
+                             underlying: SectionWriter)
+                            (implicit g: Global)
+  extends TypeWriter[Global#Type, Global#Name](nameSection, underlying) {
 
-  private val constantPickler = new ScalacConstantPickler(namePool, output)
+  override type Constant = Global#Constant
+  override protected val constantWriter: Writer[Constant] = new ScalacConstantWriter(nameSection, underlying)
 
-    override protected def pickle(t: Global#Type): Unit = t match {
-    case g.ConstantType(value) => constantPickler.pickleConstant(value)
+  override protected def dispatch(t: Global#Type): Unit = t match {
+    case g.ConstantType(constant) => constantWriter.write(constant)
     case g.SingleType(pre, sym) =>
       if (sym.hasPackageFlag) tagged(if (sym.isType) TYPEREFpkg else TERMREFpkg) {
-        pickleName(sym.fullNameAsName('.'))
+        writeName(sym.fullNameAsName('.'))
       } else {
         ???
       }
     case g.TypeRef(pre, sym, args) =>
       if (args.isEmpty) {
         val name = sym.name
-        pickleTypeRef(name, pre)
+        writeTypeRef(name, pre)
       } else ??? // TODO APPLIEDTYPE
 
     case tpe@g.ThisType(sym) =>
       if (sym.isRoot || !sym.hasPackageFlag) {
         val typeConstructor = tpe.underlying.typeConstructor
-        pickleThis(typeConstructor)
+        writeThis(typeConstructor)
       } else {
-        pickleTermRef(sym.fullNameAsName('.'))
+        writePackageTermRef(sym.fullNameAsName('.'))
       }
 
     case _ => throw new UnsupportedOperationException(s"Cannot pickle type [${t.getClass} $t]")
   }
-
-  private def pickleAnnotations(annotations: List[Global#AnnotationInfo]) = {
-    ???
-  }
-
 }

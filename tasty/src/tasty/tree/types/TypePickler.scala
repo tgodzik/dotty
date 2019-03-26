@@ -1,34 +1,50 @@
 package tasty.tree.types
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.tree.TreeSectionPickler
+import tasty.Writer
+import tasty.binary.SectionWriter
+import tasty.names.WriterNamePool
+import tasty.tree.TreeSectionWriter
 
 import scala.collection.mutable
 
-abstract class TypePickler extends TreeSectionPickler {
-  type Type
+abstract class TypeWriter[Type, Name](nameSection: WriterNamePool[Name],
+                                      underlying: SectionWriter)
+  extends TreeSectionWriter[Type, Name](nameSection, underlying) {
+  type Constant
 
-  private val cache = mutable.Map[Type, Int]()
+  final val cache = mutable.Map[Type, Int]()
 
-  final def pickleType(t: Type): Unit = {
-    if (cache.contains(t)) {
-      output.writeByte(SHAREDtype)
-      output.writeNat(cache(t))
+  protected def constantWriter: Writer[Constant]
+
+  final def write(value: Type): Unit =
+    if (cache.contains(value)) tagged(SHAREDtype) {
+      writeRef(cache(value))
     } else {
-      val offset = output.size
-      cache.put(t, offset)
-      pickle(t)
+      cache += value -> currentOffset
+      dispatch(value)
     }
+
+  protected def dispatch(value: Type): Unit
+
+  protected final def writeTypeRef(name: Name, pre: Type): Unit = tagged(TYPEREF) {
+    writeName(name)
+    write(pre)
   }
 
-  protected def pickle(t: Type): Unit
+  protected final def writeThis(typeConstructor: Type): Unit = tagged(THIS)(write(typeConstructor))
 
-  protected final def pickleTypeRef(name: Name, t: Type): Unit = tagged(TYPEREF) {
-    pickleName(name)
-    pickleType(t)
+  protected final def writePackageTermRef(name: Name): Unit = tagged(TERMREFpkg) {
+    writeName(name)
   }
 
-  protected final def pickleThis(typeConstructor: Type): Unit = tagged(THIS)(pickleType(typeConstructor))
+  protected final def writeAnd(left: Type, right: Type): Unit = tagged(ANDtype) {
+    write(left)
+    write(right)
+  }
 
-  protected final def pickleTermRef(name: Name): Unit = tagged(TERMREFpkg)(pickleName(name))
+  protected final def writeOr(left: Type, right: Type): Unit = tagged(ORtype) {
+    write(left)
+    write(right)
+  }
 }
