@@ -7,19 +7,17 @@ import scala.collection.JavaConverters._
 
 object ScalaTestCaseSource {
   private val scalaExtension = ".scala"
-  private val root = Paths.get(System.getProperty("test.root.directory"))
+  private val root: Path = Paths.get(getClass.getClassLoader.getResource("test-cases").toURI)
 
-  def testCases(): Seq[String] = findTestCases(root)
+  def testCases(): Seq[Path] = findTestCases(root)
 
-  private def findTestCases(path: Path): Seq[String] = {
+  private def findTestCases(path: Path): Seq[Path] = {
     if (!Files.exists(path)) Nil
     else Files.walk(path)
       .iterator()
       .asScala
       .filter(_.getFileName.toString.endsWith(scalaExtension))
-      .map(readContent)
       .toSeq
   }
 
-  private def readContent(path: Path): String = new String(Files.readAllBytes(path))
 }

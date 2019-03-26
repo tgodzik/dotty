@@ -44,7 +44,6 @@ abstract class TreePickler extends TreeSectionPickler {
   protected final def pickleTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Term],
                                      self: Option[(Name, Term)], statements: Seq[Tree]): Unit = tagged(TEMPLATE) {
     // TODO {type,}parameters
-    parents.foreach(pickleTerm)
     self.foreach {
       case (name, tp) =>
         pickleName(name)
@@ -53,10 +52,13 @@ abstract class TreePickler extends TreeSectionPickler {
     statements.foreach(pickleTree)
   }
 
-  protected def pickleDefDef(name: Name, typeParameters: Seq[Any], parameters: Seq[Any],
+  protected def pickleDefDef(name: Name, typeParameters: Seq[Any], parameters: Seq[Seq[Term]],
                              returnType: Term, body: Option[Term], modifiers: Seq[Modifier]): Unit = tagged(DEFDEF) {
     pickleName(name)
-    // TODO {type,}parameters
+    // TODO type parameters
+    tagged(PARAMS){
+      parameters.foreach(_.foreach(pickleTerm))
+    }
     pickleTerm(returnType)
     body.foreach(pickleTerm)
     modifiers.foreach(pickleModifier)

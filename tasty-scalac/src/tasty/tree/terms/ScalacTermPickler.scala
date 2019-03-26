@@ -3,7 +3,7 @@ package tasty.tree.terms
 import tasty.ScalacConversions
 import tasty.binary.BinaryOutput
 import tasty.names.ScalacNamePickler
-import tasty.tree.types.ScalacTypePickler
+import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
 
 import scala.tools.nsc.Global
 
@@ -14,10 +14,12 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
   override protected type Type = Global#Type
 
   private val typePickler = new ScalacTypePickler(namePool, output)
+  private val constantPickler = new ScalacConstantPickler(namePool, output)
 
   override protected def pickle(term: Term): Unit = {
     val symbol = term.symbol
-    val owner = symbol.owner
+    // symbol might be null
+    lazy val owner = symbol.owner
 
     term match {
       case g.Ident(name) =>
@@ -42,13 +44,22 @@ final class ScalacTermPickler(val namePool: ScalacNamePickler, val output: Binar
           // TODO onTypeApply(tree, targs)
         } else if (symbol.hasPackageFlag && !symbol.isRoot) {
           picklePackageRef(g.TermName(term.toString()))
+        } else if (symbol.isConstructor) {
+          pickleConstructor(g.TermName("<init>"), owner.typeOfThis)
         } else onSelect(name, qualifier)
 
+      case g.Apply(fun, args) => onApply(fun, args)
+
+      case g.Block(stats, expr) => onBlock(stats, expr)
+
       case g.TypeTree() => pickleType(term.tpe)
+
+      case g.Literal(c) => constantPickler.pickleConstant(c)
 
       case _ => throw new UnsupportedOperationException(s"Cannot pickle term: [${term.getClass}: $term")
     }
   }
 
   override protected def pickleType(t: Global#Type): Unit = typePickler.pickleType(t)
+
 }

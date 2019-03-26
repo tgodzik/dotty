@@ -1,6 +1,6 @@
 package tasty4scalac
 
-import java.util
+import java.nio.file.{Files, Path}
 
 import org.junit.Assert._
 import org.junit.Test
@@ -11,7 +11,8 @@ import tasty.binary.BinaryInput
 import tasty.{TastyADT, TastyADTUnpickler}
 
 @RunWith(classOf[Parameterized])
-class CompilerTest(scalacOutput: Map[String, TastyADT], dottyOutput: Map[String, TastyADT]) {
+class CompilerTest(fileName: String, scalacOutput: Map[String, TastyADT], dottyOutput: Map[String, TastyADT]) {
+
   @Test
   def scalacEmitsSameAmountOfTastyFiles(): Unit =
     assertEquals(dottyOutput.keySet, scalacOutput.keySet)
@@ -32,20 +33,20 @@ object CompilerTest {
 
   import collection.JavaConverters._
 
-  private val scalac = Scalac()
-  private val dotty = Dotty()
-
-  @Parameters()
-  def parameters(): util.Collection[Array[Any]] = {
-
+  @Parameters(name = "{0}")
+  def data(): java.util.Collection[Array[Any]] = {
     val testCases = for {
-      code <- ScalaTestCaseSource.testCases()
-      scalacOutput = scalac.compile(code).mapValues(convert)
-      dottyOutput = dotty.compile(code).mapValues(convert)
-    } yield Array[Any](scalacOutput, dottyOutput)
+      testCase <- ScalaTestCaseSource.testCases()
+      name = testCase.getFileName.toString
+      code = readContent(testCase)
+      scalacOutput = Scalac().compile(code).mapValues(convert)
+      dottyOutput = Dotty().compile(code).mapValues(convert)
+    } yield Array[Any](name, scalacOutput, dottyOutput)
 
     testCases.asJavaCollection
   }
+
+  private def readContent(path: Path): String = new String(Files.readAllBytes(path))
 
   private def convert(binary: BinaryTasty): TastyADT = {
     val input = new BinaryInput(binary.bytes)
