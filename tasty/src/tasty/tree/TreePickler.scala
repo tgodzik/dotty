@@ -1,15 +1,15 @@
 package tasty.tree
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.SectionWriter
-import tasty.names.WriterNamePool
-import tasty.tree.types.{ConstantWriter, TypeWriter}
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
+import tasty.tree.types.{ConstantPickler, TypePickler}
 
 import scala.collection.mutable
 
-abstract class TreeWriter[Tree, Name](nameSection: WriterNamePool[Name],
-                                      underlying: SectionWriter)
-  extends TreeSectionWriter[Tree, Name](nameSection, underlying) {
+abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
+                                       underlying: SectionPickler)
+  extends TreeSectionPickler[Tree, Name](nameSection, underlying) {
 
   protected type Type
   protected type Modifier
@@ -17,15 +17,15 @@ abstract class TreeWriter[Tree, Name](nameSection: WriterNamePool[Name],
 
   final val cache = mutable.Map[Tree, Int]()
 
-  protected def typeWriter: TypeWriter[Type, Name]
+  protected def typePickler: TypePickler[Type, Name]
 
-  protected def constantWriter: ConstantWriter[Constant, Name]
+  protected def constantPickler: ConstantPickler[Constant, Name]
 
-  protected def modifierWriter: ModifierWriter[Modifier, Name]
+  protected def modifierPickler: ModifierPickler[Modifier, Name]
 
-  final def write(value: Tree): Unit =
+  final def pickle(value: Tree): Unit =
     if (cache.contains(value)) tagged(SHAREDtype) {
-      writeRef(cache(value))
+      pickleRef(cache(value))
     } else {
       cache += value -> currentOffset
       dispatch(value)
@@ -34,79 +34,79 @@ abstract class TreeWriter[Tree, Name](nameSection: WriterNamePool[Name],
   protected def dispatch(tree: Tree): Unit
 
   // Top Level Statements
-  protected final def writePackageDef(id: Tree, statements: Seq[Tree]): Unit = tagged(PACKAGE) {
-    write(id)
-    writeTerminalSequence(statements)
+  protected final def picklePackageDef(id: Tree, statements: Seq[Tree]): Unit = tagged(PACKAGE) {
+    pickle(id)
+    pickleTerminalSequence(statements)
   }
 
-  protected final def writeTypeDef(name: Name, template: Tree, modifiers: Seq[Modifier]): Unit = tagged(TYPEDEF) {
-    writeName(name)
-    write(template)
-    modifierWriter.writeTerminalSequence(modifiers)
+  protected final def pickleTypeDef(name: Name, template: Tree, modifiers: Seq[Modifier]): Unit = tagged(TYPEDEF) {
+    pickleName(name)
+    pickle(template)
+    modifierPickler.pickleTerminalSequence(modifiers)
   }
 
-  protected final def writeTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Tree],
+  protected final def pickleTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Tree],
                                     self: Option[(Name, Tree)], statements: Seq[Tree]): Unit = tagged(TEMPLATE) {
     // TODO {type,}parameters
 
-    // TODO should be "writeSequence" but dotty has "very special" reader, which handles this particular case...
-    writeTerminalSequence(parents)
+    // TODO should be "pickleSequence" but dotty has "very special" reader, which handles this particular case...
+    pickleTerminalSequence(parents)
     self.foreach {
       case (name, tp) =>
-        writeName(name)
-        write(tp)
+        pickleName(name)
+        pickle(tp)
     }
-    writeTerminalSequence(statements)
+    pickleTerminalSequence(statements)
   }
 
-  protected def writeDefDef(name: Name, typeParameters: Seq[Any], curriedParams: Seq[Seq[Tree]],
+  protected def pickleDefDef(name: Name, typeParameters: Seq[Any], curriedParams: Seq[Seq[Tree]],
                             returnType: Tree, body: Option[Tree], modifiers: Seq[Modifier]): Unit = tagged(DEFDEF) {
-    writeName(name)
+    pickleName(name)
     // TODO type parameters
     curriedParams.foreach { parameters =>
       tagged(PARAMS) {
-        writeTerminalSequence(parameters)
+        pickleTerminalSequence(parameters)
       }
     }
-    write(returnType)
-    body.foreach(write)
-    modifierWriter.writeTerminalSequence(modifiers)
+    pickle(returnType)
+    body.foreach(pickle)
+    modifierPickler.pickleTerminalSequence(modifiers)
   }
 
   // Terms
-  protected final def writeIdent(name: Name, typ: Type): Unit = tagged(IDENT) {
-    writeName(name)
-    typeWriter.write(typ)
+  protected final def pickleIdent(name: Name, typ: Type): Unit = tagged(IDENT) {
+    pickleName(name)
+    typePickler.pickle(typ)
   }
 
-  protected final def writeSelect(name: Name, term: Tree): Unit = tagged(IDENT) {
-    writeName(name)
-    write(term)
+  protected final def pickleSelect(name: Name, term: Tree): Unit = tagged(IDENT) {
+    pickleName(name)
+    pickle(term)
   }
 
-  protected final def writePackageRef(name: Name): Unit = tagged(TERMREFpkg)(writeName(name))
+  protected final def picklePackageRef(name: Name): Unit = tagged(TERMREFpkg)(pickleName(name))
 
-  protected final def writeBlock(expression: Tree, statements: Seq[Tree]): Unit = tagged(BLOCK) {
-    write(expression)
-    writeTerminalSequence(statements)
+  protected final def pickleBlock(expression: Tree, statements: Seq[Tree]): Unit = tagged(BLOCK) {
+    pickle(expression)
+    pickleTerminalSequence(statements)
   }
 
-  protected final def writeNew(typ: Type): Unit = tagged(NEW) {
-    typeWriter.write(typ)
+  protected final def pickleNew(typ: Type): Unit = tagged(NEW) {
+    typePickler.pickle(typ)
   }
 
-  protected final def writeApply(function: Tree, args: Seq[Tree]): Unit = tagged(APPLY) {
-    write(function)
-    writeTerminalSequence(args)
+  protected final def pickleApply(function: Tree, args: Seq[Tree]): Unit = tagged(APPLY) {
+    pickle(function)
+    pickleTerminalSequence(args)
   }
 
-  protected final def writeTypeApply(function: Tree, args: Seq[Tree]): Unit = tagged(TYPEAPPLY) {
-    write(function)
-    writeTerminalSequence(args)
+  protected final def pickleTypeApply(function: Tree, args: Seq[Tree]): Unit = tagged(TYPEAPPLY) {
+    pickle(function)
+    pickleTerminalSequence(args)
   }
 
-  protected final def writeSuper(term: Tree, mixin: Option[Tree]): Unit = tagged(SUPER) {
-    write(term)
-    mixin.foreach(write)
+  protected final def pickleSuper(term: Tree, mixin: Option[Tree]): Unit = tagged(SUPER) {
+    pickle(term)
+    mixin.foreach(pickle)
   }
 }

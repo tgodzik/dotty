@@ -1,47 +1,47 @@
 package tasty
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.BinaryWriter.hashOf
-import tasty.binary.{BinaryWriter, SectionWriter}
-import tasty.names.ScalacWriterNamePool
-import tasty.tree.terms.ScalacTreeWriter
+import tasty.binary.BinaryPickler.hashOf
+import tasty.binary.{BinaryPickler, SectionPickler}
+import tasty.names.ScalacPicklerNamePool
+import tasty.tree.terms.ScalacTreePickler
 
 import scala.tools.nsc.Global
 
 final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter {
   override type Name = Global#Name
-  private val namesSection = new SectionWriter
-  private val namePool = new ScalacWriterNamePool(namesSection)
+  private val namesSection = new SectionPickler
+  private val namePool = new ScalacPicklerNamePool(namesSection)
 
-  private val treeSection = new SectionWriter
-  private val treeSectionNameRef = namePool.writeName(g.newTermName("ASTs"))
-  private val treePickler = new ScalacTreeWriter(namePool, treeSection)
+  private val treeSection = new SectionPickler
+  private val treeSectionNameRef = namePool.pickleName(g.newTermName("ASTs"))
+  private val treePickler = new ScalacTreePickler(namePool, treeSection)
 
-  def write(tree: Global#Tree): Unit = treePickler.write(tree)
+  def write(tree: Global#Tree): Unit = treePickler.pickle(tree)
 
   def output(): Array[Byte] = {
     val totalSize = TastyWriter.headerBytes + namesSection.size + treeSection.size
-    val output = new BinaryWriter(totalSize) // TODO can be streamed instead of copying arrays in memory
+    val output = new BinaryPickler(totalSize) // TODO can be streamed instead of copying arrays in memory
 
     writeHeader(output)
-    output.write(namesSection)
-    output.writeNat(treeSectionNameRef.index)
-    output.write(treeSection)
+    output.pickle(namesSection)
+    output.pickleNat(treeSectionNameRef.index)
+    output.pickle(treeSection)
 
     output.bytes
   }
 
-  private def writeHeader(output: BinaryWriter): Unit = {
+  private def writeHeader(output: BinaryPickler): Unit = {
     val namesHash = hashOf(namesSection)
     val treeHash = hashOf(treeSection)
     val uuidLow: Long = namesHash ^ treeHash
     val uuidHi = (Map() - treeSectionNameRef).values.foldLeft(0L)(_ ^ hashOf(_))
 
-    for (ch <- header) output.writeByte(ch.toByte)
-    output.writeNat(MajorVersion)
-    output.writeNat(MinorVersion)
-    output.writeUncompressedLong(uuidLow)
-    output.writeUncompressedLong(uuidHi)
+    for (ch <- header) output.pickleByte(ch.toByte)
+    output.pickleNat(MajorVersion)
+    output.pickleNat(MinorVersion)
+    output.pickleUncompressedLong(uuidLow)
+    output.pickleUncompressedLong(uuidHi)
   }
 
 }

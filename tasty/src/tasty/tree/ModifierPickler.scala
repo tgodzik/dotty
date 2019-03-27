@@ -1,10 +1,10 @@
 package tasty.tree
 
-import tasty.binary.SectionWriter
-import tasty.names.WriterNamePool
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
 
-abstract class ModifierWriter[Modifier, Name](nameSection: WriterNamePool[Name],
-                                              underlying: SectionWriter)
-  extends TreeSectionWriter[Modifier, Name](nameSection, underlying) {
+abstract class ModifierPickler[Modifier, Name](nameSection: PicklerNamePool[Name],
+                                               underlying: SectionPickler)
+  extends TreeSectionPickler[Modifier, Name](nameSection, underlying) {
 
 }

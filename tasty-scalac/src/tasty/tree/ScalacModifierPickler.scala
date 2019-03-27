@@ -1,14 +1,14 @@
 package tasty.tree
 
-import tasty.binary.SectionWriter
-import tasty.names.ScalacWriterNamePool
+import tasty.binary.SectionPickler
+import tasty.names.ScalacPicklerNamePool
 
 import scala.tools.nsc.Global
 
-final class ScalacModifierWriter(nameSection: ScalacWriterNamePool,
-                                  underlying: SectionWriter)
+final class ScalacModifierPickler(nameSection: ScalacPicklerNamePool,
+                                  underlying: SectionPickler)
                                  (implicit val g: Global)
-  extends ModifierWriter[Global#Symbol, Global#Name](nameSection, underlying) {
+  extends ModifierPickler[Global#Symbol, Global#Name](nameSection, underlying) {
 
-  override def write(value: Global#Symbol): Unit = {}
+  override def pickle(value: Global#Symbol): Unit = {}
 }

@@ -1,25 +1,25 @@
 package tasty.tree.types
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.Writer
-import tasty.binary.SectionWriter
-import tasty.names.WriterNamePool
-import tasty.tree.TreeSectionWriter
+import tasty.Pickler
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
+import tasty.tree.TreeSectionPickler
 
 import scala.collection.mutable
 
-abstract class TypeWriter[Type, Name](nameSection: WriterNamePool[Name],
-                                      underlying: SectionWriter)
-  extends TreeSectionWriter[Type, Name](nameSection, underlying) {
+abstract class TypePickler[Type, Name](nameSection: PicklerNamePool[Name],
+                                       underlying: SectionPickler)
+  extends TreeSectionPickler[Type, Name](nameSection, underlying) {
   type Constant
 
   final val cache = mutable.Map[Type, Int]()
 
-  protected def constantWriter: Writer[Constant]
+  protected def constantPickler: Pickler[Constant]
 
-  final def write(value: Type): Unit =
+  final def pickle(value: Type): Unit =
     if (cache.contains(value)) tagged(SHAREDtype) {
-      writeRef(cache(value))
+      pickleRef(cache(value))
     } else {
       cache += value -> currentOffset
       dispatch(value)
@@ -27,24 +27,24 @@ abstract class TypeWriter[Type, Name](nameSection: WriterNamePool[Name],
 
   protected def dispatch(value: Type): Unit
 
-  protected final def writeTypeRef(name: Name, pre: Type): Unit = tagged(TYPEREF) {
-    writeName(name)
-    write(pre)
+  protected final def pickleTypeRef(name: Name, pre: Type): Unit = tagged(TYPEREF) {
+    pickleName(name)
+    pickle(pre)
   }
 
-  protected final def writeThis(typeConstructor: Type): Unit = tagged(THIS)(write(typeConstructor))
+  protected final def pickleThis(typeConstructor: Type): Unit = tagged(THIS)(pickle(typeConstructor))
 
-  protected final def writePackageTermRef(name: Name): Unit = tagged(TERMREFpkg) {
-    writeName(name)
+  protected final def picklePackageTermRef(name: Name): Unit = tagged(TERMREFpkg) {
+    pickleName(name)
   }
 
-  protected final def writeAnd(left: Type, right: Type): Unit = tagged(ANDtype) {
-    write(left)
-    write(right)
+  protected final def pickleAnd(left: Type, right: Type): Unit = tagged(ANDtype) {
+    pickle(left)
+    pickle(right)
   }
 
-  protected final def writeOr(left: Type, right: Type): Unit = tagged(ORtype) {
-    write(left)
-    write(right)
+  protected final def pickleOr(left: Type, right: Type): Unit = tagged(ORtype) {
+    pickle(left)
+    pickle(right)
   }
 }

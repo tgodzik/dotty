@@ -1,18 +1,18 @@
 package tasty.binary
 
 import dotty.tools.dotc.core.tasty.TastyBuffer
-import tasty.Writer
+import tasty.Pickler
 
-class SectionWriter extends BinaryWriter {
-  final def write[A](value: A)(implicit writer: Writer[A]): Unit = writer.write(value)
+class SectionPickler extends BinaryPickler {
+  final def pickle[A](value: A)(implicit pickler: Pickler[A]): Unit = pickler.pickle(value)
 
-  final def writeSequence[A](sequence: Seq[A])(implicit writer: Writer[A]): Unit =
-    writeSubsection(writeTerminalSequence(sequence))
+  final def pickleSequence[A](sequence: Seq[A])(implicit pickler: Pickler[A]): Unit =
+    pickleSubsection(pickleTerminalSequence(sequence))
 
-  final def writeTerminalSequence[A](sequence: Seq[A])(implicit writer: Writer[A]): Unit =
-    sequence.foreach(write(_))
+  final def pickleTerminalSequence[A](sequence: Seq[A])(implicit pickler: Pickler[A]): Unit =
+    sequence.foreach(pickle(_))
 
-  final def writeSubsection(op: => Unit): Unit = {
+  final def pickleSubsection(op: => Unit): Unit = {
     val start = length
     val subsectionOffset = start + TastyBuffer.AddrWidth
 
@@ -23,7 +23,7 @@ class SectionWriter extends BinaryWriter {
 
     // write subsection length
     length = start
-    writeNat(subsectionLength)
+    pickleNat(subsectionLength)
     val padding = subsectionOffset - length
 
     // strip zeros

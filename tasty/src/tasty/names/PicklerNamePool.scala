@@ -1,40 +1,40 @@
 package tasty.names
 
 import dotty.tools.dotc.core.tasty.TastyFormat.NameTags.{QUALIFIED, UTF8}
-import tasty.binary.SectionWriter
+import tasty.binary.SectionPickler
 
 import scala.collection.mutable
 
-abstract class WriterNamePool[Name](output: SectionWriter) {
+abstract class PicklerNamePool[Name](output: SectionPickler) {
   private val pool = mutable.Map[Name, NameRef]()
 
-  protected def write(name: Name): Unit
+  protected def pickle(name: Name): Unit
 
   protected def unifyName(name: Name): Name
 
-  final def writeName(name: Name): NameRef = {
+  final def pickleName(name: Name): NameRef = {
     val unified = unifyName(name)
     pool.getOrElseUpdate(unified, insert(unified))
   }
 
   private def insert(name: Name): NameRef = {
-    write(name)
+    pickle(name)
     new NameRef(pool.size)
   }
 
-  protected final def writeUtf8(bytes: Array[Byte]): Unit = tagged(UTF8) {
-    output.writeBytes(bytes)
+  protected final def pickleUtf8(bytes: Array[Byte]): Unit = tagged(UTF8) {
+    output.pickleBytes(bytes)
   }
 
-  protected final def writeQualified(qualifier: NameRef, name: NameRef): Unit = tagged(QUALIFIED) {
-    writeNameRef(qualifier)
-    writeNameRef(name)
+  protected final def pickleQualified(qualifier: NameRef, name: NameRef): Unit = tagged(QUALIFIED) {
+    pickleNameRef(qualifier)
+    pickleNameRef(name)
   }
 
   private final def tagged(tag: Int)(op: => Unit): Unit = {
-    output.writeByte(tag)
-    output.writeSubsection(op)
+    output.pickleByte(tag)
+    output.pickleSubsection(op)
   }
 
-  private def writeNameRef(ref: NameRef): Unit = output.writeNat(ref.index)
+  private def pickleNameRef(ref: NameRef): Unit = output.pickleNat(ref.index)
 }

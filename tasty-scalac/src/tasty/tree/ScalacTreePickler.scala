@@ -2,27 +2,27 @@ package tasty.tree.terms
 
 import dotty.tools.dotc.core.tasty.TastyFormat.SELECT
 import tasty.ScalacConversions
-import tasty.binary.SectionWriter
-import tasty.names.ScalacWriterNamePool
-import tasty.tree.types.{ScalacConstantWriter, ScalacTypeWriter}
-import tasty.tree.{ScalacModifierWriter, TreeWriter}
+import tasty.binary.SectionPickler
+import tasty.names.ScalacPicklerNamePool
+import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
+import tasty.tree.{ScalacModifierPickler, TreePickler}
 
 import scala.tools.nsc.Global
 
-final class ScalacTreeWriter(nameSection: ScalacWriterNamePool,
-                             underlying: SectionWriter)
+final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
+                             underlying: SectionPickler)
                             (implicit val g: Global)
-  extends TreeWriter[Global#Tree, Global#Name](nameSection, underlying) with ScalacConversions {
+  extends TreePickler[Global#Tree, Global#Name](nameSection, underlying) with ScalacConversions {
 
   override protected type Type = Global#Type
   override protected type Modifier = Global#Symbol
   override protected type Constant = Global#Constant
 
-  override protected val typeWriter: ScalacTypeWriter = new ScalacTypeWriter(nameSection, underlying)
+  override protected val typePickler: ScalacTypePickler = new ScalacTypePickler(nameSection, underlying)
 
-  override protected val constantWriter: ScalacConstantWriter = new ScalacConstantWriter(nameSection, underlying)
+  override protected val constantPickler: ScalacConstantPickler = new ScalacConstantPickler(nameSection, underlying)
 
-  override protected val modifierWriter: ScalacModifierWriter = new ScalacModifierWriter(nameSection, underlying)
+  override protected val modifierPickler: ScalacModifierPickler = new ScalacModifierPickler(nameSection, underlying)
 
   override protected def dispatch(tree: Global#Tree): Unit = {
     val symbol = tree.symbol
@@ -30,12 +30,12 @@ final class ScalacTreeWriter(nameSection: ScalacWriterNamePool,
     lazy val owner = symbol.owner
 
     tree match {
-      case g.PackageDef(id, statements) => writePackageDef(id, statements)
-      case g.ClassDef(mods, name, tparams, impl) => writeTypeDef(name, impl, Seq(tree.symbol))
+      case g.PackageDef(id, statements) => picklePackageDef(id, statements)
+      case g.ClassDef(mods, name, tparams, impl) => pickleTypeDef(name, impl, Seq(tree.symbol))
       case g.Template(parents, self, body) =>
         // TODO type parameters and parameters and self
 
-        // need to write the super constructor call as parent_term
+        // need to pickle the super constructor call as parent_term
         def parentConstructor = {
           body.find(_.symbol.isPrimaryConstructor).map {
             case defdef: g.DefDef => defdef.rhs.asInstanceOf[Global#Block].stats.head
@@ -43,7 +43,7 @@ final class ScalacTreeWriter(nameSection: ScalacWriterNamePool,
         }
 
         val augmentedParents = parentConstructor ++ parents
-        writeTemplate(Nil, Nil, augmentedParents, None, body)
+        pickleTemplate(Nil, Nil, augmentedParents, None, body)
 
       case tree@g.DefDef(mods, name, tparams, vparams, tpt, rhs) =>
         val returnType = if (tree.symbol.isConstructor) g.TypeTree(g.definitions.UnitTpe) else tpt
@@ -52,7 +52,7 @@ final class ScalacTreeWriter(nameSection: ScalacWriterNamePool,
         val name = if (symbol.isConstructor && owner.isTrait) g.nme.CONSTRUCTOR // FIXME: this is not enough, if trait is PureInterface, no $init$ is generated at all
         else symbol.name
 
-        writeDefDef(name, tparams, vparams, returnType, body, Seq(symbol))
+        pickleDefDef(name, tparams, vparams, returnType, body, Seq(symbol))
 
       case g.Ident(name) =>
         val isNonWildcardTerm = tree.isTerm && name != g.nme.WILDCARD
@@ -63,37 +63,37 @@ final class ScalacTreeWriter(nameSection: ScalacWriterNamePool,
             case _: g.MethodType => g.SingleType(owner.thisType, symbol) // Happens on calls to LabelDefs
             case t => t
           }
-          typeWriter.write(tp1)
+          typePickler.pickle(tp1)
         }
-        else if (tree.isTerm) writeIdent(name, tree.tpe)
-        else ??? // TODO writeIdentTpt(name, tree.tpe)
+        else if (tree.isTerm) pickleIdent(name, tree.tpe)
+        else ??? // TODO pickleIdentTpt(name, tree.tpe)
 
       case g.Select(qualifier, name) =>
         val appliesTypesToConstructor = symbol.isConstructor && owner.typeParams.nonEmpty
 
         if (appliesTypesToConstructor) {
           val g.TypeRef(_, _, targs) = qualifier.tpe.widen
-          ??? // TODO writeTypeApply(tree, targs)
+          ??? // TODO pickleTypeApply(tree, targs)
         } else if (symbol.hasPackageFlag && !symbol.isRoot) {
-          writePackageRef(g.TermName(tree.toString()))
+          picklePackageRef(g.TermName(tree.toString()))
         } else if (symbol.isConstructor) {
-          writeConstructor(g.TermName("<init>"), owner.typeOfThis)
-        } else writeSelect(name, qualifier)
+          pickleConstructor(g.TermName("<init>"), owner.typeOfThis)
+        } else pickleSelect(name, qualifier)
 
-      case g.Apply(fun, args) => writeApply(fun, args)
+      case g.Apply(fun, args) => pickleApply(fun, args)
 
-      case g.Block(stats, expr) => writeBlock(expr, stats)
+      case g.Block(stats, expr) => pickleBlock(expr, stats)
 
-      case g.TypeTree() => typeWriter.write(tree.tpe)
+      case g.TypeTree() => typePickler.pickle(tree.tpe)
 
-      case g.Literal(constant) => constantWriter.write(constant)
+      case g.Literal(constant) => constantPickler.pickle(constant)
 
-      case _ => throw new UnsupportedOperationException(s"Cannot write tree: [${tree.getClass}: $tree")
+      case _ => throw new UnsupportedOperationException(s"Cannot pickle tree: [${tree.getClass}: $tree")
     }
   }
 
-  private def writeConstructor(initName: Global#Name, tpe: Global#Type): Unit = tagged(SELECT) {
-    writeName(initName)
-    writeNew(tpe)
+  private def pickleConstructor(initName: Global#Name, tpe: Global#Type): Unit = tagged(SELECT) {
+    pickleName(initName)
+    pickleNew(tpe)
   }
 }

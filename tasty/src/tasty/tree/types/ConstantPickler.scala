@@ -1,57 +1,57 @@
 package tasty.tree.types
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.SectionWriter
-import tasty.names.WriterNamePool
-import tasty.tree.TreeSectionWriter
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
+import tasty.tree.TreeSectionPickler
 
-abstract class ConstantWriter[Constant, Name](nameSection: WriterNamePool[Name],
-                                              underlying: SectionWriter)
-  extends TreeSectionWriter[Constant, Name](nameSection, underlying) {
+abstract class ConstantPickler[Constant, Name](nameSection: PicklerNamePool[Name],
+                                               underlying: SectionPickler)
+  extends TreeSectionPickler[Constant, Name](nameSection, underlying) {
 
-  def write(constant: Constant): Unit
+  def pickle(constant: Constant): Unit
 
-  protected final def writeUnitConst(): Unit = tagged(UNITconst) {}
+  protected final def pickleUnitConst(): Unit = tagged(UNITconst) {}
 
-  protected final def writeNullConst(): Unit = tagged(NULLconst) {}
+  protected final def pickleNullConst(): Unit = tagged(NULLconst) {}
 
-  protected final def writeBooleanConst(value: Boolean): Unit = tagged(if (value) TRUEconst else FALSEconst) {}
+  protected final def pickleBooleanConst(value: Boolean): Unit = tagged(if (value) TRUEconst else FALSEconst) {}
 
-  protected final def writeByteConst(value: Byte): Unit = tagged(BYTEconst) {
-    writeInteger(value)
+  protected final def pickleByteConst(value: Byte): Unit = tagged(BYTEconst) {
+    pickleInteger(value)
   }
 
-  protected final def writeShortConst(value: Short): Unit = tagged(SHORTconst) {
-    writeInteger(value)
+  protected final def pickleShortConst(value: Short): Unit = tagged(SHORTconst) {
+    pickleInteger(value)
   }
 
-  protected final def writeIntConst(value: Int): Unit = tagged(INTconst) {
-    writeInteger(value)
+  protected final def pickleIntConst(value: Int): Unit = tagged(INTconst) {
+    pickleInteger(value)
   }
 
-  protected final def writeLongConst(value: Long): Unit = tagged(LONGconst) {
-    writeLong(value)
+  protected final def pickleLongConst(value: Long): Unit = tagged(LONGconst) {
+    pickleLong(value)
   }
 
-  protected final def writeFloatConst(value: Float): Unit = tagged(FLOATconst) {
-    writeInteger(java.lang.Float.floatToRawIntBits(value))
+  protected final def pickleFloatConst(value: Float): Unit = tagged(FLOATconst) {
+    pickleInteger(java.lang.Float.floatToRawIntBits(value))
   }
 
-  protected final def writeDoubleConst(value: Double): Unit = tagged(DOUBLEconst) {
-    writeLong(java.lang.Double.doubleToRawLongBits(value))
+  protected final def pickleDoubleConst(value: Double): Unit = tagged(DOUBLEconst) {
+    pickleLong(java.lang.Double.doubleToRawLongBits(value))
   }
 
-  protected final def writeCharConst(value: Char): Unit = tagged(CHARconst) {
-    writeNat(value)
+  protected final def pickleCharConst(value: Char): Unit = tagged(CHARconst) {
+    pickleNat(value)
   }
 
-  protected final def writeStringConst(value: Name): Unit = tagged(STRINGconst) {
-    writeName(value)
+  protected final def pickleStringConst(value: Name): Unit = tagged(STRINGconst) {
+    pickleName(value)
   }
 
-  protected final def writeClassConst(): Unit = ???
+  protected final def pickleClassConst(): Unit = ???
 
-  protected final def writeEnumConst(): Unit = ???
+  protected final def pickleEnumConst(): Unit = ???
 
-  protected final def writeSymbolConst(): Unit = ???
+  protected final def pickleSymbolConst(): Unit = ???
 }
