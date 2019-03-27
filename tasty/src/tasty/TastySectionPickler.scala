@@ -4,11 +4,8 @@ import tasty.binary.SectionPickler
 import tasty.names.PicklerNamePool
 
 abstract class TastySectionPickler[A, Name](nameSection: PicklerNamePool[Name], underlying: SectionPickler) extends Pickler[A] {
-  final def pickleSequence(sequence: Seq[A]): Unit =
-    underlying.pickleSequence(sequence)(pickler = this)
-
-  final def pickleTerminalSequence(sequence: Seq[A]): Unit =
-    underlying.pickleTerminalSequence(sequence)(pickler = this)
+  override final def pickleSequence(sequence: Seq[A], includeLength: Boolean = false): Unit =
+    underlying.pickleSequence(sequence, includeLength)(pickler = this)
 
   protected final def currentOffset: Int = underlying.size
 

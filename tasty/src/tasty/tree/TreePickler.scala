@@ -36,27 +36,26 @@ abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
   // Top Level Statements
   protected final def picklePackageDef(id: Tree, statements: Seq[Tree]): Unit = tagged(PACKAGE) {
     pickle(id)
-    pickleTerminalSequence(statements)
+    pickleSequence(statements)
   }
 
   protected final def pickleTypeDef(name: Name, template: Tree, modifiers: Seq[Modifier]): Unit = tagged(TYPEDEF) {
     pickleName(name)
     pickle(template)
-    modifierPickler.pickleTerminalSequence(modifiers)
+    modifierPickler.pickleSequence(modifiers)
   }
 
   protected final def pickleTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Tree],
                                     self: Option[(Name, Tree)], statements: Seq[Tree]): Unit = tagged(TEMPLATE) {
     // TODO {type,}parameters
 
-    // TODO should be "pickleSequence" but dotty has "very special" reader, which handles this particular case...
-    pickleTerminalSequence(parents)
+    pickleSequence(parents)
     self.foreach {
       case (name, tp) =>
         pickleName(name)
         pickle(tp)
     }
-    pickleTerminalSequence(statements)
+    pickleSequence(statements)
   }
 
   protected def pickleDefDef(name: Name, typeParameters: Seq[Any], curriedParams: Seq[Seq[Tree]],
@@ -65,12 +64,12 @@ abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
     // TODO type parameters
     curriedParams.foreach { parameters =>
       tagged(PARAMS) {
-        pickleTerminalSequence(parameters)
+        pickleSequence(parameters)
       }
     }
     pickle(returnType)
     body.foreach(pickle)
-    modifierPickler.pickleTerminalSequence(modifiers)
+    modifierPickler.pickleSequence(modifiers)
   }
 
   // Terms
@@ -88,7 +87,7 @@ abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
 
   protected final def pickleBlock(expression: Tree, statements: Seq[Tree]): Unit = tagged(BLOCK) {
     pickle(expression)
-    pickleTerminalSequence(statements)
+    pickleSequence(statements)
   }
 
   protected final def pickleNew(typ: Type): Unit = tagged(NEW) {
@@ -97,12 +96,12 @@ abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
 
   protected final def pickleApply(function: Tree, args: Seq[Tree]): Unit = tagged(APPLY) {
     pickle(function)
-    pickleTerminalSequence(args)
+    pickleSequence(args)
   }
 
   protected final def pickleTypeApply(function: Tree, args: Seq[Tree]): Unit = tagged(TYPEAPPLY) {
     pickle(function)
-    pickleTerminalSequence(args)
+    pickleSequence(args)
   }
 
   protected final def pickleSuper(term: Tree, mixin: Option[Tree]): Unit = tagged(SUPER) {

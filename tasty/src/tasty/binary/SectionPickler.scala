@@ -6,11 +6,9 @@ import tasty.Pickler
 class SectionPickler extends BinaryPickler {
   final def pickle[A](value: A)(implicit pickler: Pickler[A]): Unit = pickler.pickle(value)
 
-  final def pickleSequence[A](sequence: Seq[A])(implicit pickler: Pickler[A]): Unit =
-    pickleSubsection(pickleTerminalSequence(sequence))
-
-  final def pickleTerminalSequence[A](sequence: Seq[A])(implicit pickler: Pickler[A]): Unit =
-    sequence.foreach(pickle(_))
+  final def pickleSequence[A](sequence: Seq[A], includeLength: Boolean = false)(implicit pickler: Pickler[A]): Unit =
+    if (includeLength) pickleSubsection(pickleSequence(sequence))
+    else sequence.foreach(pickle(_))
 
   final def pickleSubsection(op: => Unit): Unit = {
     val start = length
