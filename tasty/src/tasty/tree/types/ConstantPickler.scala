@@ -1,58 +1,57 @@
 package tasty.tree.types
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
 import tasty.tree.TreeSectionPickler
 
-abstract class ConstantPickler extends TreeSectionPickler {
-  protected type Constant
+abstract class ConstantPickler[Constant, Name](nameSection: PicklerNamePool[Name],
+                                               underlying: SectionPickler)
+  extends TreeSectionPickler[Constant, Name](nameSection, underlying) {
 
-  import output._
+  def pickle(constant: Constant): Unit
 
-  def pickleConstant(constant: Constant): Unit
+  protected final def pickleUnitConst(): Unit = tagged(UNITconst) {}
 
-  protected final def pickleUnit(): Unit = tagged(UNITconst) {}
+  protected final def pickleNullConst(): Unit = tagged(NULLconst) {}
 
-  protected final def pickleNull(): Unit = tagged(NULLconst) {}
+  protected final def pickleBooleanConst(value: Boolean): Unit = tagged(if (value) TRUEconst else FALSEconst) {}
 
-  protected final def pickleBoolean(value: Boolean): Unit = tagged(if (value) TRUEconst else FALSEconst) {}
-
-  protected final def pickleByte(value: Byte): Unit = tagged(BYTEconst) {
-    writeInt(value)
+  protected final def pickleByteConst(value: Byte): Unit = tagged(BYTEconst) {
+    pickleInteger(value)
   }
 
-  protected final def pickleShort(value: Short): Unit = tagged(SHORTconst) {
-    writeInt(value)
+  protected final def pickleShortConst(value: Short): Unit = tagged(SHORTconst) {
+    pickleInteger(value)
   }
 
-  protected final def pickleInt(value: Int): Unit = tagged(INTconst) {
-    writeInt(value)
+  protected final def pickleIntConst(value: Int): Unit = tagged(INTconst) {
+    pickleInteger(value)
   }
 
-  protected final def pickleLong(value: Long): Unit = tagged(LONGconst) {
-    writeLongInt(value)
+  protected final def pickleLongConst(value: Long): Unit = tagged(LONGconst) {
+    pickleLong(value)
   }
 
-  protected final def pickleFloat(value: Float): Unit = tagged(FLOATconst) {
-    writeInt(java.lang.Float.floatToRawIntBits(value))
+  protected final def pickleFloatConst(value: Float): Unit = tagged(FLOATconst) {
+    pickleInteger(java.lang.Float.floatToRawIntBits(value))
   }
 
-  protected final def pickleDouble(value: Double): Unit = tagged(DOUBLEconst) {
-    writeLongInt(java.lang.Double.doubleToRawLongBits(value))
+  protected final def pickleDoubleConst(value: Double): Unit = tagged(DOUBLEconst) {
+    pickleLong(java.lang.Double.doubleToRawLongBits(value))
   }
 
-  protected final def pickleChar(value: Char): Unit = tagged(CHARconst) {
-    writeNat(value)
+  protected final def pickleCharConst(value: Char): Unit = tagged(CHARconst) {
+    pickleNat(value)
   }
 
-  protected final def pickleString(value: Name): Unit = tagged(STRINGconst) {
+  protected final def pickleStringConst(value: Name): Unit = tagged(STRINGconst) {
     pickleName(value)
   }
 
-  protected final def pickleClass(): Unit = ???
+  protected final def pickleClassConst(): Unit = ???
 
-  protected final def pickleEnum(): Unit = ???
+  protected final def pickleEnumConst(): Unit = ???
 
-  protected final def pickleSymbol(): Unit = ???
-
-
+  protected final def pickleSymbolConst(): Unit = ???
 }

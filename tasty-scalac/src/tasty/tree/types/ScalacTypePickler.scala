@@ -1,19 +1,22 @@
 package tasty.tree.types
 
-import dotty.tools.dotc.core.tasty.TastyFormat._
-import tasty.binary.BinaryOutput
-import tasty.names.ScalacNamePickler
+import dotty.tools.dotc.core.tasty.TastyFormat.{TERMREFpkg, TYPEREFpkg}
+import tasty.Pickler
+import tasty.binary.SectionPickler
+import tasty.names.ScalacPicklerNamePool
 
 import scala.tools.nsc.Global
 
-final class ScalacTypePickler(val namePool: ScalacNamePickler, val output: BinaryOutput)(implicit g: Global) extends TypePickler {
-  override type Name = Global#Name
-  override type Type = Global#Type
+final class ScalacTypePickler(nameSection: ScalacPicklerNamePool,
+                             underlying: SectionPickler)
+                            (implicit g: Global)
+  extends TypePickler[Global#Type, Global#Name](nameSection, underlying) {
 
-  private val constantPickler = new ScalacConstantPickler(namePool, output)
+  override type Constant = Global#Constant
+  override protected val constantPickler: Pickler[Constant] = new ScalacConstantPickler(nameSection, underlying)
 
-    override protected def pickle(t: Global#Type): Unit = t match {
-    case g.ConstantType(value) => constantPickler.pickleConstant(value)
+  override protected def dispatch(t: Global#Type): Unit = t match {
+    case g.ConstantType(constant) => constantPickler.pickle(constant)
     case g.SingleType(pre, sym) =>
       if (sym.hasPackageFlag) tagged(if (sym.isType) TYPEREFpkg else TERMREFpkg) {
         pickleName(sym.fullNameAsName('.'))
@@ -31,14 +34,9 @@ final class ScalacTypePickler(val namePool: ScalacNamePickler, val output: Binar
         val typeConstructor = tpe.underlying.typeConstructor
         pickleThis(typeConstructor)
       } else {
-        pickleTermRef(sym.fullNameAsName('.'))
+        picklePackageTermRef(sym.fullNameAsName('.'))
       }
 
     case _ => throw new UnsupportedOperationException(s"Cannot pickle type [${t.getClass} $t]")
   }
-
-  private def pickleAnnotations(annotations: List[Global#AnnotationInfo]) = {
-    ???
-  }
-
 }

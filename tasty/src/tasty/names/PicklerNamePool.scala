@@ -1,35 +1,40 @@
 package tasty.names
 
-
-import dotty.tools.dotc.core.tasty.TastyFormat.NameTags
+import dotty.tools.dotc.core.tasty.TastyFormat.NameTags.{QUALIFIED, UTF8}
+import tasty.binary.SectionPickler
 
 import scala.collection.mutable
-import scala.io.Codec
 
-abstract class PicklerNamePool[Name] extends NameSectionPickler[Name] {
-  type UnifiedName <: Name
+abstract class PicklerNamePool[Name](output: SectionPickler) {
+  private val pool = mutable.Map[Name, NameRef]()
 
-  private val pool = mutable.Map[UnifiedName, NameRef]()
+  protected def pickle(name: Name): Unit
 
-  def unifyName(name: Name): UnifiedName
+  protected def unifyName(name: Name): Name
 
   final def pickleName(name: Name): NameRef = {
-    val unifiedName = unifyName(name)
-    pool.getOrElseUpdate(unifiedName, insert(unifiedName))
+    val unified = unifyName(name)
+    pool.getOrElseUpdate(unified, insert(unified))
   }
 
-  protected def pickleQualifiedName(prefix: NameRef, name: NameRef): Unit = tagged(NameTags.QUALIFIED) {
-    writeNameRef(prefix)
-    writeNameRef(name)
-  }
-
-  private def insert(name: UnifiedName): NameRef = {
+  private def insert(name: Name): NameRef = {
     pickle(name)
     new NameRef(pool.size)
   }
 
-  private def writeNameRef(nameRef: NameRef): Unit = {
-    output.writeNat(nameRef.index)
+  protected final def pickleUtf8(bytes: Array[Byte]): Unit = tagged(UTF8) {
+    output.pickleBytes(bytes)
   }
 
+  protected final def pickleQualified(qualifier: NameRef, name: NameRef): Unit = tagged(QUALIFIED) {
+    pickleNameRef(qualifier)
+    pickleNameRef(name)
+  }
+
+  private final def tagged(tag: Int)(op: => Unit): Unit = {
+    output.pickleByte(tag)
+    output.pickleSubsection(op)
+  }
+
+  private def pickleNameRef(ref: NameRef): Unit = output.pickleNat(ref.index)
 }

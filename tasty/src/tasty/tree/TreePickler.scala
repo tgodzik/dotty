@@ -1,66 +1,111 @@
 package tasty.tree
 
 import dotty.tools.dotc.core.tasty.TastyFormat._
+import tasty.binary.SectionPickler
+import tasty.names.PicklerNamePool
+import tasty.tree.types.{ConstantPickler, TypePickler}
 
 import scala.collection.mutable
 
-abstract class TreePickler extends TreeSectionPickler {
-  type Tree
-  protected type Term
+abstract class TreePickler[Tree, Name](nameSection: PicklerNamePool[Name],
+                                       underlying: SectionPickler)
+  extends TreeSectionPickler[Tree, Name](nameSection, underlying) {
+
   protected type Type
   protected type Modifier
+  protected type Constant
 
-  // TODO share cache with terms
-  private val cache = mutable.Map[Tree, Int]()
+  final val cache = mutable.Map[Tree, Int]()
 
-  final def pickleTree(tree: Tree): Unit = {
-    if (cache.contains(tree)) {
-      output.writeByte(SHAREDterm)
-      output.writeNat(cache(tree))
+  protected def typePickler: TypePickler[Type, Name]
+
+  protected def constantPickler: ConstantPickler[Constant, Name]
+
+  protected def modifierPickler: ModifierPickler[Modifier, Name]
+
+  final def pickle(value: Tree): Unit =
+    if (cache.contains(value)) tagged(SHAREDtype) {
+      pickleRef(cache(value))
     } else {
-      val offset = output.size
-      cache.put(tree, offset)
-      pickle(tree)
+      cache += value -> currentOffset
+      dispatch(value)
     }
-  }
 
-  protected def pickle(tree: Tree): Unit
+  protected def dispatch(tree: Tree): Unit
 
-  protected def pickleTerm(term: Term): Unit
-
-  protected def pickleModifier(modifier: Modifier): Unit
-
-  protected final def picklePackage(term: Term, statements: Seq[Tree]): Unit = tagged(PACKAGE) {
-    pickleTerm(term)
-    statements.foreach(pickleTree)
+  // Top Level Statements
+  protected final def picklePackageDef(id: Tree, statements: Seq[Tree]): Unit = tagged(PACKAGE) {
+    pickle(id)
+    pickleSequence(statements)
   }
 
   protected final def pickleTypeDef(name: Name, template: Tree, modifiers: Seq[Modifier]): Unit = tagged(TYPEDEF) {
     pickleName(name)
-    pickleTree(template)
-    modifiers.foreach(pickleModifier)
+    pickle(template)
+    modifierPickler.pickleSequence(modifiers)
   }
 
-  protected final def pickleTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Term],
-                                     self: Option[(Name, Term)], statements: Seq[Tree]): Unit = tagged(TEMPLATE) {
+  protected final def pickleTemplate(typeParameters: Seq[Any], parameters: Seq[Any], parents: Seq[Tree],
+                                    self: Option[(Name, Tree)], statements: Seq[Tree]): Unit = tagged(TEMPLATE) {
     // TODO {type,}parameters
+
+    pickleSequence(parents)
     self.foreach {
       case (name, tp) =>
         pickleName(name)
-        pickleTerm(tp)
+        pickle(tp)
     }
-    statements.foreach(pickleTree)
+    pickleSequence(statements)
   }
 
-  protected def pickleDefDef(name: Name, typeParameters: Seq[Any], parameters: Seq[Seq[Term]],
-                             returnType: Term, body: Option[Term], modifiers: Seq[Modifier]): Unit = tagged(DEFDEF) {
+  protected def pickleDefDef(name: Name, typeParameters: Seq[Any], curriedParams: Seq[Seq[Tree]],
+                            returnType: Tree, body: Option[Tree], modifiers: Seq[Modifier]): Unit = tagged(DEFDEF) {
     pickleName(name)
     // TODO type parameters
-    tagged(PARAMS){
-      parameters.foreach(_.foreach(pickleTerm))
+    curriedParams.foreach { parameters =>
+      tagged(PARAMS) {
+        pickleSequence(parameters)
+      }
     }
-    pickleTerm(returnType)
-    body.foreach(pickleTerm)
-    modifiers.foreach(pickleModifier)
+    pickle(returnType)
+    body.foreach(pickle)
+    modifierPickler.pickleSequence(modifiers)
+  }
+
+  // Terms
+  protected final def pickleIdent(name: Name, typ: Type): Unit = tagged(IDENT) {
+    pickleName(name)
+    typePickler.pickle(typ)
+  }
+
+  protected final def pickleSelect(name: Name, term: Tree): Unit = tagged(IDENT) {
+    pickleName(name)
+    pickle(term)
+  }
+
+  protected final def picklePackageRef(name: Name): Unit = tagged(TERMREFpkg)(pickleName(name))
+
+  protected final def pickleBlock(expression: Tree, statements: Seq[Tree]): Unit = tagged(BLOCK) {
+    pickle(expression)
+    pickleSequence(statements)
+  }
+
+  protected final def pickleNew(typ: Type): Unit = tagged(NEW) {
+    typePickler.pickle(typ)
+  }
+
+  protected final def pickleApply(function: Tree, args: Seq[Tree]): Unit = tagged(APPLY) {
+    pickle(function)
+    pickleSequence(args)
+  }
+
+  protected final def pickleTypeApply(function: Tree, args: Seq[Tree]): Unit = tagged(TYPEAPPLY) {
+    pickle(function)
+    pickleSequence(args)
+  }
+
+  protected final def pickleSuper(term: Tree, mixin: Option[Tree]): Unit = tagged(SUPER) {
+    pickle(term)
+    mixin.foreach(pickle)
   }
 }

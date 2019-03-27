@@ -1,18 +1,18 @@
 package tasty.tree
 
 import dotty.tools.dotc.core.tasty.TastyFormat
-import tasty.binary.TaggedSectionPickler
+import tasty.TastySectionPickler
+import tasty.binary.SectionPickler
 import tasty.names.PicklerNamePool
 
-trait TreeSectionPickler extends TaggedSectionPickler {
-  protected type Name
+protected[tree] abstract class TreeSectionPickler[A, Name](nameSection: PicklerNamePool[Name], output: SectionPickler)
+  extends TastySectionPickler[A, Name](nameSection, output) {
 
-  def namePool: PicklerNamePool[Name]
-
-  protected final def pickleName(name: Name): Unit = {
-    val ref = namePool.pickleName(name)
-    output.writeNat(ref.index)
+  protected final def tagged(tag: Int)(op: => Unit): Unit = {
+    output.pickleByte(tag)
+    if (tag >= TastyFormat.firstLengthTreeTag) pickleSubsection(op)
+    else op
   }
 
-  override protected final def startsSubsection(tag: Int): Boolean = tag >= TastyFormat.firstLengthTreeTag
+  protected final def pickleRef(value: Int): Unit = output.pickleNat(value)
 }
