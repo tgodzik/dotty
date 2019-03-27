@@ -36,14 +36,11 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
         // TODO type parameters and parameters and self
 
         // need to pickle the super constructor call as parent_term
-        def parentConstructor = {
-          body.find(_.symbol.isPrimaryConstructor).map {
+        val parentConstructor = body.find(_.symbol.isPrimaryConstructor).map {
             case defdef: g.DefDef => defdef.rhs.asInstanceOf[Global#Block].stats.head
-          }.toSeq
         }
 
-        val augmentedParents = parentConstructor ++ parents
-        pickleTemplate(Nil, Nil, augmentedParents, None, body)
+        pickleTemplate(Nil, Nil, parentConstructor.toSeq, None, body)
 
       case tree@g.DefDef(mods, name, tparams, vparams, tpt, rhs) =>
         val returnType = if (tree.symbol.isConstructor) g.TypeTree(g.definitions.UnitTpe) else tpt
