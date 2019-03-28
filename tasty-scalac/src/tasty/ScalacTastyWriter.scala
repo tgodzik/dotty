@@ -3,13 +3,13 @@ package tasty
 import dotty.tools.dotc.core.tasty.TastyFormat._
 import tasty.binary.BinaryPickler.hashOf
 import tasty.binary.{BinaryPickler, SectionPickler}
-import tasty.names.{ScalacName, ScalacNameConversions, ScalacPicklerNamePool}
+import tasty.names.{ScalacNameConversions, ScalacPicklerNamePool, TastyName}
 import tasty.tree.terms.ScalacTreePickler
 
 import scala.tools.nsc.Global
 
 final class ScalacTastyWriter(implicit val g: Global) extends TastyWriter with ScalacNameConversions{
-  override type Name = ScalacName
+  override type Name = TastyName
   private val namesSection = new SectionPickler
   private val namePool = new ScalacPicklerNamePool(namesSection)
 

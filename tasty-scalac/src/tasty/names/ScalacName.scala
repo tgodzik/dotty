@@ -5,40 +5,76 @@ import dotty.tools.dotc.core.tasty.TastyFormat
 import scala.tools.nsc.Global
 
 
-sealed trait ScalacName {
+sealed trait TastyName {
   def kind: Int
 }
 
-case class SimpleName(name: String) extends ScalacName {
-  override def kind: Int = TastyFormat.NameTags.UTF8
-}
+object TastyName {
 
-case class QualifiedName(prefix: ScalacName, suffix: ScalacName) extends ScalacName {
-  override def kind: Int = TastyFormat.NameTags.QUALIFIED
-}
+  case class UTF8(value: String) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.UTF8
+  }
 
-case class SignedName(name: ScalacName, returnName: ScalacName, parameterNames: List[ScalacName]) extends ScalacName {
-  override def kind: Int = TastyFormat.NameTags.SIGNED
+  case class Qualified(qualifier: TastyName, name: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.QUALIFIED
+  }
+
+  case class Expanded(qualifier: TastyName, name: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.EXPANDED
+  }
+
+  case class ExpandPrefix(qualifier: TastyName, name: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.EXPANDPREFIX
+  }
+
+  case class Unique(separator: String, id: Int, underlying: Option[TastyName]) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.UNIQUE
+  }
+
+  case class DefaultGetter(underlying: TastyName, id: Int) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.DEFAULTGETTER
+  }
+
+  case class Variance(underlying: TastyName, variance: Int) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.VARIANT
+  }
+
+  case class SuperAccessor(underlying: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.SUPERACCESSOR
+  }
+
+  case class InlineAccessor(underlying: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.INLINEACCESSOR
+  }
+
+  case class ObjectClass(underlying: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.OBJECTCLASS
+  }
+
+  case class Signed(original: TastyName, parameters: Seq[TastyName], result: TastyName) extends TastyName {
+    override def kind: Int = TastyFormat.NameTags.SIGNED
+  }
+
 }
 
 trait ScalacNameConversions {
 
-  implicit def nameToScalacName(name: Global#Name): ScalacName = {
+  implicit def nameToScalacName(name: Global#Name): TastyName = {
     nameToScalacName(name.toString)
   }
 
-  implicit def nameToScalacName(names: List[Global#Name]): List[ScalacName] = {
+  implicit def nameToScalacName(names: List[Global#Name]): List[TastyName] = {
     names.map(nameToScalacName)
   }
 
 
-  implicit def nameToScalacName(name: String): ScalacName = {
+  implicit def nameToScalacName(name: String): TastyName = {
     val stringName = name.toString
     if (stringName.contains('.')) {
       val (prefix, qualifier) = splitAtLastChar(stringName, '.')
-      QualifiedName(nameToScalacName(prefix), nameToScalacName(qualifier))
+      TastyName.Qualified(nameToScalacName(prefix), nameToScalacName(qualifier))
     } else {
-      SimpleName(stringName)
+      TastyName.UTF8(stringName)
     }
   }
 

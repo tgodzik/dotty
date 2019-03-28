@@ -3,7 +3,7 @@ package tasty.tree.terms
 import dotty.tools.dotc.core.tasty.TastyFormat.SELECT
 import tasty.ScalacConversions
 import tasty.binary.SectionPickler
-import tasty.names.{ScalacName, ScalacNameConversions, ScalacPicklerNamePool, SignedName}
+import tasty.names.{TastyName, ScalacNameConversions, ScalacPicklerNamePool}
 import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
 import tasty.tree.{ScalacModifierPickler, TreePickler}
 
@@ -12,7 +12,7 @@ import scala.tools.nsc.Global
 final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
                               underlying: SectionPickler)
                              (implicit val g: Global)
-  extends TreePickler[Global#Tree, ScalacName](nameSection, underlying) with ScalacConversions with ScalacNameConversions {
+  extends TreePickler[Global#Tree, TastyName](nameSection, underlying) with ScalacConversions with ScalacNameConversions {
 
   override protected type Type = Global#Type
   override protected type Modifier = Global#Symbol
@@ -77,7 +77,7 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
           case g.MethodType(params, resultType) =>
             val paramTypeNames = params.map(_.name)
             val resultTypeName = resultType.typeSymbol.name
-            val signedName = SignedName("<init>", resultTypeName, paramTypeNames)
+            val signedName = TastyName.Signed("<init>", paramTypeNames, resultTypeName)
             pickleConstructor(signedName, resultType)
         } else pickleSelect(name, qualifier)
 
@@ -93,7 +93,7 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
     }
   }
 
-  private def pickleConstructor(initName: ScalacName, tpe: Global#Type): Unit = tagged(SELECT) {
+  private def pickleConstructor(initName: TastyName, tpe: Global#Type): Unit = tagged(SELECT) {
     pickleName(initName)
     pickleNew(tpe)
   }

@@ -22,7 +22,7 @@ abstract class PicklerNamePool[Name](output: SectionPickler) {
     pickleNameRef(name)
   }
 
-  protected def pickleSignedName(original : NameRef, resultTypeName : NameRef, parameters: List[NameRef]): Unit = tagged(NameTags.SIGNED){
+  protected def pickleSignedName(original : NameRef, resultTypeName : NameRef, parameters: Seq[NameRef]): Unit = tagged(NameTags.SIGNED){
     pickleNameRef(original)
     pickleNameRef(resultTypeName)
     parameters.foreach(pickleNameRef)
