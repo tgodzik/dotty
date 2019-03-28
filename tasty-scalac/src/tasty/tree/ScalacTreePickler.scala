@@ -1,21 +1,18 @@
 package tasty.tree.terms
 
-import tasty.binary.BinaryOutput
-import tasty.names.{ScalacName, ScalacNamePickler}
-import tasty.tree.terms.ScalacTermPickler
-
-import scala.tools.nsc.Global
 import dotty.tools.dotc.core.tasty.TastyFormat.SELECT
 import tasty.ScalacConversions
 import tasty.binary.SectionPickler
-import tasty.names.ScalacPicklerNamePool
+import tasty.names.{ScalacName, ScalacNameConversions, ScalacNamePickler, SignedName}
 import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
 import tasty.tree.{ScalacModifierPickler, TreePickler}
 
-final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
-                             underlying: SectionPickler)
-                            (implicit val g: Global)
-  extends TreePickler[Global#Tree, ScalacName](nameSection, underlying) with ScalacConversions {
+import scala.tools.nsc.Global
+
+final class ScalacTreePickler(nameSection: ScalacNamePickler,
+                              underlying: SectionPickler)
+                             (implicit val g: Global)
+  extends TreePickler[Global#Tree, ScalacName](nameSection, underlying) with ScalacConversions with ScalacNameConversions {
 
   override protected type Type = Global#Type
   override protected type Modifier = Global#Symbol
@@ -27,7 +24,7 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
 
   override protected val modifierPickler: ScalacModifierPickler = new ScalacModifierPickler(nameSection, underlying)
 
-  override protected def dispatch(tree: Global#Tree): Unit = {
+  override protected def dispatch(tree: Global#Tree): Unit = if (tree.nonEmpty) {
     val symbol = tree.symbol
     // symbol might be null
     lazy val owner = symbol.owner
@@ -40,7 +37,7 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
 
         // need to pickle the super constructor call as parent_term
         val parentConstructor = body.find(_.symbol.isPrimaryConstructor).map {
-            case defdef: g.DefDef => defdef.rhs.asInstanceOf[Global#Block].stats.head
+          case defdef: g.DefDef => defdef.rhs.asInstanceOf[Global#Block].stats.head
         }
 
         pickleTemplate(Nil, Nil, parentConstructor.toSeq, None, body)
@@ -76,8 +73,12 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
           ??? // TODO pickleTypeApply(tree, targs)
         } else if (symbol.hasPackageFlag && !symbol.isRoot) {
           picklePackageRef(g.TermName(tree.toString()))
-        } else if (symbol.isConstructor) {
-          pickleConstructor(g.TermName("<init>"), owner.typeOfThis)
+        } else if (symbol.isConstructor) tree.tpe match {
+          case g.MethodType(params, resultType) =>
+            val paramTypeNames = params.map(_.name)
+            val resultTypeName = resultType.typeSymbol.name
+            val signedName = SignedName("<init>", resultTypeName, paramTypeNames)
+            pickleConstructor(signedName, resultType)
         } else pickleSelect(name, qualifier)
 
       case g.Apply(fun, args) => pickleApply(fun, args)
@@ -92,7 +93,7 @@ final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
     }
   }
 
-  private def pickleConstructor(initName: Global#Name, tpe: Global#Type): Unit = tagged(SELECT) {
+  private def pickleConstructor(initName: ScalacName, tpe: Global#Type): Unit = tagged(SELECT) {
     pickleName(initName)
     pickleNew(tpe)
   }

@@ -3,14 +3,14 @@ package tasty.tree.types
 import dotty.tools.dotc.core.tasty.TastyFormat.{TERMREFpkg, TYPEREFpkg}
 import tasty.Pickler
 import tasty.binary.SectionPickler
-import tasty.names.{ScalacName, ScalacPicklerNamePool}
+import tasty.names.{ScalacName, ScalacNameConversions, ScalacNamePickler}
 
 import scala.tools.nsc.Global
 
-final class ScalacTypePickler(nameSection: ScalacPicklerNamePool,
-                             underlying: SectionPickler)
-                            (implicit g: Global)
-  extends TypePickler[Global#Type, ScalacName](nameSection, underlying) {
+final class ScalacTypePickler(nameSection: ScalacNamePickler,
+                              underlying: SectionPickler)
+                             (implicit g: Global)
+  extends TypePickler[Global#Type, ScalacName](nameSection, underlying) with ScalacNameConversions {
 
   override type Constant = Global#Constant
   override protected val constantPickler: Pickler[Constant] = new ScalacConstantPickler(nameSection, underlying)

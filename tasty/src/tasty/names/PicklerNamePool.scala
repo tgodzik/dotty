@@ -1,10 +1,14 @@
 package tasty.names
 
+import dotty.tools.dotc.core.tasty.TastyFormat.NameTags
 import dotty.tools.dotc.core.tasty.TastyFormat.NameTags.{QUALIFIED, UTF8}
+import tasty.binary.SectionPickler
 
 import scala.collection.mutable
 
-abstract class PicklerNamePool[Name] extends NameSectionPickler[Name] {
+abstract class PicklerNamePool[Name] {
+
+  def output: SectionPickler
 
   private val pool = mutable.Map[Name, NameRef]()
 
