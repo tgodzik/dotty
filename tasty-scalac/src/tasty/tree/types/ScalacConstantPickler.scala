@@ -1,11 +1,11 @@
 package tasty.tree.types
 
 import tasty.binary.SectionPickler
-import tasty.names.{ScalacName, ScalacNameConversions, ScalacNamePickler}
+import tasty.names.{ScalacName, ScalacNameConversions, ScalacPicklerNamePool}
 
 import scala.tools.nsc.Global
 
-final class ScalacConstantPickler(val nameSection: ScalacNamePickler,
+final class ScalacConstantPickler(val nameSection: ScalacPicklerNamePool,
                                   output: SectionPickler)
                                 (implicit g: Global)
   extends ConstantPickler[Global#Constant, ScalacName](nameSection, output) with ScalacNameConversions{

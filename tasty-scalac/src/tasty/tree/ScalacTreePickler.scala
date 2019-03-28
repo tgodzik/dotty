@@ -3,13 +3,13 @@ package tasty.tree.terms
 import dotty.tools.dotc.core.tasty.TastyFormat.SELECT
 import tasty.ScalacConversions
 import tasty.binary.SectionPickler
-import tasty.names.{ScalacName, ScalacNameConversions, ScalacNamePickler, SignedName}
+import tasty.names.{ScalacName, ScalacNameConversions, ScalacPicklerNamePool, SignedName}
 import tasty.tree.types.{ScalacConstantPickler, ScalacTypePickler}
 import tasty.tree.{ScalacModifierPickler, TreePickler}
 
 import scala.tools.nsc.Global
 
-final class ScalacTreePickler(nameSection: ScalacNamePickler,
+final class ScalacTreePickler(nameSection: ScalacPicklerNamePool,
                               underlying: SectionPickler)
                              (implicit val g: Global)
   extends TreePickler[Global#Tree, ScalacName](nameSection, underlying) with ScalacConversions with ScalacNameConversions {

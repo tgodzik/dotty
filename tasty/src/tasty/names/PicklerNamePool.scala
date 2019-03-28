@@ -6,9 +6,7 @@ import tasty.binary.SectionPickler
 
 import scala.collection.mutable
 
-abstract class PicklerNamePool[Name] {
-
-  def output: SectionPickler
+abstract class PicklerNamePool[Name](output: SectionPickler) {
 
   private val pool = mutable.Map[Name, NameRef]()
 

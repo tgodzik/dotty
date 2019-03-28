@@ -3,11 +3,11 @@ package tasty.tree.types
 import dotty.tools.dotc.core.tasty.TastyFormat.{TERMREFpkg, TYPEREFpkg}
 import tasty.Pickler
 import tasty.binary.SectionPickler
-import tasty.names.{ScalacName, ScalacNameConversions, ScalacNamePickler}
+import tasty.names.{ScalacName, ScalacNameConversions, ScalacPicklerNamePool}
 
 import scala.tools.nsc.Global
 
-final class ScalacTypePickler(nameSection: ScalacNamePickler,
+final class ScalacTypePickler(nameSection: ScalacPicklerNamePool,
                               underlying: SectionPickler)
                              (implicit g: Global)
   extends TypePickler[Global#Type, ScalacName](nameSection, underlying) with ScalacNameConversions {

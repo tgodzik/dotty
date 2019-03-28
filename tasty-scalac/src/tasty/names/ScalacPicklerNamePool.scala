@@ -6,7 +6,7 @@ import scala.io.Codec
 import scala.tools.nsc.Global
 
 
-final class ScalacNamePickler(val output: SectionPickler)(implicit g: Global) extends PicklerNamePool[ScalacName] {
+final class ScalacPicklerNamePool(output: SectionPickler)(implicit g: Global) extends PicklerNamePool[ScalacName](output) {
 
   protected def pickleSimpleName(name: String): Unit = {
     val bytes = Codec.toUTF8(name.toCharArray, 0, name.length)
