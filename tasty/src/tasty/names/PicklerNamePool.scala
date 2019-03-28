@@ -1,20 +1,31 @@
 package tasty.names
 
+import dotty.tools.dotc.core.tasty.TastyFormat.NameTags
 import dotty.tools.dotc.core.tasty.TastyFormat.NameTags.{QUALIFIED, UTF8}
 import tasty.binary.SectionPickler
 
 import scala.collection.mutable
 
 abstract class PicklerNamePool[Name](output: SectionPickler) {
+
   private val pool = mutable.Map[Name, NameRef]()
 
   protected def pickle(name: Name): Unit
 
-  protected def unifyName(name: Name): Name
 
   final def pickleName(name: Name): NameRef = {
-    val unified = unifyName(name)
-    pool.getOrElseUpdate(unified, insert(unified))
+    pool.getOrElseUpdate(name, insert(name))
+  }
+
+  protected def pickleQualifiedName(prefix: NameRef, name: NameRef): Unit = tagged(NameTags.QUALIFIED) {
+    pickleNameRef(prefix)
+    pickleNameRef(name)
+  }
+
+  protected def pickleSignedName(original : NameRef, resultTypeName : NameRef, parameters: Seq[NameRef]): Unit = tagged(NameTags.SIGNED){
+    pickleNameRef(original)
+    pickleNameRef(resultTypeName)
+    parameters.foreach(pickleNameRef)
   }
 
   private def insert(name: Name): NameRef = {
