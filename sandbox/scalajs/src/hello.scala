@@ -2,8 +2,13 @@ package hello
 
 import scala.scalajs.js
 
+@js.native
+trait ObjectConstructor extends js.Any{
+  def assign[T, U](target: T, source: U): T with U = js.native
+}
+
 trait MyTrait {
-  val x = 5
+  val x = 7
   def foo(y: Int) = x
 }
 
@@ -13,3 +18,4 @@ object HelloWorld extends MyTrait {
     println(foo(4))
   }
 }
+

@@ -770,6 +770,13 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           report.error(s"$longKindStr may only call js.native.", pos)
       }
 
+
+      println(tree.tpt)
+      println(tree.tpt.span)
+      println(tree.tpt.span.start)
+      
+      // println(tree.tpt.span.line)
+      // println(tree.tpt.span.column)
       // Check that the resul type was explicitly specified
       // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
       if (tree.tpt.span.isSynthetic)
