@@ -3,7 +3,7 @@ package hello
 import scala.scalajs.js
 
 trait MyTrait {
-  val x = 5
+  val x = 7
   def foo(y: Int) = x
 }
 
@@ -13,3 +13,4 @@ object HelloWorld extends MyTrait {
     println(foo(4))
   }
 }
+

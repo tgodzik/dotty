@@ -1549,7 +1549,7 @@ object Parsers {
         else
           if sourceVersion.isAtLeast(`3.1`) then
             deprecationWarning(DeprecatedWithOperator(), withOffset)
-          makeAndType(t, withType())
+          makeAndType(t, withType()).withSpan(Span(startOffset(t), in.lastOffset, startOffset(t)))
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
