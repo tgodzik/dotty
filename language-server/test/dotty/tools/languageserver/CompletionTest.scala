@@ -842,4 +842,18 @@ class CompletionTest {
           |object Main { "abc".xx${m1} }""".withSource
       .completion(m1, Set())
   }
+
+  @Test def wrongAnyMember: Unit = {
+    code"""import scala.util.chaining.`sca${m1}""".withSource
+      .completion(
+        m1,
+        Set(
+          (
+            "scalaUtilChainingOps",
+            Method,
+            "[A](a: A): scala.util.ChainingOps[A]"
+          )
+        )
+      )
+  }
 }

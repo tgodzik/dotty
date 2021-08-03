@@ -1006,7 +1006,10 @@ object Scanners {
         else if (name == nme.WILDCARD)
           error("wildcard invalid as backquoted identifier")
       }
-      else error("unclosed quoted identifier")
+      else {
+        nextChar()
+        finishNamed(BACKQUOTED_IDENT)
+      }//error("unclosed quoted identifier")
     }
 
     private def getIdentRest(): Unit = (ch: @switch) match {
