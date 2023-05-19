@@ -6,9 +6,17 @@ import scala.collection.mutable
 import dotty.tools.dotc.semanticdb.Scala3.given
 import SymbolInformation.Kind._
 import dotty.tools.dotc.util.SourceFile
+
 class SymbolInformationPrinter (symtab: PrinterSymtab):
   val notes = InfoNotes()
   val infoPrinter = InfoPrinter(notes)
+
+  def pprintDiagnostic(diag: Diagnostic): String =
+    val sb = new StringBuilder()
+    diag.range.foreach(processRange(sb, _))
+    sb.append(" [").append(diag.severity).append("]:")
+    sb.append(diag.message)
+    sb.toString
 
   def pprintSymbolInformation(info: SymbolInformation): String =
     val sb = new StringBuilder()

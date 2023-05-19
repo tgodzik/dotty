@@ -82,7 +82,11 @@ object Tools:
       sb.append("Synthetics:").nl
       doc.synthetics.sorted.foreach(s => processSynth(s, synthPrinter))
       sb.nl
-    sb
+    sb.append("Diagnostics:").nl
+    doc.diagnostics
+      .sortBy(_.range.map(_.startLine).getOrElse(0))
+      .foreach(d => sb.append(symPrinter.pprintDiagnostic(d)).nl)
+    sb.nl
   end metac
 
   private def schemaString(schema: Schema) =

@@ -25,6 +25,7 @@ import scala.PartialFunction.condOpt
 
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.dotc.reporting.Diagnostic
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -46,11 +47,28 @@ class ExtractSemanticDB extends Phase:
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(using Context): Unit =
+  override def run(using ctx: Context): Unit =
     val unit = ctx.compilationUnit
     val extractor = Extractor()
     extractor.extract(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
+    val diags = ctx.reporter.pendingMessages.map(toSemanticdbDiagnostic)
+    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList, diags)
+
+  def toSemanticdbDiagnostic(diag: Diagnostic)(using Context) = 
+   
+   val severity = diag match
+    case diag: Diagnostic.Error =>
+     s.Diagnostic.Severity.ERROR
+    case diag: Diagnostic.Warning =>
+      s.Diagnostic.Severity.WARNING
+    case diag: Diagnostic.Info =>
+      s.Diagnostic.Severity.INFORMATION
+
+   s.Diagnostic(
+      range = range(diag.pos.span, diag.pos.source),
+      severity = severity,
+      message = diag.msg.message,
+   )
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
@@ -490,6 +508,7 @@ object ExtractSemanticDB:
     occurrences: List[SymbolOccurrence],
     symbolInfos: List[SymbolInformation],
     synthetics: List[Synthetic],
+    diagnostics: List[s.Diagnostic],
   )(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
@@ -508,6 +527,7 @@ object ExtractSemanticDB:
       symbols = symbolInfos,
       occurrences = occurrences,
       synthetics = synthetics,
+      diagnostics = diagnostics,
     )
     val docs = TextDocuments(List(doc))
     val out = Files.newOutputStream(outpath)

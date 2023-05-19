@@ -23,6 +23,7 @@ import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.reporting.StoreReporter
 
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
@@ -137,6 +138,7 @@ class SemanticdbTests:
       "-d", target.toString,
       "-feature",
       "-deprecation",
+      "-Wunused:imports",
       // "-Ydebug-flags",
       // "-Xprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
@@ -144,7 +146,7 @@ class SemanticdbTests:
       "-Xignore-scala2-macros",
       "-usejavacp"
     ) ++ inputFiles().map(_.toString)
-    val exit = Main.process(args)
+    val exit = Main.process(args, new StoreReporter())
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
     target
 
