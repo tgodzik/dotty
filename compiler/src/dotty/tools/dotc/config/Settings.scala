@@ -51,7 +51,20 @@ object Settings:
 
     def warn(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
-  }
+
+    def deprecated(msg: String, extraArgs: List[String] = Nil): Settings.ArgsSummary =
+      ArgsSummary(sstate, extraArgs ++ arguments.tail, errors, warnings :+ msg)
+
+  @unshared
+  val settingCharacters = "[a-zA-Z0-9_\\-]*".r
+  def validateSettingString(name: String): Unit =
+    assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
+
+  /** List of setting-value pairs that are required for another setting to be valid.
+    * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`
+    * means that `s` requires `YprofileEnabled` to be set to `true`.
+    */
+  type SettingDependencies = List[(Setting[?], Any)]
 
   case class Setting[T: ClassTag] private[Settings] (
     name: String,
@@ -61,7 +74,7 @@ object Settings:
     choices: Option[Seq[?]] = None,
     prefix: String = "",
     aliases: List[String] = Nil,
-    depends: List[(Setting[?], Any)] = Nil,
+    depends: SettingDependencies = Nil,
     ignoreInvalidArgs: Boolean = false,
     propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
 
@@ -284,8 +297,8 @@ object Settings:
     def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
       publish(Setting(name, descr, initialValue, aliases = aliases))
 
-    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, aliases = aliases))
+    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, depends: SettingDependencies = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases, depends = depends))
 
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
@@ -314,8 +327,8 @@ object Settings:
     def PathSetting(name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(name, descr, default, aliases = aliases))
 
-    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
+    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil, depends: SettingDependencies = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases, depends = depends))
 
     def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, prefix = pre))
