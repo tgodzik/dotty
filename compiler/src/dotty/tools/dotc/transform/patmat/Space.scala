@@ -5,7 +5,7 @@ package patmat
 
 import core.*, Constants.*, Contexts.*, Decorators.*, Flags.*, Names.*, NameOps.*, StdNames.*, Symbols.*, Types.*
 import ast.*, tpd.*
-import config.Printers.exhaustivity
+import config.Printers.*
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
@@ -531,37 +531,14 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-        scrutineeTp match
-        case AppliedType(tycon, targs)
-            if unappSym.is(Synthetic)
-            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
-          // Special case synthetic unapply/unapplySeq's
-          // Provided the shapes of the types match:
-          // the scrutinee type being unapplied and
-          // the unapply parameter type
-          pt.instantiate(targs).asInstanceOf[MethodType]
-        case _ =>
-          val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          val unapplyArgType = mt.paramInfos.head
-          scrutineeTp <:< unapplyArgType
+          scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
-          unapplyArgType <:< scrutineeTp
-          maximizeType(unapplyArgType, Spans.NoSpan)
-          if !(ctx.typerState.ownedVars -- locked).isEmpty then
-            // constraining can create type vars out of wildcard types
-            // (in legalBound, by using a LevelAvoidMap)
-            // maximise will only do one pass at maximising the type vars in the target type
-            // which means we can maximise to types that include other type vars
-            // this fails TreeChecker's "non-empty constraint at end of $fusedPhase" check
-            // e.g. run-macros/string-context-implicits
-            // I can't prove that a second call won't also create type vars,
-            // but I'd rather have an unassigned new-new type var, than an infinite loop.
-            // After all, there's nothing strictly "wrong" with unassigned type vars,
-            // it just fails TreeChecker's linting.
-            maximizeType(unapplyArgType, Spans.NoSpan)
+          mt.paramInfos(0) <:< scrutineeTp
+          instantiateSelected(mt, tvars)
+          isFullyDefined(mt, ForceDegree.all)
           mt
     }
 
