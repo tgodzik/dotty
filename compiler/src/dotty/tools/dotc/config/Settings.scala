@@ -54,11 +54,7 @@ object Settings:
 
     def deprecated(msg: String, extraArgs: List[String] = Nil): Settings.ArgsSummary =
       ArgsSummary(sstate, extraArgs ++ arguments.tail, errors, warnings :+ msg)
-
-  @unshared
-  val settingCharacters = "[a-zA-Z0-9_\\-]*".r
-  def validateSettingString(name: String): Unit =
-    assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
+  }
 
   /** List of setting-value pairs that are required for another setting to be valid.
     * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`

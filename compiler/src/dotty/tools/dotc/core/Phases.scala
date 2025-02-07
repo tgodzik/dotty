@@ -333,7 +333,6 @@ object Phases {
 
       // Test that we are in a state where we need to check if the phase should be skipped for a java file,
       // this prevents checking the expensive `unit.typedAsJava` unnecessarily.
-      val doCheckJava = skipIfJava && !isAfterLastJavaPhase
       for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         if ctx.run.enterUnit(unit) then

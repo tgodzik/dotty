@@ -2490,19 +2490,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if filters == List(MessageFilter.None) then sup.markUsed()
     ctx.run.nn.suppressions.addSuppression(sup)
 
-  /** Run `typed` on `rhs` except if `rhs` is the right hand side of a deferred given,
-   *  in which case the empty tree is returned.
-   */
-  private inline def excludeDeferredGiven(
-      rhs: untpd.Tree, sym: Symbol)(
-      inline typed: untpd.Tree => Tree)(using Context): Tree =
-    rhs match
-      case rhs: RefTree
-      if rhs.name == nme.deferred && sym.isAllOf(DeferredGivenFlags, butNot = Param) =>
-        EmptyTree
-      case _ =>
-        typed(rhs)
-
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedDef(sym) {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
