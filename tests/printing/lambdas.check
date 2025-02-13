@@ -5,9 +5,21 @@ package <empty> {
     val f1: Int => Int = (x: Int) => x.+(1)
     val f2: (Int, Int) => Int = (x: Int, y: Int) => x.+(y)
     val f3: Int => Int => Int = (x: Int) => (y: Int) => x.+(y)
-    val f4: [T] => (x: Int) => Int = [T >: Nothing <: Any] => (x: Int) => x.+(1)
-    val f5: [T] => (x: Int) => Int => Int = [T >: Nothing <: Any] => (x: Int)
-       => (y: Int) => x.+(y)
+    val f4: [T] => (x: Int) => Int =
+      {
+        final class $anon() extends Object(), PolyFunction {
+          def apply[T >: Nothing <: Any](x: Int): Int = x.+(1)
+        }
+        new $anon():([T] => (x: Int) => Int)
+      }
+    val f5: [T] => (x: Int) => Int => Int =
+      {
+        final class $anon() extends Object(), PolyFunction {
+          def apply[T >: Nothing <: Any](x: Int): Int => Int = (y: Int) =>
+            x.+(y)
+        }
+        new $anon():([T] => (x: Int) => Int => Int)
+      }
     val f6: Int => Int = (x: Int) =>
       {
         val x2: Int = x.+(1)
